@@ -1,0 +1,296 @@
+import { useState } from "react";
+import {
+  LayoutDashboard, User, Zap, FolderOpen, Calendar,
+  Star, Lock, Bell, LogOut, ChevronRight, Menu, X
+} from "lucide-react";
+
+/* ─────────────────────────────────────────
+   Navigation config
+───────────────────────────────────────── */
+const NAV_PROFILE = [
+  { key: "profile",        icon: User,            label: "Mon Profil" },
+  { key: "competences",    icon: Zap,             label: "Compétences & Services", workerOnly: true },
+  { key: "portfolio",      icon: FolderOpen,      label: "Portfolio",              workerOnly: true },
+  { key: "disponibilite",  icon: Calendar,        label: "Disponibilités",         workerOnly: true },
+  { key: "avis",           icon: Star,            label: "Avis & Évaluations",     workerOnly: true },
+];
+const NAV_ACCOUNT = [
+  { key: "securite",       icon: Lock,            label: "Sécurité" },
+  { key: "notifications",  icon: Bell,            label: "Notifications" },
+];
+
+export default function AppLayout({ user, activePage, onNavigate, onLogout, children }) {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const isWorker = user?.role === "worker" || user?.type === "worker";
+
+  const initials = user
+    ? ((user.firstName || user.prenom || user.name || "?")[0] +
+       (user.lastName  || user.nom   || "")?.[0] || "").toUpperCase()
+    : "?";
+
+  const SidebarContent = () => (
+    <>
+      {/* Profile mini */}
+      <div className="al-profile-mini">
+        <div
+          className="al-avatar"
+          style={user?.photo ? { backgroundImage: `url(${user.photo})`, backgroundSize: "cover" } : {}}
+        >
+          {!user?.photo && initials}
+        </div>
+        <div className="al-profile-name">
+          {user?.firstName || user?.prenom || user?.name || "Utilisateur"}{" "}
+          {user?.lastName  || user?.nom    || ""}
+        </div>
+        <span className={`al-role-badge ${isWorker ? "" : "client"}`}>
+          {isWorker ? "Prestataire" : "Client"}
+        </span>
+      </div>
+
+      {/* Nav: Dashboard */}
+      <SideItem icon={LayoutDashboard} label="Tableau de bord" pageKey="dashboard" activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
+
+      {/* Nav: Profil */}
+      <div className="al-nav-label">Profil</div>
+      {NAV_PROFILE
+        .filter(n => !n.workerOnly || isWorker)
+        .map(n => (
+          <SideItem key={n.key} icon={n.icon} label={n.label} pageKey={n.key} activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
+        ))}
+
+      {/* Nav: Compte */}
+      <div className="al-nav-label">Compte</div>
+      {NAV_ACCOUNT.map(n => (
+        <SideItem key={n.key} icon={n.icon} label={n.label} pageKey={n.key} activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
+      ))}
+
+      {/* Logout */}
+      <button className="al-logout-btn" onClick={onLogout}>
+        <LogOut size={14} /> Déconnexion
+      </button>
+    </>
+  );
+
+  return (
+    <div className="al-root">
+      {/* ── Topbar ── */}
+      <nav className="al-topbar">
+        <div className="al-topbar-left">
+          <button className="al-mobile-menu-btn" onClick={() => setMobileSidebarOpen(o => !o)}>
+            {mobileSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+          <div className="al-brand">
+            <div className="al-brand-mark">S</div>
+            <span className="al-brand-name">ServicePro</span>
+          </div>
+        </div>
+        <div className="al-topbar-right">
+          <div className="al-topbar-avatar" onClick={() => onNavigate("profile")}>
+            {user?.photo
+              ? <img src={user.photo} alt="avatar" />
+              : <span>{initials}</span>
+            }
+          </div>
+        </div>
+      </nav>
+
+      <div className="al-body">
+        {/* ── Desktop Sidebar ── */}
+        <aside className="al-sidebar">
+          <SidebarContent />
+        </aside>
+
+        {/* ── Mobile Sidebar overlay ── */}
+        {mobileSidebarOpen && (
+          <>
+            <div className="al-mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
+            <aside className="al-sidebar al-sidebar-mobile">
+              <SidebarContent />
+            </aside>
+          </>
+        )}
+
+        {/* ── Main content ── */}
+        <main className="al-main">
+          {children}
+        </main>
+      </div>
+
+      <style>{styles}</style>
+    </div>
+  );
+}
+
+function SideItem({ icon: Icon, label, pageKey, activePage, onNavigate, setMobileOpen }) {
+  const active = activePage === pageKey;
+  return (
+    <button
+      className={`al-nav-item ${active ? "active" : ""}`}
+      onClick={() => { onNavigate(pageKey); setMobileOpen(false); }}
+    >
+      <Icon size={15} />
+      <span>{label}</span>
+      {active && <ChevronRight size={12} className="al-nav-chevron" />}
+    </button>
+  );
+}
+
+const styles = `
+.al-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--paper, #fff8f2);
+}
+
+/* TOPBAR */
+.al-topbar {
+  position: sticky; top: 0; z-index: 200;
+  background: var(--ink, #1a1008);
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+.al-topbar-left { display: flex; align-items: center; gap: 14px; }
+.al-mobile-menu-btn {
+  display: none;
+  background: transparent; border: none; color: var(--muted, #9a7c68);
+  cursor: pointer; padding: 4px; border-radius: 6px;
+  transition: color .2s;
+}
+.al-mobile-menu-btn:hover { color: #fff; }
+.al-brand { display: flex; align-items: center; gap: 10px; }
+.al-brand-mark {
+  width: 32px; height: 32px; border: 2px solid var(--orange, #e8620a);
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif;
+  color: var(--orange, #e8620a); font-size: 16px; font-weight: 700;
+}
+.al-brand-name {
+  font-size: 10px; letter-spacing: .38em; text-transform: uppercase;
+  color: var(--muted, #9a7c68);
+}
+.al-topbar-right { display: flex; align-items: center; gap: 10px; }
+.al-topbar-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange, #e8620a), #c44800);
+  border: 2px solid rgba(232,98,10,0.4);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; transition: border-color .2s;
+  font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #fff;
+}
+.al-topbar-avatar:hover { border-color: var(--orange, #e8620a); }
+.al-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* BODY */
+.al-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* SIDEBAR */
+.al-sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  background: var(--ink, #1a1008);
+  padding: 24px 16px 32px;
+  display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+  position: relative;
+}
+.al-sidebar::before {
+  content: ''; position: absolute; top: -60px; right: -60px;
+  width: 200px; height: 200px; border-radius: 50%;
+  border: 1px solid rgba(232,98,10,0.12); pointer-events: none;
+}
+
+/* PROFILE MINI */
+.al-profile-mini {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 12px; margin-bottom: 20px;
+  background: rgba(255,255,255,0.04); border-radius: 12px;
+  border: 1px solid rgba(232,98,10,0.15);
+}
+.al-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange, #e8620a), #c44800);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: #fff;
+  border: 2px solid rgba(232,98,10,0.4);
+  margin-bottom: 10px;
+  background-size: cover; background-position: center;
+}
+.al-profile-name {
+  font-family: 'Playfair Display', serif; font-size: .95rem; color: #fff;
+  margin-bottom: 6px; text-align: center;
+}
+.al-role-badge {
+  font-size: 9px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 100px;
+  background: rgba(232,98,10,0.15); color: var(--orange, #e8620a);
+  border: 1px solid rgba(232,98,10,0.3);
+}
+.al-role-badge.client {
+  background: rgba(154,124,104,0.15); color: var(--muted, #9a7c68);
+  border-color: rgba(154,124,104,0.3);
+}
+
+/* NAV */
+.al-nav-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px;
+  color: rgba(154,124,104,0.55); padding: 10px 12px 4px; margin-top: 6px;
+}
+.al-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px;
+  cursor: pointer; font-size: 13px; color: var(--muted, #9a7c68);
+  transition: all .2s; border: 1px solid transparent;
+  background: transparent; width: 100%; text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  position: relative;
+}
+.al-nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.al-nav-item.active { background: rgba(232,98,10,0.12); color: #fff; border-color: rgba(232,98,10,0.25); }
+.al-nav-item span { flex: 1; }
+.al-nav-chevron { opacity: .5; }
+
+.al-logout-btn {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: auto; padding: 10px 14px; border-radius: 8px;
+  border: 1.5px solid rgba(232,98,10,0.2);
+  background: transparent; color: var(--orange, #e8620a);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+  letter-spacing: .05em; margin-top: 16px;
+}
+.al-logout-btn:hover { background: rgba(232,98,10,0.08); }
+
+/* MAIN */
+.al-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 44px;
+  min-width: 0;
+}
+
+/* MOBILE */
+.al-mobile-overlay {
+  position: fixed; inset: 0; background: rgba(26,16,8,0.6);
+  z-index: 150; backdrop-filter: blur(2px);
+}
+.al-sidebar-mobile {
+  position: fixed; left: 0; top: 60px; bottom: 0;
+  z-index: 160; width: 256px;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+  .al-mobile-menu-btn { display: flex; }
+  .al-sidebar:not(.al-sidebar-mobile) { display: none; }
+  .al-main { padding: 24px 16px; }
+}
+`;
