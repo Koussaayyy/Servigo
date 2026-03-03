@@ -1,8 +1,27 @@
 import { useState } from "react";
-import GoogleIcon from "../components/GoogleIcon";
+import { authApi } from "../api";
+import { GoogleLogin } from "@react-oauth/google";
 
-export default function SignupPicker({ onSelect }) {
+export default function SignupPicker({ onSelect, onGoogleSuccess, onGoogleComplete }) {
   const [chosen, setChosen] = useState(null);
+  const [error, setError]   = useState("");
+
+ const handleGoogle = async (credentialResponse) => {
+    try {
+      const res = await authApi.googleLogin(credentialResponse.credential);
+      if (res.needsCompletion) {
+        // New user — show completion form
+        onGoogleComplete(credentialResponse.credential);
+      } else {
+        // Existing user — just log in
+        localStorage.setItem("token", res.token);
+        localStorage.setItem("user", JSON.stringify(res.user));
+        onGoogleSuccess(res.user);
+      }
+    } catch (err) {
+      setError("Google signup failed. Try again.");
+    }
+  };
 
   return (
     <div className="anim">
@@ -10,6 +29,8 @@ export default function SignupPicker({ onSelect }) {
         <h2 className="form-title">Create an account.</h2>
         <p className="form-sub">Who are you joining as?</p>
       </div>
+
+      {error && <div className="error-msg">{error}</div>}
 
       <div className="type-picker">
         <button
@@ -34,8 +55,18 @@ export default function SignupPicker({ onSelect }) {
         onClick={() => chosen && onSelect(chosen)}>
         Continue →
       </button>
+
       <div className="divider">or</div>
-      <button className="social-btn"><GoogleIcon /> Continue with Google</button>
+
+      <GoogleLogin
+        onSuccess={handleGoogle}
+        onError={() => setError("Google signup failed. Try again.")}
+        width="100%"
+        text="signup_with"
+        shape="rectangular"
+        theme="outline"
+      />
+
       <p className="terms">
         By signing up you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.
       </p>

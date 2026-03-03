@@ -23,11 +23,10 @@ export default function AppLayout({ user, activePage, onNavigate, onLogout, chil
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isWorker = user?.role === "worker" || user?.type === "worker";
 
-  const initials = user
+const initials = user
     ? ((user.firstName || user.prenom || user.name || "?")[0] +
-       (user.lastName  || user.nom   || "")?.[0] || "").toUpperCase()
+       (user.lastName  && user.lastName !== "N/A" ? user.lastName[0] : "")).toUpperCase()
     : "?";
-
   const SidebarContent = () => (
     <>
       {/* Profile mini */}
@@ -40,7 +39,7 @@ export default function AppLayout({ user, activePage, onNavigate, onLogout, chil
         </div>
         <div className="al-profile-name">
           {user?.firstName || user?.prenom || user?.name || "Utilisateur"}{" "}
-          {user?.lastName  || user?.nom    || ""}
+{user?.lastName && user?.lastName !== "N/A" ? user.lastName : ""}
         </div>
         <span className={`al-role-badge ${isWorker ? "" : "client"}`}>
           {isWorker ? "Prestataire" : "Client"}

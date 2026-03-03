@@ -36,11 +36,11 @@ export const authApi = {
     fetch(`${BASE}/auth/me`, { headers: authHeaders() }).then(handle),
 
   // ── Google Login ──────────────────────────
-  googleLogin: (credential) =>
+  googleLogin: (credential, extraData = {}) =>
     fetch(`${BASE}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential }),
+      body: JSON.stringify({ credential, ...extraData }),
     }).then(handle),
 
   // ── Forgot Password ───────────────────────

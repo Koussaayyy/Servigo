@@ -83,7 +83,7 @@ exports.login = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, role, phone, workerProfile } = req.body;
 
     const ticket = await client.verifyIdToken({
       idToken: credential,
@@ -93,18 +93,25 @@ exports.googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
     const { email, given_name, family_name, picture } = payload;
 
+    if (!email) return res.status(400).json({ message: "Could not get email from Google" });
+
     let user = await User.findOne({ email });
 
     if (!user) {
+      if (!role) {
+        return res.status(200).json({ needsCompletion: true });
+      }
+
       user = await User.create({
-        firstName:  given_name || "User",
+        firstName:  given_name  || "User",
         lastName:   family_name || "",
-        email,
-        phone:      "N/A",
+        email:      email,
+        phone:      phone       || "N/A",
         password:   Math.random().toString(36).slice(-10) + "Aa1!",
-        role:       "client",
-        avatar:     picture || "",
+        role:       role,
+        avatar:     picture     || "",
         isVerified: true,
+        ...(role === "worker" && workerProfile ? { workerProfile } : {}),
       });
     }
 

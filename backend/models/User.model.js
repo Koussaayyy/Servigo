@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema(
   {
     // ── Common fields ──────────────────────────────────────
     firstName:  { type: String, required: true, trim: true },
-    lastName:   { type: String, required: true, trim: true },
+    lastName: { type: String, required: false, trim: true, default: "" },
     email:      { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone:      { type: String, required: true },
     password:   { type: String, required: true, minlength: 8 },

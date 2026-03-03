@@ -6,6 +6,7 @@ import SignupPicker  from "./pages/SignupPicker";
 import ClientSignup  from "./pages/ClientSignup";
 import WorkerSignup  from "./pages/WorkerSignup";
 import ResetPassword from "./pages/ResetPassword";
+import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 
 // ── Post-login pages
 import AppLayout   from "./components/AppLayout";
@@ -19,6 +20,7 @@ export default function App() {
   const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("dashboard");
   const [resetToken, setResetToken] = useState(null);
+  const [googleCredential, setGoogleCredential] = useState(null);
 
   const [loggedUser, setLoggedUser] = useState(() => {
     try {
@@ -129,11 +131,24 @@ export default function App() {
             </button>
           </div>
 
-          <div className={exiting ? "panel-exit" : ""} key={panelKey}>
-            {mode === "login" && <LoginForm onSuccess={onSuccess} />}
-            {mode === "signup" && !signupType && (
-              <SignupPicker onSelect={(t) => switchTo("signup", t)} />
-            )}
+         <div className={exiting ? "panel-exit" : ""} key={panelKey}>
+  {mode === "login" && <LoginForm onSuccess={onSuccess} />}
+  {mode === "signup" && !signupType && !googleCredential && (
+    <SignupPicker
+      onSelect={(t) => switchTo("signup", t)}
+      onGoogleSuccess={onSuccess}
+      onGoogleComplete={(credential) => setGoogleCredential(credential)}
+    />
+  )}
+  {mode === "signup" && googleCredential && (
+    <GoogleCompleteSignup
+      googleCredential={googleCredential}
+      onSuccess={(user) => {
+        setGoogleCredential(null);
+        onSuccess(user);
+      }}
+    />
+  )}
             {mode === "signup" && signupType === "client" && (
               <ClientSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
             )}
