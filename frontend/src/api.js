@@ -1,6 +1,4 @@
 // src/services/api.js
-// All backend calls live here — import what you need in your components
-
 const BASE = "http://localhost:5000/api";
 
 const getToken = () => localStorage.getItem("token");
@@ -10,7 +8,6 @@ const authHeaders = () => ({
   Authorization: `Bearer ${getToken()}`,
 });
 
-// Throws a proper Error with the backend message
 const handle = async (res) => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Something went wrong");
@@ -37,17 +34,39 @@ export const authApi = {
 
   getMe: () =>
     fetch(`${BASE}/auth/me`, { headers: authHeaders() }).then(handle),
+
+  // ── Google Login ──────────────────────────
+  googleLogin: (credential) =>
+    fetch(`${BASE}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential }),
+    }).then(handle),
+
+  // ── Forgot Password ───────────────────────
+ forgotPassword: (email) =>
+    fetch(`${BASE}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).then(handle),
+
+  // ── Reset Password ────────────────────────
+  resetPassword: (token, password) =>
+    fetch(`${BASE}/auth/reset-password/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    }).then(handle),
 };
 
 // ════════════════════════════════════════════
 //  CLIENT
 // ════════════════════════════════════════════
 export const clientApi = {
-  // Load full profile from DB
   getProfile: () =>
     fetch(`${BASE}/client/profile`, { headers: authHeaders() }).then(handle),
 
-  // Save personal info + clientProfile
   updateProfile: (data) =>
     fetch(`${BASE}/client/profile`, {
       method: "PUT",
@@ -55,7 +74,6 @@ export const clientApi = {
       body: JSON.stringify(data),
     }).then(handle),
 
-  // Change password
   changePassword: (currentPassword, newPassword) =>
     fetch(`${BASE}/client/password`, {
       method: "PUT",
@@ -63,19 +81,16 @@ export const clientApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }).then(handle),
 
-  // Upload avatar photo (File object from input)
   uploadAvatar: (file) => {
     const form = new FormData();
     form.append("avatar", file);
     return fetch(`${BASE}/client/avatar`, {
       method: "PUT",
-      // Do NOT set Content-Type — browser sets it automatically with boundary
       headers: { Authorization: `Bearer ${getToken()}` },
       body: form,
     }).then(handle);
   },
 
-  // Remove avatar
   deleteAvatar: () =>
     fetch(`${BASE}/client/avatar`, {
       method: "DELETE",
@@ -87,11 +102,9 @@ export const clientApi = {
 //  WORKER
 // ════════════════════════════════════════════
 export const workerApi = {
-  // Load full profile from DB
   getProfile: () =>
     fetch(`${BASE}/worker/profile`, { headers: authHeaders() }).then(handle),
 
-  // Save personal info + workerProfile fields
   updateProfile: (data) =>
     fetch(`${BASE}/worker/profile`, {
       method: "PUT",
@@ -99,7 +112,6 @@ export const workerApi = {
       body: JSON.stringify(data),
     }).then(handle),
 
-  // Change password
   changePassword: (currentPassword, newPassword) =>
     fetch(`${BASE}/worker/password`, {
       method: "PUT",
@@ -107,7 +119,6 @@ export const workerApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }).then(handle),
 
-  // Upload avatar photo (File object from input)
   uploadAvatar: (file) => {
     const form = new FormData();
     form.append("avatar", file);
@@ -118,14 +129,12 @@ export const workerApi = {
     }).then(handle);
   },
 
-  // Remove avatar
   deleteAvatar: () =>
     fetch(`${BASE}/worker/avatar`, {
       method: "DELETE",
       headers: authHeaders(),
     }).then(handle),
 
-  // Toggle available / unavailable
   toggleAvailability: () =>
     fetch(`${BASE}/worker/availability`, {
       method: "PUT",
@@ -136,8 +145,6 @@ export const workerApi = {
 // ════════════════════════════════════════════
 //  UTILITY
 // ════════════════════════════════════════════
-
-// Convert stored "/uploads/avatars/x.jpg" → full URL for <img src>
 export const avatarUrl = (avatarPath) => {
   if (!avatarPath) return null;
   if (avatarPath.startsWith("http")) return avatarPath;

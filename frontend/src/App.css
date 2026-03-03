@@ -320,3 +320,12 @@ body:has(.al-root) {
   width: 100%;
   min-height: 100vh;
 }
+.success-msg {
+  background: #f0fff4;
+  border: 1px solid #b7ebc8;
+  color: #276749;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}

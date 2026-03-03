@@ -1,24 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
-import SidePanel    from "./components/SidePanel";
-import LoginForm    from "./pages/LoginForm";
-import SignupPicker from "./pages/SignupPicker";
-import ClientSignup from "./pages/ClientSignup";
-import WorkerSignup from "./pages/WorkerSignup";
+import SidePanel     from "./components/SidePanel";
+import LoginForm     from "./pages/LoginForm";
+import SignupPicker  from "./pages/SignupPicker";
+import ClientSignup  from "./pages/ClientSignup";
+import WorkerSignup  from "./pages/WorkerSignup";
+import ResetPassword from "./pages/ResetPassword";
 
 // ── Post-login pages
-import AppLayout    from "./components/AppLayout";
-import ProfilePage  from "./pages/profile/ProfilePage";
-import Dashboard    from "./components/Dashboard";
+import AppLayout   from "./components/AppLayout";
+import ProfilePage from "./pages/profile/ProfilePage";
+import Dashboard   from "./components/Dashboard";
 
 export default function App() {
-  const [mode, setMode]           = useState("login");
+  const [mode, setMode]             = useState("login");
   const [signupType, setSignupType] = useState(null);
-  const [exiting, setExiting]     = useState(false);
-  const [panelKey, setPanelKey]   = useState(0);
-
-  // ── Current page when logged in: "dashboard" | "profile"
+  const [exiting, setExiting]       = useState(false);
+  const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("dashboard");
+  const [resetToken, setResetToken] = useState(null);
 
   const [loggedUser, setLoggedUser] = useState(() => {
     try {
@@ -26,6 +26,12 @@ export default function App() {
       return u ? JSON.parse(u) : null;
     } catch { return null; }
   });
+
+  // ── Check if URL is /reset-password/TOKEN ──────────────
+  useEffect(() => {
+    const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
+    if (match) setResetToken(match[1]);
+  }, []);
 
   const switchTo = (newMode, newType = null) => {
     setExiting(true);
@@ -49,9 +55,30 @@ export default function App() {
     switchTo("login");
   };
 
-  // ── Logged-in view
+  // ── Reset password page ────────────────────────────────
+  if (resetToken) {
+    return (
+      <>
+        <div className="bg-deco" />
+        <div className="wrapper">
+          <SidePanel />
+          <div className="main">
+            <ResetPassword
+              token={resetToken}
+              onSuccess={() => {
+                setResetToken(null);
+                window.history.pushState({}, "", "/");
+                switchTo("login");
+              }}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── Logged-in view ─────────────────────────────────────
   if (loggedUser) {
-    // Pages that are "sub-sections" of the profile
     const PROFILE_SUBPAGES = ["profile", "competences", "portfolio", "disponibilite", "avis", "securite", "notifications"];
     const isProfilePage = PROFILE_SUBPAGES.includes(activePage);
 
@@ -80,7 +107,7 @@ export default function App() {
     );
   }
 
-  // ── Auth view (login / signup)
+  // ── Auth view ──────────────────────────────────────────
   return (
     <>
       <div className="bg-deco" />
@@ -104,21 +131,14 @@ export default function App() {
 
           <div className={exiting ? "panel-exit" : ""} key={panelKey}>
             {mode === "login" && <LoginForm onSuccess={onSuccess} />}
-
             {mode === "signup" && !signupType && (
               <SignupPicker onSelect={(t) => switchTo("signup", t)} />
             )}
             {mode === "signup" && signupType === "client" && (
-              <ClientSignup
-                onBack={() => switchTo("signup", null)}
-                onSuccess={onSuccess}
-              />
+              <ClientSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
             )}
             {mode === "signup" && signupType === "worker" && (
-              <WorkerSignup
-                onBack={() => switchTo("signup", null)}
-                onSuccess={onSuccess}
-              />
+              <WorkerSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
             )}
           </div>
         </div>

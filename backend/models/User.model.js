@@ -14,6 +14,10 @@ const UserSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     isActive:   { type: Boolean, default: true },
 
+    // ── Reset password ─────────────────────────────────────
+    resetPasswordToken:  { type: String },
+    resetPasswordExpire: { type: Date },
+
     // ── Client profile ─────────────────────────────────────
     clientProfile: {
       address:  { type: String, default: "" },
@@ -23,14 +27,14 @@ const UserSchema = new mongoose.Schema(
 
     // ── Worker (Prestataire) profile ───────────────────────
     workerProfile: {
-      professions:      { type: [String], default: [] },
-      city:             { type: String, default: "" },
-      experience:       { type: String, default: "" },
-      bio:              { type: String, default: "" },
-      rating:           { type: Number, default: 0 },
-      totalReviews:     { type: Number, default: 0 },
-      isAvailable:      { type: Boolean, default: true },
-      hourlyRate:       { type: Number, default: 0 },
+      professions:  { type: [String], default: [] },
+      city:         { type: String, default: "" },
+      experience:   { type: String, default: "" },
+      bio:          { type: String, default: "" },
+      rating:       { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+      isAvailable:  { type: Boolean, default: true },
+      hourlyRate:   { type: Number, default: 0 },
     },
   },
   { timestamps: true }
