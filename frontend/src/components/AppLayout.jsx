@@ -4,52 +4,56 @@ import {
   Star, Lock, Bell, LogOut, ChevronRight, Menu, X
 } from "lucide-react";
 
-/* ─────────────────────────────────────────
-   Navigation config
-───────────────────────────────────────── */
 const NAV_PROFILE = [
-  { key: "profile",        icon: User,            label: "Mon Profil" },
-  { key: "competences",    icon: Zap,             label: "Compétences & Services", workerOnly: true },
-  { key: "portfolio",      icon: FolderOpen,      label: "Portfolio",              workerOnly: true },
-  { key: "disponibilite",  icon: Calendar,        label: "Disponibilités",         workerOnly: true },
-  { key: "avis",           icon: Star,            label: "Avis & Évaluations",     workerOnly: true },
+  { key: "profile",        icon: User,       label: "Mon Profil" },
+  { key: "competences",    icon: Zap,        label: "Compétences & Services", workerOnly: true },
+  { key: "portfolio",      icon: FolderOpen, label: "Portfolio",              workerOnly: true },
+  { key: "disponibilite",  icon: Calendar,   label: "Disponibilités",         workerOnly: true },
+  { key: "avis",           icon: Star,       label: "Avis & Évaluations",     workerOnly: true },
 ];
 const NAV_ACCOUNT = [
-  { key: "securite",       icon: Lock,            label: "Sécurité" },
-  { key: "notifications",  icon: Bell,            label: "Notifications" },
+  { key: "securite",      icon: Lock, label: "Sécurité" },
+  { key: "notifications", icon: Bell, label: "Notifications" },
 ];
+
+// ── Helper: resolve avatar URL ─────────────────────────────
+const resolveAvatar = (avatar) => {
+  if (!avatar) return null;
+  if (avatar.startsWith("http")) return avatar; // Google avatar
+  return `http://localhost:5000${avatar}`;       // local upload
+};
 
 export default function AppLayout({ user, activePage, onNavigate, onLogout, children }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const isWorker = user?.role === "worker" || user?.type === "worker";
+  const isWorker  = user?.role === "worker" || user?.type === "worker";
+  const avatarSrc = resolveAvatar(user?.avatar);
 
-const initials = user
+  const initials = user
     ? ((user.firstName || user.prenom || user.name || "?")[0] +
-       (user.lastName  && user.lastName !== "N/A" ? user.lastName[0] : "")).toUpperCase()
+       (user.lastName && user.lastName !== "N/A" ? user.lastName[0] : "")).toUpperCase()
     : "?";
+
   const SidebarContent = () => (
     <>
       {/* Profile mini */}
       <div className="al-profile-mini">
         <div
           className="al-avatar"
-          style={user?.photo ? { backgroundImage: `url(${user.photo})`, backgroundSize: "cover" } : {}}
+          style={avatarSrc ? { backgroundImage: `url(${avatarSrc})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
         >
-          {!user?.photo && initials}
+          {!avatarSrc && initials}
         </div>
         <div className="al-profile-name">
           {user?.firstName || user?.prenom || user?.name || "Utilisateur"}{" "}
-{user?.lastName && user?.lastName !== "N/A" ? user.lastName : ""}
+          {user?.lastName && user?.lastName !== "N/A" ? user.lastName : ""}
         </div>
         <span className={`al-role-badge ${isWorker ? "" : "client"}`}>
           {isWorker ? "Prestataire" : "Client"}
         </span>
       </div>
 
-      {/* Nav: Dashboard */}
       <SideItem icon={LayoutDashboard} label="Tableau de bord" pageKey="dashboard" activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
 
-      {/* Nav: Profil */}
       <div className="al-nav-label">Profil</div>
       {NAV_PROFILE
         .filter(n => !n.workerOnly || isWorker)
@@ -57,13 +61,11 @@ const initials = user
           <SideItem key={n.key} icon={n.icon} label={n.label} pageKey={n.key} activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
         ))}
 
-      {/* Nav: Compte */}
       <div className="al-nav-label">Compte</div>
       {NAV_ACCOUNT.map(n => (
         <SideItem key={n.key} icon={n.icon} label={n.label} pageKey={n.key} activePage={activePage} onNavigate={onNavigate} setMobileOpen={setMobileSidebarOpen} />
       ))}
 
-      {/* Logout */}
       <button className="al-logout-btn" onClick={onLogout}>
         <LogOut size={14} /> Déconnexion
       </button>
@@ -85,8 +87,8 @@ const initials = user
         </div>
         <div className="al-topbar-right">
           <div className="al-topbar-avatar" onClick={() => onNavigate("profile")}>
-            {user?.photo
-              ? <img src={user.photo} alt="avatar" />
+            {avatarSrc
+              ? <img src={avatarSrc} alt="avatar" />
               : <span>{initials}</span>
             }
           </div>
@@ -94,12 +96,10 @@ const initials = user
       </nav>
 
       <div className="al-body">
-        {/* ── Desktop Sidebar ── */}
         <aside className="al-sidebar">
           <SidebarContent />
         </aside>
 
-        {/* ── Mobile Sidebar overlay ── */}
         {mobileSidebarOpen && (
           <>
             <div className="al-mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
@@ -109,7 +109,6 @@ const initials = user
           </>
         )}
 
-        {/* ── Main content ── */}
         <main className="al-main">
           {children}
         </main>
@@ -142,8 +141,6 @@ const styles = `
   font-family: 'DM Sans', sans-serif;
   background: var(--paper, #fff8f2);
 }
-
-/* TOPBAR */
 .al-topbar {
   position: sticky; top: 0; z-index: 200;
   background: var(--ink, #1a1008);
@@ -183,15 +180,11 @@ const styles = `
 }
 .al-topbar-avatar:hover { border-color: var(--orange, #e8620a); }
 .al-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-/* BODY */
 .al-body {
   display: flex;
   flex: 1;
   min-height: 0;
 }
-
-/* SIDEBAR */
 .al-sidebar {
   width: 256px;
   flex-shrink: 0;
@@ -206,8 +199,6 @@ const styles = `
   width: 200px; height: 200px; border-radius: 50%;
   border: 1px solid rgba(232,98,10,0.12); pointer-events: none;
 }
-
-/* PROFILE MINI */
 .al-profile-mini {
   display: flex; flex-direction: column; align-items: center;
   padding: 20px 12px; margin-bottom: 20px;
@@ -237,8 +228,6 @@ const styles = `
   background: rgba(154,124,104,0.15); color: var(--muted, #9a7c68);
   border-color: rgba(154,124,104,0.3);
 }
-
-/* NAV */
 .al-nav-label {
   font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px;
   color: rgba(154,124,104,0.55); padding: 10px 12px 4px; margin-top: 6px;
@@ -256,7 +245,6 @@ const styles = `
 .al-nav-item.active { background: rgba(232,98,10,0.12); color: #fff; border-color: rgba(232,98,10,0.25); }
 .al-nav-item span { flex: 1; }
 .al-nav-chevron { opacity: .5; }
-
 .al-logout-btn {
   display: flex; align-items: center; gap: 8px;
   margin-top: auto; padding: 10px 14px; border-radius: 8px;
@@ -267,16 +255,12 @@ const styles = `
   letter-spacing: .05em; margin-top: 16px;
 }
 .al-logout-btn:hover { background: rgba(232,98,10,0.08); }
-
-/* MAIN */
 .al-main {
   flex: 1;
   overflow-y: auto;
   padding: 36px 44px;
   min-width: 0;
 }
-
-/* MOBILE */
 .al-mobile-overlay {
   position: fixed; inset: 0; background: rgba(26,16,8,0.6);
   z-index: 150; backdrop-filter: blur(2px);
@@ -286,7 +270,6 @@ const styles = `
   z-index: 160; width: 256px;
   box-shadow: 4px 0 24px rgba(0,0,0,0.3);
 }
-
 @media (max-width: 768px) {
   .al-mobile-menu-btn { display: flex; }
   .al-sidebar:not(.al-sidebar-mobile) { display: none; }

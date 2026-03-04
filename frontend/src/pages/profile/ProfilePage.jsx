@@ -8,9 +8,6 @@ import {
 } from "lucide-react";
 import { clientApi, workerApi, avatarUrl } from "../../api";
 
-/* ─────────────────────────────────────────
-   Shared UI primitives
-───────────────────────────────────────── */
 function Card({ children, danger }) {
   return (
     <div style={{
@@ -175,9 +172,6 @@ function Toast({ show, message, isError }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   Photo Upload Modal
-───────────────────────────────────────── */
 function PhotoModal({ onClose, onSave, loading }) {
   const [preview, setPreview] = useState(null);
   const [file, setFile]       = useState(null);
@@ -232,27 +226,51 @@ function PhotoModal({ onClose, onSave, loading }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Informations personnelles
-───────────────────────────────────────── */
 function SectionInformations({ user, isWorker, onSaved, onToast }) {
   const api = isWorker ? workerApi : clientApi;
-  const [saving,       setSaving]       = useState(false);
-  const [photoSaving,  setPhotoSaving]  = useState(false);
-  const [showModal,    setShowModal]    = useState(false);
+  const [saving,      setSaving]     = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [showModal,   setShowModal]  = useState(false);
+  const [locLoading,  setLocLoading] = useState(false); // ── NEW
 
   const [form, setForm] = useState({
     firstName:  user.firstName || "",
     lastName:   user.lastName  || "",
     phone:      user.phone     || "",
-    bio:        isWorker ? (user.workerProfile?.bio  || "") : (user.clientProfile?.bio     || ""),
-    city:       isWorker ? (user.workerProfile?.city || "") : (user.clientProfile?.city    || ""),
-    address:    user.clientProfile?.address  || "",
+    bio:        isWorker ? (user.workerProfile?.bio  || "") : (user.clientProfile?.bio  || ""),
+    city:       isWorker ? (user.workerProfile?.city || "") : (user.clientProfile?.city || ""),
+    address:    user.clientProfile?.address   || "",
     experience: user.workerProfile?.experience || "",
     hourlyRate: user.workerProfile?.hourlyRate || "",
   });
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  // ── NEW: detect GPS location ───────────────────────────
+  const detectLocation = () => {
+    if (!navigator.geolocation) return onToast("Géolocalisation non supportée", true);
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+          const data = await res.json();
+          const city    = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "";
+          const address = data.address?.road
+            ? `${data.address.road}${data.address.house_number ? " " + data.address.house_number : ""}`
+            : data.display_name || "";
+          setForm(f => ({ ...f, city, address }));
+          onToast("Position détectée ✓");
+        } catch {
+          onToast("Impossible de détecter la position", true);
+        } finally {
+          setLocLoading(false);
+        }
+      },
+      () => { onToast("Permission de localisation refusée", true); setLocLoading(false); }
+    );
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -369,6 +387,35 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
       {/* Localisation */}
       <Card>
         <CardTitle icon={MapPin}>Localisation</CardTitle>
+
+        {/* ── GPS detect button ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: "#9a7c68", margin: 0 }}>
+            Renseignez votre ville manuellement ou utilisez la détection automatique.
+          </p>
+          <button
+            type="button"
+            onClick={detectLocation}
+            disabled={locLoading}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "8px 14px", borderRadius: 8,
+              border: "1.5px solid rgba(232,98,10,0.3)",
+              background: "rgba(232,98,10,0.06)", color: "#e8620a",
+              fontSize: 12, fontWeight: 600,
+              cursor: locLoading ? "not-allowed" : "pointer",
+              fontFamily: "'DM Sans',sans-serif",
+              opacity: locLoading ? 0.6 : 1,
+              transition: "all .2s", whiteSpace: "nowrap", flexShrink: 0, marginLeft: 16,
+            }}
+          >
+            {locLoading
+              ? <><Loader2 size={13} className="spin" /> Détection...</>
+              : <><MapPin size={13} /> Détecter ma position</>
+            }
+          </button>
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <Field label="Ville"><Input value={form.city} onChange={set("city")} /></Field>
           {!isWorker && (
@@ -405,9 +452,6 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Compétences (worker only)
-───────────────────────────────────────── */
 function SectionCompetences({ user, onSaved, onToast }) {
   const [saving,      setSaving]      = useState(false);
   const [professions, setProfessions] = useState(user.workerProfile?.professions || []);
@@ -471,9 +515,6 @@ function SectionCompetences({ user, onSaved, onToast }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Disponibilités (worker only)
-───────────────────────────────────────── */
 function SectionDisponibilite({ user, onSaved, onToast }) {
   const [loading,   setLoading]   = useState(false);
   const [available, setAvailable] = useState(user.workerProfile?.isAvailable ?? true);
@@ -518,9 +559,6 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Avis
-───────────────────────────────────────── */
 function SectionAvis({ user }) {
   const rating       = user.workerProfile?.rating       || 0;
   const totalReviews = user.workerProfile?.totalReviews || 0;
@@ -554,9 +592,6 @@ function SectionAvis({ user }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Sécurité
-───────────────────────────────────────── */
 function SectionSecurite({ user, isWorker, onToast }) {
   const api = isWorker ? workerApi : clientApi;
   const [saving, setSaving] = useState(false);
@@ -609,9 +644,6 @@ function SectionSecurite({ user, isWorker, onToast }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   SECTION: Notifications
-───────────────────────────────────────── */
 function SectionNotifications({ onToast }) {
   const [notifs, setNotifs] = useState({ devis: true, missions: true, avis: true, newsletter: false });
   const toggle = k => setNotifs(n => ({ ...n, [k]: !n[k] }));
@@ -636,14 +668,10 @@ function SectionNotifications({ onToast }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   Main ProfilePage export
-───────────────────────────────────────── */
 export default function ProfilePage({ user: initialUser, subPage = "profile", onSave }) {
   const [user,  setUser]  = useState(initialUser);
   const [toast, setToast] = useState({ show: false, message: "", isError: false });
 
-  // Keep in sync if parent re-renders with a new user
   useEffect(() => { setUser(initialUser); }, [initialUser]);
 
   const isWorker = user?.role === "worker";
@@ -654,28 +682,24 @@ export default function ProfilePage({ user: initialUser, subPage = "profile", on
   };
 
   const handleSaved = (updatedUser) => {
-    setUser(updatedUser);
-    // Keep localStorage in sync so AppLayout avatar + name update
-    const stored = JSON.parse(localStorage.getItem("user") || "{}");
-    localStorage.setItem("user", JSON.stringify({ ...stored, ...updatedUser }));
-    onSave?.(updatedUser);
-  };
+  setUser(updatedUser);
+  const merged = { ...JSON.parse(localStorage.getItem("user") || "{}"), ...updatedUser };
+  localStorage.setItem("user", JSON.stringify(merged));
+  onSave?.(merged);
+};
 
   const shared = { user, isWorker, onSaved: handleSaved, onToast: showToast };
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto" }}>
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
-
       <Toast show={toast.show} message={toast.message} isError={toast.isError} />
-
       {subPage === "profile"       && <SectionInformations  {...shared} />}
-      {subPage === "competences"   && isWorker && <SectionCompetences  {...shared} />}
+      {subPage === "competences"   && isWorker && <SectionCompetences   {...shared} />}
       {subPage === "disponibilite" && isWorker && <SectionDisponibilite {...shared} />}
       {subPage === "avis"          && isWorker && <SectionAvis          {...shared} />}
       {subPage === "securite"      && <SectionSecurite      {...shared} />}
       {subPage === "notifications" && <SectionNotifications {...shared} />}
-
       {!isWorker && ["competences", "disponibilite", "avis"].includes(subPage) && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "#9a7c68", fontSize: 14 }}>
           Cette section est réservée aux prestataires.
