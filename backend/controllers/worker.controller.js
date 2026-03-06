@@ -135,3 +135,14 @@ exports.toggleAvailability = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// ── @POST /api/worker/portfolio/image ─────────────────────
+exports.uploadPortfolioImage = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const imageUrl = `/uploads/portfolio/${req.file.filename}`;
+    return res.json({ message: "Image uploaded", imageUrl });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

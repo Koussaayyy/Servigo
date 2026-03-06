@@ -34,7 +34,28 @@ const UserSchema = new mongoose.Schema(
       rating:       { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
       isAvailable:  { type: Boolean, default: true },
+      availabilitySchedule: {
+        monday:    { type: [Number], default: [] },
+        tuesday:   { type: [Number], default: [] },
+        wednesday: { type: [Number], default: [] },
+        thursday:  { type: [Number], default: [] },
+        friday:    { type: [Number], default: [] },
+        saturday:  { type: [Number], default: [] },
+        sunday:    { type: [Number], default: [] },
+      },
       hourlyRate:   { type: Number, default: 0 },
+      portfolio: {
+        type: [
+          {
+            title:        { type: String, default: "" },
+            city:         { type: String, default: "" },
+            description:  { type: String, default: "" },
+            imageUrl:     { type: String, default: "" },
+            featured:     { type: Boolean, default: false },
+          },
+        ],
+        default: [],
+      },
     },
   },
   { timestamps: true }

@@ -129,6 +129,16 @@ export const workerApi = {
     }).then(handle);
   },
 
+  uploadPortfolioImage: (file) => {
+    const form = new FormData();
+    form.append("image", file);
+    return fetch(`${BASE}/worker/portfolio/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: form,
+    }).then(handle);
+  },
+
   deleteAvatar: () =>
     fetch(`${BASE}/worker/avatar`, {
       method: "DELETE",

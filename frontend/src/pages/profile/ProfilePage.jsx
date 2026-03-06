@@ -515,9 +515,238 @@ function SectionCompetences({ user, onSaved, onToast }) {
   );
 }
 
+function SectionPortfolio({ user, onSaved, onToast }) {
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [projects, setProjects] = useState(user.workerProfile?.portfolio || []);
+  const emptyForm = {
+    title: "",
+    city: "",
+    description: "",
+    imageUrl: "",
+    featured: false,
+  };
+  const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    setProjects(user.workerProfile?.portfolio || []);
+  }, [user.workerProfile?.portfolio]);
+
+  const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingIndex(null);
+  };
+
+  const handleImagePick = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const res = await workerApi.uploadPortfolioImage(file);
+      setForm((prev) => ({ ...prev, imageUrl: res.imageUrl || "" }));
+      onToast("Image importée ✓");
+    } catch (err) {
+      onToast(err.message || "Upload image échoué", true);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const addOrUpdateProject = () => {
+    if (!form.title.trim()) return onToast("Le titre du projet est requis", true);
+    if (!form.description.trim()) return onToast("La description est requise", true);
+
+    const nextProject = {
+      title: form.title.trim(),
+      city: form.city.trim(),
+      description: form.description.trim(),
+      imageUrl: form.imageUrl,
+      featured: !!form.featured,
+    };
+
+    if (editingIndex === null) {
+      setProjects((prev) => [...prev, nextProject]);
+      onToast("Projet ajouté");
+    } else {
+      setProjects((prev) => prev.map((project, idx) => (idx === editingIndex ? nextProject : project)));
+      onToast("Projet modifié");
+    }
+
+    resetForm();
+  };
+
+  const editProject = (index) => {
+    const project = projects[index];
+    setEditingIndex(index);
+    setForm({
+      title: project.title || "",
+      city: project.city || "",
+      description: project.description || "",
+      imageUrl: project.imageUrl || "",
+      featured: !!project.featured,
+    });
+  };
+
+  const deleteProject = (index) => {
+    setProjects((prev) => prev.filter((_, idx) => idx !== index));
+    if (editingIndex === index) resetForm();
+    onToast("Projet supprimé");
+  };
+
+  const toggleFeatured = (index) => {
+    setProjects((prev) =>
+      prev.map((project, idx) => {
+        if (idx === index) return { ...project, featured: !project.featured };
+        return { ...project, featured: false };
+      })
+    );
+  };
+
+  const savePortfolio = async () => {
+    setSaving(true);
+    try {
+      const res = await workerApi.updateProfile({
+        workerProfile: {
+          ...user.workerProfile,
+          portfolio: projects,
+        },
+      });
+      onSaved(res.user);
+      onToast("Portfolio enregistré ✓");
+    } catch (err) {
+      onToast(err.message, true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Portfolio</h1>
+      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 18 }}>
+        Ajoutez seulement vos projets. La note et les avis sont laissés par les clients après une mission.
+      </p>
+
+      <Card>
+        <CardTitle icon={Building2}>{editingIndex === null ? "Nouveau projet" : "Modifier le projet"}</CardTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <Field label="Titre du projet"><Input value={form.title} onChange={set("title")} placeholder="Rénovation salle de bain" /></Field>
+          <Field label="Ville"><Input value={form.city} onChange={set("city")} placeholder="Tunis" /></Field>
+          <Field label="Description" span2>
+            <Textarea value={form.description} onChange={set("description")} placeholder="Expliquez brièvement le travail réalisé..." />
+          </Field>
+          <Field label="Photo du projet" span2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, border: "1.5px solid #f0e6da", cursor: uploadingImage ? "not-allowed" : "pointer", opacity: uploadingImage ? 0.7 : 1 }}>
+                <Upload size={14} />
+                {uploadingImage ? "Import..." : "Choisir depuis l'appareil"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: "none" }}
+                  disabled={uploadingImage}
+                  onChange={(e) => handleImagePick(e.target.files?.[0])}
+                />
+              </label>
+              {form.imageUrl && <span style={{ fontSize: 12, color: "#9a7c68" }}>Image prête ✓</span>}
+            </div>
+          </Field>
+        </div>
+
+        <FormActions>
+          {editingIndex !== null && <Btn variant="secondary" onClick={resetForm}>Annuler</Btn>}
+          <Btn onClick={addOrUpdateProject}><Save size={14} /> {editingIndex === null ? "Ajouter" : "Mettre à jour"}</Btn>
+        </FormActions>
+      </Card>
+
+      <Card>
+        <CardTitle icon={ListChecks}>Projets enregistrés</CardTitle>
+        {projects.length === 0 ? (
+          <p style={{ fontSize: 13, color: "#9a7c68", margin: 0 }}>Aucun projet pour le moment.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            {projects.map((project, index) => (
+              <div key={`${project.title}-${index}`} style={{ border: "1.5px solid #f0e6da", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
+                {project.imageUrl ? (
+                  <div style={{ height: 160, background: `url(${avatarUrl(project.imageUrl) || project.imageUrl}) center/cover no-repeat` }} />
+                ) : (
+                  <div style={{ height: 80, background: "#fff8f2", borderBottom: "1.5px solid #f0e6da", display: "flex", alignItems: "center", justifyContent: "center", color: "#9a7c68", fontSize: 12 }}>
+                    Aucune image
+                  </div>
+                )}
+                <div style={{ padding: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1008" }}>{project.title || "Projet"}</div>
+                    {project.featured && (
+                      <span style={{ fontSize: 11, color: "#e8620a", border: "1px solid rgba(232,98,10,0.3)", padding: "2px 8px", borderRadius: 100 }}>
+                        En vedette
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#9a7c68", marginBottom: 8 }}>
+                    {project.city || "Ville non précisée"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#1a1008", marginBottom: 10 }}>{project.description || ""}</div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <Btn variant="secondary" onClick={() => toggleFeatured(index)} style={{ padding: "8px 14px", fontSize: 11 }}>
+                      {project.featured ? "Retirer vedette" : "Mettre en vedette"}
+                    </Btn>
+                    <Btn variant="secondary" onClick={() => editProject(index)} style={{ padding: "8px 14px", fontSize: 11 }}>Modifier</Btn>
+                    <Btn variant="danger" onClick={() => deleteProject(index)} style={{ padding: "8px 14px", fontSize: 11 }}>
+                      <Trash2 size={13} />
+                    </Btn>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <FormActions>
+          <Btn onClick={savePortfolio} loading={saving}><Save size={14} /> Enregistrer le portfolio</Btn>
+        </FormActions>
+      </Card>
+    </>
+  );
+}
+
 function SectionDisponibilite({ user, onSaved, onToast }) {
-  const [loading,   setLoading]   = useState(false);
+  const DAYS = [
+    { key: "monday", label: "Lundi" },
+    { key: "tuesday", label: "Mardi" },
+    { key: "wednesday", label: "Mercredi" },
+    { key: "thursday", label: "Jeudi" },
+    { key: "friday", label: "Vendredi" },
+    { key: "saturday", label: "Samedi" },
+    { key: "sunday", label: "Dimanche" },
+  ];
+  const BOOKABLE_HOURS = [8, 9, 10, 11, 12, 14, 15, 16, 17];
+
+  const toHourLabel = (hour) => `${String(hour).padStart(2, "0")}:00`;
+
+  const normalizeSchedule = (raw) => {
+    const source = raw || {};
+    const next = {};
+    for (const day of DAYS) {
+      next[day.key] = Array.isArray(source[day.key])
+        ? [...new Set(source[day.key].map(Number).filter((value) => BOOKABLE_HOURS.includes(value)))].sort((a, b) => a - b)
+        : [];
+    }
+    return next;
+  };
+
+  const [loading, setLoading] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const [available, setAvailable] = useState(user.workerProfile?.isAvailable ?? true);
+  const [selectedDay, setSelectedDay] = useState("monday");
+  const [schedule, setSchedule] = useState(() => normalizeSchedule(user.workerProfile?.availabilitySchedule));
+
+  useEffect(() => {
+    setAvailable(user.workerProfile?.isAvailable ?? true);
+    setSchedule(normalizeSchedule(user.workerProfile?.availabilitySchedule));
+  }, [user.workerProfile?.isAvailable, user.workerProfile?.availabilitySchedule]);
 
   const handleToggle = async () => {
     setLoading(true);
@@ -530,6 +759,53 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
       onToast(err.message, true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleHour = (dayKey, hour) => {
+    if (!available) return;
+    setSchedule((prev) => {
+      const dayHours = prev[dayKey] || [];
+      const exists = dayHours.includes(hour);
+      const nextHours = exists ? dayHours.filter((value) => value !== hour) : [...dayHours, hour].sort((a, b) => a - b);
+      return { ...prev, [dayKey]: nextHours };
+    });
+  };
+
+  const selectAllHoursForDay = (dayKey) => {
+    if (!available) return;
+    setSchedule((prev) => ({
+      ...prev,
+      [dayKey]: [...BOOKABLE_HOURS],
+    }));
+  };
+
+  const clearHoursForDay = (dayKey) => {
+    if (!available) return;
+    setSchedule((prev) => ({
+      ...prev,
+      [dayKey]: [],
+    }));
+  };
+
+  const totalSlots = DAYS.reduce((sum, day) => sum + (schedule[day.key]?.length || 0), 0);
+
+  const saveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      const normalized = normalizeSchedule(schedule);
+      const res = await workerApi.updateProfile({
+        workerProfile: {
+          ...user.workerProfile,
+          availabilitySchedule: normalized,
+        },
+      });
+      onSaved(res.user);
+      onToast("Planning enregistré ✓");
+    } catch (err) {
+      onToast(err.message || "Erreur d'enregistrement", true);
+    } finally {
+      setSavingSchedule(false);
     }
   };
 
@@ -554,6 +830,94 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
           <Toggle on={available} onChange={handleToggle} />
         </div>
         {loading && <div style={{ fontSize: 12, color: "#9a7c68" }}>Mise à jour...</div>}
+      </Card>
+
+      <Card>
+        <CardTitle icon={CalendarDays}>Planning horaire de réservation</CardTitle>
+        <p style={{ fontSize: 12, color: "#9a7c68", marginBottom: 16 }}>
+          Sélectionnez les heures réservables: 08:00–12:00 et 14:00–17:00.
+        </p>
+        {!available && (
+          <div style={{ fontSize: 12, color: "#9a7c68", marginBottom: 12 }}>
+            Activez d'abord le statut disponible pour modifier votre planning.
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, opacity: available ? 1 : 0.5 }}>
+          {DAYS.map((day) => {
+            const active = selectedDay === day.key;
+            const dayCount = schedule[day.key]?.length || 0;
+            return (
+              <button
+                key={day.key}
+                type="button"
+                disabled={!available}
+                onClick={() => setSelectedDay(day.key)}
+                style={{
+                  border: active ? "1.5px solid #e8620a" : "1.5px solid #f0e6da",
+                  background: active ? "rgba(232,98,10,0.08)" : "#fff",
+                  color: active ? "#e8620a" : "#9a7c68",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 12,
+                  cursor: available ? "pointer" : "not-allowed",
+                }}
+              >
+                {day.label} ({dayCount})
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "#9a7c68" }}>
+            {DAYS.find((day) => day.key === selectedDay)?.label} · {schedule[selectedDay]?.length || 0} créneaux
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn variant="secondary" style={{ padding: "7px 12px", fontSize: 11, opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }} onClick={() => selectAllHoursForDay(selectedDay)}>
+              Horaires exemple
+            </Btn>
+            <Btn variant="secondary" style={{ padding: "7px 12px", fontSize: 11, opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }} onClick={() => clearHoursForDay(selectedDay)}>
+              Effacer
+            </Btn>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0,1fr))", gap: 8, opacity: available ? 1 : 0.5 }}>
+          {BOOKABLE_HOURS.map((hour) => {
+            const isSelected = (schedule[selectedDay] || []).includes(hour);
+            return (
+              <button
+                key={hour}
+                type="button"
+                disabled={!available}
+                onClick={() => toggleHour(selectedDay, hour)}
+                style={{
+                  border: isSelected ? "1.5px solid #e8620a" : "1.5px solid #f0e6da",
+                  background: isSelected ? "#e8620a" : "#fff",
+                  color: isSelected ? "#fff" : "#9a7c68",
+                  borderRadius: 8,
+                  padding: "8px 6px",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontSize: 12,
+                  cursor: available ? "pointer" : "not-allowed",
+                  transition: "all .2s",
+                }}
+              >
+                {toHourLabel(hour)}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 12, color: "#9a7c68", marginTop: 14 }}>
+          Total hebdomadaire: {totalSlots} créneaux d'1 heure
+        </div>
+
+        <FormActions>
+          <Btn onClick={saveSchedule} loading={savingSchedule} style={{ opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }}><Save size={14} /> Enregistrer le planning</Btn>
+        </FormActions>
       </Card>
     </>
   );
@@ -696,11 +1060,12 @@ export default function ProfilePage({ user: initialUser, subPage = "profile", on
       <Toast show={toast.show} message={toast.message} isError={toast.isError} />
       {subPage === "profile"       && <SectionInformations  {...shared} />}
       {subPage === "competences"   && isWorker && <SectionCompetences   {...shared} />}
+      {subPage === "portfolio"     && isWorker && <SectionPortfolio     {...shared} />}
       {subPage === "disponibilite" && isWorker && <SectionDisponibilite {...shared} />}
       {subPage === "avis"          && isWorker && <SectionAvis          {...shared} />}
       {subPage === "securite"      && <SectionSecurite      {...shared} />}
       {subPage === "notifications" && <SectionNotifications {...shared} />}
-      {!isWorker && ["competences", "disponibilite", "avis"].includes(subPage) && (
+      {!isWorker && ["competences", "portfolio", "disponibilite", "avis"].includes(subPage) && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "#9a7c68", fontSize: 14 }}>
           Cette section est réservée aux prestataires.
         </div>
