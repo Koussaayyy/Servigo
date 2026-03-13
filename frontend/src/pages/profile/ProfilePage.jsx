@@ -1,12 +1,12 @@
 // src/pages/profile/ProfilePage.jsx
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Camera, Upload, Trash2, Save, Tag, ListChecks,
   CalendarDays, MessageSquare, KeyRound, ShieldCheck,
   TriangleAlert, Mail, Plus, X, Eye, Check,
   Loader2, IdCard, MapPin, Building2,
 } from "lucide-react";
-import { clientApi, workerApi, avatarUrl } from "../../api";
+import { clientApi, workerApi, avatarUrl, reservationApi } from "../../api";
 
 function Card({ children, danger }) {
   return (
@@ -381,6 +381,21 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
           <Field label="Bio / Présentation" span2>
             <Textarea value={form.bio} onChange={set("bio")} placeholder="Présentez-vous..." />
           </Field>
+          {isWorker && (
+            <Field label="Métiers enregistrés" span2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, minHeight: 42, alignItems: "center", padding: "10px 12px", background: "#f0e6da", borderRadius: 8 }}>
+                {(user.workerProfile?.professions || []).length > 0 ? (
+                  user.workerProfile.professions.map((profession) => (
+                    <span key={profession} style={{ padding: "5px 10px", borderRadius: 100, background: "#fff", color: "#1a1008", border: "1px solid rgba(232,98,10,0.2)", fontSize: 12, fontWeight: 600 }}>
+                      {profession}
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ fontSize: 12, color: "#9a7c68" }}>Aucun métier enregistré.</span>
+                )}
+              </div>
+            </Field>
+          )}
         </div>
       </Card>
 
@@ -713,40 +728,92 @@ function SectionPortfolio({ user, onSaved, onToast }) {
 }
 
 function SectionDisponibilite({ user, onSaved, onToast }) {
-  const DAYS = [
-    { key: "monday", label: "Lundi" },
-    { key: "tuesday", label: "Mardi" },
-    { key: "wednesday", label: "Mercredi" },
-    { key: "thursday", label: "Jeudi" },
-    { key: "friday", label: "Vendredi" },
-    { key: "saturday", label: "Samedi" },
-    { key: "sunday", label: "Dimanche" },
-  ];
   const BOOKABLE_HOURS = [8, 9, 10, 11, 12, 14, 15, 16, 17];
+  const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const DAY_LABELS = {
+    monday: "Lundi",
+    tuesday: "Mardi",
+    wednesday: "Mercredi",
+    thursday: "Jeudi",
+    friday: "Vendredi",
+    saturday: "Samedi",
+    sunday: "Dimanche",
+  };
 
   const toHourLabel = (hour) => `${String(hour).padStart(2, "0")}:00`;
 
-  const normalizeSchedule = (raw) => {
-    const source = raw || {};
-    const next = {};
-    for (const day of DAYS) {
-      next[day.key] = Array.isArray(source[day.key])
-        ? [...new Set(source[day.key].map(Number).filter((value) => BOOKABLE_HOURS.includes(value)))].sort((a, b) => a - b)
-        : [];
+  const toDateKey = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const upcomingDates = useMemo(() => {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    return Array.from({ length: 28 }, (_, index) => {
+      const date = new Date(base);
+      date.setDate(base.getDate() + index);
+      const key = toDateKey(date);
+      const dayKey = DAY_KEYS[date.getDay()];
+      return {
+        key,
+        dayKey,
+        label: `${DAY_LABELS[dayKey]} ${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
+      };
+    });
+  }, []);
+
+  const normalizeHours = (hours) => {
+    if (!Array.isArray(hours)) return [];
+    return [...new Set(hours.map(Number).filter((value) => BOOKABLE_HOURS.includes(value)))].sort((a, b) => a - b);
+  };
+
+  const normalizeCalendar = (calendarRaw, weeklyRaw) => {
+    const calendarMap = {};
+    if (Array.isArray(calendarRaw)) {
+      calendarRaw.forEach((item) => {
+        if (!item?.date) return;
+        calendarMap[item.date] = normalizeHours(item.hours);
+      });
     }
-    return next;
+
+    const fallbackWeekly = weeklyRaw || {};
+    upcomingDates.forEach((item) => {
+      if (!calendarMap[item.key]) {
+        calendarMap[item.key] = normalizeHours(fallbackWeekly[item.dayKey] || []);
+      }
+    });
+
+    return calendarMap;
   };
 
   const [loading, setLoading] = useState(false);
-  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [loadingReservations, setLoadingReservations] = useState(false);
   const [available, setAvailable] = useState(user.workerProfile?.isAvailable ?? true);
-  const [selectedDay, setSelectedDay] = useState("monday");
-  const [schedule, setSchedule] = useState(() => normalizeSchedule(user.workerProfile?.availabilitySchedule));
+  const [selectedDateKey, setSelectedDateKey] = useState(() => upcomingDates[0]?.key || "");
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+  const [reservationsByDate, setReservationsByDate] = useState({});
+
+  const weekGroups = useMemo(
+    () => Array.from({ length: 4 }, (_, index) => upcomingDates.slice(index * 7, index * 7 + 7)),
+    [upcomingDates]
+  );
+
+  const selectedWeekDates = weekGroups[selectedWeekIndex] || [];
+  const selectedDateObj = upcomingDates.find((item) => item.key === selectedDateKey);
+
+  useEffect(() => {
+    if (!selectedWeekDates.some((item) => item.key === selectedDateKey)) {
+      const first = selectedWeekDates[0];
+      if (first) setSelectedDateKey(first.key);
+    }
+  }, [selectedWeekIndex, selectedWeekDates, selectedDateKey]);
 
   useEffect(() => {
     setAvailable(user.workerProfile?.isAvailable ?? true);
-    setSchedule(normalizeSchedule(user.workerProfile?.availabilitySchedule));
-  }, [user.workerProfile?.isAvailable, user.workerProfile?.availabilitySchedule]);
+  }, [user.workerProfile?.isAvailable]);
 
   const handleToggle = async () => {
     setLoading(true);
@@ -762,51 +829,39 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
     }
   };
 
-  const toggleHour = (dayKey, hour) => {
-    if (!available) return;
-    setSchedule((prev) => {
-      const dayHours = prev[dayKey] || [];
-      const exists = dayHours.includes(hour);
-      const nextHours = exists ? dayHours.filter((value) => value !== hour) : [...dayHours, hour].sort((a, b) => a - b);
-      return { ...prev, [dayKey]: nextHours };
-    });
-  };
+  useEffect(() => {
+    const fetchReservations = async () => {
+      setLoadingReservations(true);
+      try {
+        const data = await reservationApi.getWorkerReservations();
+        const next = {};
+        (Array.isArray(data) ? data : []).forEach((reservation) => {
+          const dateKey = reservation?.bookingDate ? String(reservation.bookingDate).slice(0, 10) : "";
+          if (!dateKey) return;
+          if (!next[dateKey]) next[dateKey] = [];
+          next[dateKey].push(reservation);
+        });
+        Object.keys(next).forEach((key) => {
+          next[key].sort((a, b) => (a.bookingHour || 0) - (b.bookingHour || 0));
+        });
+        setReservationsByDate(next);
+      } catch (err) {
+        onToast(err.message || "Impossible de charger vos réservations", true);
+      } finally {
+        setLoadingReservations(false);
+      }
+    };
 
-  const selectAllHoursForDay = (dayKey) => {
-    if (!available) return;
-    setSchedule((prev) => ({
-      ...prev,
-      [dayKey]: [...BOOKABLE_HOURS],
-    }));
-  };
+    fetchReservations();
+  }, [onToast]);
 
-  const clearHoursForDay = (dayKey) => {
-    if (!available) return;
-    setSchedule((prev) => ({
-      ...prev,
-      [dayKey]: [],
-    }));
-  };
+  const selectedDateReservations = reservationsByDate[selectedDateKey] || [];
+  const totalReservations = upcomingDates.reduce((sum, item) => sum + ((reservationsByDate[item.key] || []).length), 0);
 
-  const totalSlots = DAYS.reduce((sum, day) => sum + (schedule[day.key]?.length || 0), 0);
-
-  const saveSchedule = async () => {
-    setSavingSchedule(true);
-    try {
-      const normalized = normalizeSchedule(schedule);
-      const res = await workerApi.updateProfile({
-        workerProfile: {
-          ...user.workerProfile,
-          availabilitySchedule: normalized,
-        },
-      });
-      onSaved(res.user);
-      onToast("Planning enregistré ✓");
-    } catch (err) {
-      onToast(err.message || "Erreur d'enregistrement", true);
-    } finally {
-      setSavingSchedule(false);
-    }
+  const getDateStatusStyle = (count) => {
+    if (count === 0) return { background: "#f7f2eb", color: "#9a7c68", border: "1px solid #f0e6da" };
+    if (count >= BOOKABLE_HOURS.length) return { background: "rgba(232,98,10,0.12)", color: "#e8620a", border: "1px solid rgba(232,98,10,0.28)" };
+    return { background: "rgba(232,98,10,0.08)", color: "#c85a09", border: "1px solid rgba(232,98,10,0.18)" };
   };
 
   return (
@@ -833,91 +888,132 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
       </Card>
 
       <Card>
-        <CardTitle icon={CalendarDays}>Planning horaire de réservation</CardTitle>
+        <CardTitle icon={CalendarDays}>Calendrier des réservations (4 semaines)</CardTitle>
         <p style={{ fontSize: 12, color: "#9a7c68", marginBottom: 16 }}>
-          Sélectionnez les heures réservables: 08:00–12:00 et 14:00–17:00.
+          Le client réserve sur les horaires standard. Ici vous voyez vos réservations confirmées/pending sur 4 semaines.
         </p>
-        {!available && (
-          <div style={{ fontSize: 12, color: "#9a7c68", marginBottom: 12 }}>
-            Activez d'abord le statut disponible pour modifier votre planning.
-          </div>
-        )}
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, opacity: available ? 1 : 0.5 }}>
-          {DAYS.map((day) => {
-            const active = selectedDay === day.key;
-            const dayCount = schedule[day.key]?.length || 0;
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          {weekGroups.map((week, index) => {
+            const active = index === selectedWeekIndex;
+            const first = week[0];
+            const last = week[week.length - 1];
+            const label = first && last
+              ? `Semaine ${index + 1} · ${first.label.split(" ")[1]} → ${last.label.split(" ")[1]}`
+              : `Semaine ${index + 1}`;
             return (
               <button
-                key={day.key}
+                key={index}
                 type="button"
-                disabled={!available}
-                onClick={() => setSelectedDay(day.key)}
+                onClick={() => setSelectedWeekIndex(index)}
                 style={{
                   border: active ? "1.5px solid #e8620a" : "1.5px solid #f0e6da",
-                  background: active ? "rgba(232,98,10,0.08)" : "#fff",
+                  background: active ? "rgba(232,98,10,0.1)" : "#fff",
                   color: active ? "#e8620a" : "#9a7c68",
-                  borderRadius: 8,
+                  borderRadius: 10,
                   padding: "8px 12px",
                   fontFamily: "'DM Sans',sans-serif",
                   fontSize: 12,
-                  cursor: available ? "pointer" : "not-allowed",
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
-                {day.label} ({dayCount})
+                {label}
               </button>
             );
           })}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: "#9a7c68" }}>
-            {DAYS.find((day) => day.key === selectedDay)?.label} · {schedule[selectedDay]?.length || 0} créneaux
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(420px, 1.4fr)", gap: 16, alignItems: "start" }}>
+          <div style={{ border: "1px solid #f0e6da", borderRadius: 12, padding: 12, background: "#fff" }}>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#9a7c68", marginBottom: 10, fontWeight: 700 }}>
+              Dates de la semaine
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {selectedWeekDates.map((item) => {
+                const active = item.key === selectedDateKey;
+                const count = (reservationsByDate[item.key] || []).length;
+                const statusStyle = getDateStatusStyle(count);
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setSelectedDateKey(item.key)}
+                    style={{
+                      border: active ? "1.5px solid #e8620a" : "1px solid #f0e6da",
+                      background: active ? "rgba(232,98,10,0.08)" : "#fff",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 10,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: "#1a1008", fontWeight: active ? 700 : 600 }}>
+                      {item.label}
+                    </span>
+                    <span style={{ ...statusStyle, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 100 }}>
+                      {count}/{BOOKABLE_HOURS.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn variant="secondary" style={{ padding: "7px 12px", fontSize: 11, opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }} onClick={() => selectAllHoursForDay(selectedDay)}>
-              Horaires exemple
-            </Btn>
-            <Btn variant="secondary" style={{ padding: "7px 12px", fontSize: 11, opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }} onClick={() => clearHoursForDay(selectedDay)}>
-              Effacer
-            </Btn>
-          </div>
-        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0,1fr))", gap: 8, opacity: available ? 1 : 0.5 }}>
-          {BOOKABLE_HOURS.map((hour) => {
-            const isSelected = (schedule[selectedDay] || []).includes(hour);
-            return (
-              <button
-                key={hour}
-                type="button"
-                disabled={!available}
-                onClick={() => toggleHour(selectedDay, hour)}
-                style={{
-                  border: isSelected ? "1.5px solid #e8620a" : "1.5px solid #f0e6da",
-                  background: isSelected ? "#e8620a" : "#fff",
-                  color: isSelected ? "#fff" : "#9a7c68",
-                  borderRadius: 8,
-                  padding: "8px 6px",
-                  fontFamily: "'DM Sans',sans-serif",
-                  fontSize: 12,
-                  cursor: available ? "pointer" : "not-allowed",
-                  transition: "all .2s",
-                }}
-              >
-                {toHourLabel(hour)}
-              </button>
-            );
-          })}
+          <div style={{ border: "1px solid #f0e6da", borderRadius: 12, padding: 14, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#9a7c68", fontWeight: 700, marginBottom: 4 }}>
+                  Date sélectionnée
+                </div>
+                <div style={{ fontSize: 14, color: "#1a1008", fontWeight: 700 }}>
+                  {selectedDateObj?.label || "Date"} · {selectedDateReservations.length} réservation(s)
+                </div>
+              </div>
+            </div>
+
+            {loadingReservations ? (
+              <div style={{ fontSize: 12, color: "#9a7c68" }}>Chargement des réservations...</div>
+            ) : selectedDateReservations.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#9a7c68" }}>Aucune réservation sur cette date.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {selectedDateReservations.map((reservation) => (
+                  <div
+                    key={reservation._id}
+                    style={{
+                      border: "1px solid #f0e6da",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      background: "#fff8f2",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, color: "#1a1008", fontWeight: 700 }}>
+                        {toHourLabel(reservation.bookingHour)} · {reservation.client?.firstName || "Client"} {reservation.client?.lastName || ""}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#9a7c68" }}>{reservation.serviceType || "Service"}</div>
+                    </div>
+                    <span style={{ fontSize: 11, padding: "4px 8px", borderRadius: 100, background: "rgba(232,98,10,0.08)", color: "#e8620a", border: "1px solid rgba(232,98,10,0.2)", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700 }}>
+                      {reservation.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ fontSize: 12, color: "#9a7c68", marginTop: 14 }}>
-          Total hebdomadaire: {totalSlots} créneaux d'1 heure
+          Total sur 4 semaines: {totalReservations} réservation(s)
         </div>
-
-        <FormActions>
-          <Btn onClick={saveSchedule} loading={savingSchedule} style={{ opacity: available ? 1 : 0.5, pointerEvents: available ? "auto" : "none" }}><Save size={14} /> Enregistrer le planning</Btn>
-        </FormActions>
       </Card>
     </>
   );

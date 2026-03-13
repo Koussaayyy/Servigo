@@ -25,6 +25,7 @@ app.use("/api/auth",   require("./routes/auth.routes"));
 app.use("/api/client", require("./routes/client.routes"));
 app.use("/api/worker", require("./routes/worker.routes"));
 app.use("/api/admin",  require("./routes/admin.routes"));
+app.use("/api/reservations", require("./routes/reservation.routes"));
 
 app.get("/", (req, res) => res.json({ message: "Servigo API running ✅" }));
 

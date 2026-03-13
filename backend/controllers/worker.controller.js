@@ -110,8 +110,11 @@ exports.changePassword = async (req, res) => {
 // ── @GET /api/worker/all ───────────────────────────────────
 exports.getAllWorkers = async (req, res) => {
   try {
-    const { profession, city } = req.query;
+    const { profession, city, includeUnavailable } = req.query;
     const filter = { role: "worker", isActive: true };
+    if (includeUnavailable !== "1") {
+      filter["workerProfile.isAvailable"] = true;
+    }
     if (profession) filter["workerProfile.professions"] = { $in: [profession] };
     if (city)       filter["workerProfile.city"] = city;
     const workers = await User.find(filter).select("-password -clientProfile");

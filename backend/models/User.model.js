@@ -43,6 +43,15 @@ const UserSchema = new mongoose.Schema(
         saturday:  { type: [Number], default: [] },
         sunday:    { type: [Number], default: [] },
       },
+      availabilityCalendar: {
+        type: [
+          {
+            date:  { type: String, required: true },
+            hours: { type: [Number], default: [] },
+          },
+        ],
+        default: [],
+      },
       hourlyRate:   { type: Number, default: 0 },
       portfolio: {
         type: [

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
   LayoutDashboard, User, Zap, FolderOpen, Calendar,
-  Star, Lock, Bell, LogOut, ChevronRight, Menu, X
+  Star, Lock, Bell, LogOut, ChevronRight, Menu, X, CalendarCheck
 } from "lucide-react";
 
 const NAV_PROFILE = [
   { key: "profile",        icon: User,       label: "Mon Profil" },
+  { key: "reservations",   icon: CalendarCheck, label: "Réservations" },
   { key: "competences",    icon: Zap,        label: "Compétences & Services", workerOnly: true },
   { key: "portfolio",      icon: FolderOpen, label: "Portfolio",              workerOnly: true },
   { key: "disponibilite",  icon: Calendar,   label: "Disponibilités",         workerOnly: true },

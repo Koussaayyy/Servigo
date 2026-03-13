@@ -12,6 +12,7 @@ import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 import AppLayout   from "./components/AppLayout";
 import ProfilePage from "./pages/profile/ProfilePage";
 import Dashboard   from "./components/Dashboard";
+import ReservationsPage from "./pages/ReservationsPage";
 
 export default function App() {
   const [mode, setMode]             = useState("login");
@@ -83,6 +84,7 @@ export default function App() {
   if (loggedUser) {
     const PROFILE_SUBPAGES = ["profile", "competences", "portfolio", "disponibilite", "avis", "securite", "notifications"];
     const isProfilePage = PROFILE_SUBPAGES.includes(activePage);
+    const isReservationsPage = activePage === "reservations";
 
     return (
       <AppLayout
@@ -91,7 +93,7 @@ export default function App() {
         onNavigate={setActivePage}
         onLogout={onLogout}
       >
-        {!isProfilePage && (
+        {!isProfilePage && !isReservationsPage && (
           <Dashboard user={loggedUser} onLogout={onLogout} onNavigate={setActivePage} />
         )}
         {isProfilePage && (
@@ -105,6 +107,7 @@ export default function App() {
             }}
           />
         )}
+        {isReservationsPage && <ReservationsPage user={loggedUser} />}
       </AppLayout>
     );
   }

@@ -9,7 +9,17 @@ const authHeaders = () => ({
 });
 
 const handle = async (res) => {
-  const data = await res.json();
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  let data;
+  if (isJson) {
+    data = await res.json();
+  } else {
+    const text = await res.text();
+    data = { message: text || "Unexpected response format" };
+  }
+
   if (!res.ok) throw new Error(data.message || "Something went wrong");
   return data;
 };
@@ -102,6 +112,11 @@ export const clientApi = {
 //  WORKER
 // ════════════════════════════════════════════
 export const workerApi = {
+  getAllWorkers: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetch(`${BASE}/worker/all${query ? `?${query}` : ""}`).then(handle);
+  },
+
   getProfile: () =>
     fetch(`${BASE}/worker/profile`, { headers: authHeaders() }).then(handle),
 
@@ -159,4 +174,63 @@ export const avatarUrl = (avatarPath) => {
   if (!avatarPath) return null;
   if (avatarPath.startsWith("http")) return avatarPath;
   return `http://localhost:5000${avatarPath}`;
+};
+
+// ════════════════════════════════════════════
+//  RESERVATIONS
+// ════════════════════════════════════════════
+export const reservationApi = {
+  getWorkerMonthAvailability: (workerId, serviceType = "") => {
+    const query = new URLSearchParams();
+    if (serviceType) query.set("serviceType", serviceType);
+    const qs = query.toString();
+    return fetch(`${BASE}/reservations/worker/${workerId}/month-availability${qs ? `?${qs}` : ""}`, {
+      headers: authHeaders(),
+    }).then(handle);
+  },
+
+  getWorkerAvailableSlots: (workerId, date, serviceType = "") => {
+    const query = new URLSearchParams();
+    if (date) query.set("date", date);
+    if (serviceType) query.set("serviceType", serviceType);
+    return fetch(`${BASE}/reservations/worker/${workerId}/available-slots?${query.toString()}`, {
+      headers: authHeaders(),
+    }).then(handle);
+  },
+
+  create: (payload) =>
+    fetch(`${BASE}/reservations`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    }).then(handle),
+
+  getClientReservations: () =>
+    fetch(`${BASE}/reservations/client`, {
+      headers: authHeaders(),
+    }).then(handle),
+
+  getClientHistory: () =>
+    fetch(`${BASE}/reservations/client/history`, {
+      headers: authHeaders(),
+    }).then(handle),
+
+  cancelAsClient: (reservationId, reason = "") =>
+    fetch(`${BASE}/reservations/${reservationId}/client-cancel`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ reason }),
+    }).then(handle),
+
+  getWorkerReservations: () =>
+    fetch(`${BASE}/reservations/worker`, {
+      headers: authHeaders(),
+    }).then(handle),
+
+  setWorkerStatus: (reservationId, status) =>
+    fetch(`${BASE}/reservations/${reservationId}/worker-status`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status }),
+    }).then(handle),
 };
