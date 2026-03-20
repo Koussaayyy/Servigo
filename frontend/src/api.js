@@ -215,15 +215,27 @@ export const reservationApi = {
       headers: authHeaders(),
     }).then(handle),
 
-  cancelAsClient: (reservationId, reason = "") =>
+  cancelAsClient: (reservationId, payload = {}) =>
     fetch(`${BASE}/reservations/${reservationId}/client-cancel`, {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify(payload),
+    }).then(handle),
+
+  submitClientReview: (reservationId, payload) =>
+    fetch(`${BASE}/reservations/${reservationId}/client-review`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
     }).then(handle),
 
   getWorkerReservations: () =>
     fetch(`${BASE}/reservations/worker`, {
+      headers: authHeaders(),
+    }).then(handle),
+
+  getWorkerReviews: () =>
+    fetch(`${BASE}/reservations/worker/reviews`, {
       headers: authHeaders(),
     }).then(handle),
 

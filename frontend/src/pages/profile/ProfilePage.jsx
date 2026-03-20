@@ -1020,8 +1020,50 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
 }
 
 function SectionAvis({ user }) {
-  const rating       = user.workerProfile?.rating       || 0;
-  const totalReviews = user.workerProfile?.totalReviews || 0;
+  const profileRating = Number(user.workerProfile?.rating || 0);
+  const profileTotalReviews = Number(user.workerProfile?.totalReviews || 0);
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [completedMissions, setCompletedMissions] = useState(0);
+
+  const computedTotalReviews = reviews.length;
+  const computedRating = computedTotalReviews > 0
+    ? Number(
+        (
+          reviews.reduce((sum, item) => sum + Number(item?.clientReview?.rating || 0), 0) /
+          computedTotalReviews
+        ).toFixed(1)
+      )
+    : 0;
+
+  const displayTotalReviews = computedTotalReviews > 0 ? computedTotalReviews : profileTotalReviews;
+  const displayRating = computedTotalReviews > 0 ? computedRating : profileRating;
+  const roundedStars = Math.max(0, Math.min(5, Math.round(displayRating)));
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      setLoadingReviews(true);
+      try {
+        const [reviewsData, reservationsData] = await Promise.all([
+          reservationApi.getWorkerReviews(),
+          reservationApi.getWorkerReservations(),
+        ]);
+
+        const safeReviews = Array.isArray(reviewsData) ? reviewsData : [];
+        const safeReservations = Array.isArray(reservationsData) ? reservationsData : [];
+
+        setReviews(safeReviews);
+        setCompletedMissions(safeReservations.filter((item) => item?.status === "completed").length);
+      } catch {
+        setReviews([]);
+        setCompletedMissions(0);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    loadReviews();
+  }, []);
 
   return (
     <>
@@ -1030,13 +1072,13 @@ function SectionAvis({ user }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
         {[
-          { value: rating.toFixed(1), label: "Note moyenne", stars: true },
-          { value: totalReviews,      label: "Avis reçus" },
-          { value: "—",              label: "Missions complétées" },
+          { value: displayRating.toFixed(1), label: "Note moyenne", stars: true },
+          { value: displayTotalReviews,      label: "Avis reçus" },
+          { value: completedMissions,  label: "Missions complétées" },
         ].map(s => (
           <div key={s.label} style={{ background: "#fff", border: "1.5px solid #f0e6da", borderRadius: 12, padding: 20, textAlign: "center", boxShadow: "0 2px 12px rgba(232,98,10,0.04)" }}>
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", color: "#e8620a" }}>{s.value}</div>
-            {s.stars && <div style={{ color: "#e8620a", marginBottom: 2 }}>★★★★★</div>}
+            {s.stars && <div style={{ color: "#e8620a", marginBottom: 2 }}>{"★".repeat(roundedStars)}{"☆".repeat(Math.max(0, 5 - roundedStars))}</div>}
             <div style={{ fontSize: 11, color: "#9a7c68" }}>{s.label}</div>
           </div>
         ))}
@@ -1044,9 +1086,38 @@ function SectionAvis({ user }) {
 
       <Card>
         <CardTitle icon={MessageSquare}>Avis clients</CardTitle>
-        <p style={{ fontSize: 13, color: "#9a7c68", textAlign: "center", padding: "20px 0" }}>
-          {totalReviews === 0 ? "Aucun avis pour l'instant. Complétez vos premières missions !" : "Les avis détaillés seront affichés ici."}
-        </p>
+        {loadingReviews ? (
+          <p style={{ fontSize: 13, color: "#9a7c68", textAlign: "center", padding: "20px 0" }}>Chargement des avis...</p>
+        ) : reviews.length === 0 ? (
+          <p style={{ fontSize: 13, color: "#9a7c68", textAlign: "center", padding: "20px 0" }}>
+            Aucun avis pour l'instant. Complétez vos premières missions !
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {reviews.map((item) => {
+              const reviewedAt = item?.clientReview?.reviewedAt ? new Date(item.clientReview.reviewedAt).toLocaleDateString() : "";
+              const stars = Number(item?.clientReview?.rating || 0);
+              return (
+                <div key={item._id} style={{ border: "1px solid #f0e6da", borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1008" }}>
+                      {item.client?.firstName || "Client"} {item.client?.lastName || ""}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#e8620a", fontWeight: 700 }}>
+                      {"★".repeat(stars)}{"☆".repeat(Math.max(0, 5 - stars))}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9a7c68", marginBottom: item?.clientReview?.comment ? 6 : 0 }}>
+                    {item.serviceType || "Service"}{reviewedAt ? ` · ${reviewedAt}` : ""}
+                  </div>
+                  {item?.clientReview?.comment && (
+                    <div style={{ fontSize: 13, color: "#1a1008" }}>{item.clientReview.comment}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
     </>
   );

@@ -1,5 +1,6 @@
 const Reservation = require("../models/Reservation.model");
 const User = require("../models/User.model");
+const mongoose = require("mongoose");
 
 const ACTIVE_STATUSES = ["pending", "accepted"];
 const BOOKABLE_HOURS = [8, 9, 10, 11, 12, 14, 15, 16, 17];
@@ -27,7 +28,18 @@ function toDateKey(date) {
 }
 
 function toISODateString(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getDayRange(date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }
 
 function getWorkerScheduleHoursForDate(worker, bookingDate) {
@@ -50,6 +62,36 @@ function getWorkerScheduleHoursForDate(worker, bookingDate) {
     .map(Number)
     .filter((hour) => Number.isInteger(hour) && hour >= 0 && hour <= 23)
     .sort((a, b) => a - b);
+}
+
+async function recalculateWorkerRating(workerId) {
+  const objectWorkerId = new mongoose.Types.ObjectId(workerId);
+  const [stats] = await Reservation.aggregate([
+    {
+      $match: {
+        worker: objectWorkerId,
+        status: "completed",
+        "clientReview.rating": { $exists: true },
+      },
+    },
+    {
+      $group: {
+        _id: "$worker",
+        avgRating: { $avg: "$clientReview.rating" },
+        totalReviews: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const rating = Number(stats?.avgRating || 0);
+  const totalReviews = Number(stats?.totalReviews || 0);
+
+  await User.findByIdAndUpdate(workerId, {
+    $set: {
+      "workerProfile.rating": Number(rating.toFixed(1)),
+      "workerProfile.totalReviews": totalReviews,
+    },
+  });
 }
 
 exports.createReservation = async (req, res) => {
@@ -86,9 +128,11 @@ exports.createReservation = async (req, res) => {
       return res.status(400).json({ message: "Cannot reserve a past date" });
     }
 
+    const { start: dayStart, end: dayEnd } = getDayRange(date);
+
     const exists = await Reservation.findOne({
       worker: workerId,
-      bookingDate: date,
+      bookingDate: { $gte: dayStart, $lte: dayEnd },
       bookingHour: hour,
       status: { $in: ACTIVE_STATUSES },
     });
@@ -165,6 +209,12 @@ exports.cancelClientReservation = async (req, res) => {
       return res.status(400).json({ message: `Cannot cancel reservation in '${reservation.status}' status` });
     }
 
+    if (reservation.status === "accepted" && req.body?.confirmation !== "CLIENT_CONFIRMED") {
+      return res.status(400).json({
+        message: "Accepted reservations require explicit client confirmation before cancellation",
+      });
+    }
+
     reservation.status = "cancelled";
     reservation.cancellationReason = req.body?.reason || "Cancelled by client";
     await reservation.save();
@@ -220,6 +270,60 @@ exports.updateWorkerReservationStatus = async (req, res) => {
   }
 };
 
+exports.submitClientReview = async (req, res) => {
+  try {
+    const reservation = await Reservation.findOne({ _id: req.params.id, client: req.user.id });
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    if (reservation.status !== "completed") {
+      return res.status(400).json({ message: "Only completed reservations can be reviewed" });
+    }
+
+    if (reservation.clientReview?.rating) {
+      return res.status(400).json({ message: "You already reviewed this reservation" });
+    }
+
+    const rating = Number(req.body?.rating);
+    const comment = String(req.body?.comment || "").trim();
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "rating must be an integer between 1 and 5" });
+    }
+
+    reservation.clientReview = {
+      rating,
+      comment,
+      reviewedAt: new Date(),
+    };
+    await reservation.save();
+
+    await recalculateWorkerRating(reservation.worker);
+
+    return res.json({ message: "Review submitted", reservation });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.getWorkerReviews = async (req, res) => {
+  try {
+    const reviews = await Reservation.find({
+      worker: req.user.id,
+      status: "completed",
+      "clientReview.rating": { $exists: true },
+    })
+      .populate("client", "firstName lastName avatar")
+      .select("bookingDate bookingHour serviceType client clientReview")
+      .sort({ "clientReview.reviewedAt": -1, createdAt: -1 });
+
+    return res.json(reviews);
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 exports.getWorkerAvailableSlots = async (req, res) => {
   try {
     const { workerId } = req.params;
@@ -245,9 +349,11 @@ exports.getWorkerAvailableSlots = async (req, res) => {
       return res.json({ workerId, date, availableHours: [] });
     }
 
+    const { start: dayStart, end: dayEnd } = getDayRange(bookingDate);
+
     const takenReservations = await Reservation.find({
       worker: workerId,
-      bookingDate,
+      bookingDate: { $gte: dayStart, $lte: dayEnd },
       status: { $in: ACTIVE_STATUSES },
     }).select("bookingHour");
 
@@ -287,6 +393,7 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
 
     const endDate = new Date(today);
     endDate.setDate(today.getDate() + 29);
+    endDate.setHours(23, 59, 59, 999);
 
     const reservations = await Reservation.find({
       worker: workerId,

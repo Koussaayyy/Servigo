@@ -51,6 +51,21 @@ const ReservationSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    clientReview: {
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      comment: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      reviewedAt: {
+        type: Date,
+      },
+    },
   },
   { timestamps: true }
 );

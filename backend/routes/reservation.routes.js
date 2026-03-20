@@ -10,8 +10,10 @@ router.get("/worker/:workerId/month-availability", protect, authorize("client"),
 router.get("/client", protect, authorize("client"), reservationController.getClientReservations);
 router.get("/client/history", protect, authorize("client"), reservationController.getClientHistory);
 router.patch("/:id/client-cancel", protect, authorize("client"), reservationController.cancelClientReservation);
+router.patch("/:id/client-review", protect, authorize("client"), reservationController.submitClientReview);
 
 router.get("/worker", protect, authorize("worker"), reservationController.getWorkerReservations);
+router.get("/worker/reviews", protect, authorize("worker"), reservationController.getWorkerReviews);
 router.patch("/:id/worker-status", protect, authorize("worker"), reservationController.updateWorkerReservationStatus);
 
 module.exports = router;

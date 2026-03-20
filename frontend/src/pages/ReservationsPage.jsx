@@ -26,6 +26,15 @@ const next30Days = () => {
   });
 };
 
+const toLocalISODate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function ReservationsPage({ user }) {
   const isClient = user?.role === "client";
   const isWorker = user?.role === "worker";
@@ -44,6 +53,8 @@ export default function ReservationsPage({ user }) {
   const [monthAvailability, setMonthAvailability] = useState([]);
   const [selectedService, setSelectedService] = useState("");
   const [datePage, setDatePage] = useState(0);
+  const [reviewForms, setReviewForms] = useState({});
+  const [reviewLoadingId, setReviewLoadingId] = useState("");
 
   const [form, setForm] = useState({
     workerId: "",
@@ -84,11 +95,6 @@ export default function ReservationsPage({ user }) {
     loadData();
   }, [isClient, isWorker]);
 
-  const selectedWorker = useMemo(
-    () => workers.find((worker) => String(worker._id) === String(form.workerId)),
-    [workers, form.workerId]
-  );
-
   const datePages = useMemo(() => {
     const pages = [];
     for (let index = 0; index < monthAvailability.length; index += 7) {
@@ -98,6 +104,27 @@ export default function ReservationsPage({ user }) {
   }, [monthAvailability]);
 
   const visibleDates = datePages[datePage] || [];
+
+  const blockedHoursByDate = useMemo(() => {
+    if (!isClient || !form.workerId) return new Map();
+    const map = new Map();
+
+    clientReservations
+      .filter((reservation) => {
+        const sameWorker = String(reservation?.worker?._id || reservation?.worker) === String(form.workerId);
+        const activeStatus = ["pending", "accepted"].includes(reservation?.status);
+        return sameWorker && activeStatus;
+      })
+      .forEach((reservation) => {
+        const key = toLocalISODate(reservation?.bookingDate);
+        const hour = Number(reservation?.bookingHour);
+        if (!key || !Number.isInteger(hour)) return;
+        if (!map.has(key)) map.set(key, new Set());
+        map.get(key).add(hour);
+      });
+
+    return map;
+  }, [isClient, form.workerId, clientReservations]);
 
   const professions = useMemo(() => {
     const values = new Set();
@@ -210,9 +237,11 @@ export default function ReservationsPage({ user }) {
     }
     const selectedDay = monthAvailability.find((item) => item.date === form.bookingDate);
     const dayHours = Array.isArray(selectedDay?.availableHours) ? selectedDay.availableHours : [];
-    setAvailableHours(dayHours);
-    setForm((prev) => (dayHours.includes(Number(prev.bookingHour)) ? prev : { ...prev, bookingHour: "" }));
-  }, [form.bookingDate, monthAvailability]);
+    const blockedSet = blockedHoursByDate.get(form.bookingDate) || new Set();
+    const filteredDayHours = dayHours.filter((hour) => !blockedSet.has(Number(hour)));
+    setAvailableHours(filteredDayHours);
+    setForm((prev) => (filteredDayHours.includes(Number(prev.bookingHour)) ? prev : { ...prev, bookingHour: "" }));
+  }, [form.bookingDate, monthAvailability, blockedHoursByDate]);
 
   const updateForm = (key) => (e) => {
     const value = e.target.value;
@@ -248,12 +277,29 @@ export default function ReservationsPage({ user }) {
     }
   };
 
-  const cancelReservation = async (id) => {
+  const cancelReservation = async (reservation) => {
     setActionLoading(true);
     setError("");
     setMessage("");
     try {
-      await reservationApi.cancelAsClient(id);
+      const isAccepted = reservation?.status === "accepted";
+      const shouldCancel = window.confirm(
+        isAccepted
+          ? "Cette réservation est déjà confirmée par le prestataire. Confirmer l'annulation ?"
+          : "Confirmer l'annulation de cette réservation ?"
+      );
+
+      if (!shouldCancel) {
+        setActionLoading(false);
+        return;
+      }
+
+      const payload = {
+        reason: "Cancelled by client",
+        ...(isAccepted ? { confirmation: "CLIENT_CONFIRMED" } : {}),
+      };
+
+      await reservationApi.cancelAsClient(reservation._id, payload);
       setMessage("Reservation cancelled");
       await loadData();
     } catch (err) {
@@ -275,6 +321,59 @@ export default function ReservationsPage({ user }) {
       setError(err.message || "Update failed");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const updateReviewForm = (reservationId, key, value) => {
+    setReviewForms((prev) => ({
+      ...prev,
+      [reservationId]: {
+        rating: key === "rating" ? value : (prev[reservationId]?.rating || ""),
+        comment: key === "comment" ? value : (prev[reservationId]?.comment || ""),
+        open: true,
+      },
+    }));
+  };
+
+  const toggleReviewForm = (reservationId) => {
+    setReviewForms((prev) => {
+      const current = prev[reservationId] || { rating: "", comment: "", open: false };
+      return {
+        ...prev,
+        [reservationId]: {
+          ...current,
+          open: !current.open,
+        },
+      };
+    });
+  };
+
+  const submitReview = async (reservationId) => {
+    const current = reviewForms[reservationId] || { rating: "", comment: "" };
+    const rating = Number(current.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      setError("Choisissez une note entre 1 et 5.");
+      return;
+    }
+
+    setReviewLoadingId(reservationId);
+    setError("");
+    setMessage("");
+    try {
+      await reservationApi.submitClientReview(reservationId, {
+        rating,
+        comment: String(current.comment || "").trim(),
+      });
+      setMessage("Avis envoyé ✅");
+      setReviewForms((prev) => ({
+        ...prev,
+        [reservationId]: { rating: "", comment: "", open: false },
+      }));
+      await loadData();
+    } catch (err) {
+      setError(err.message || "Envoi de l'avis impossible");
+    } finally {
+      setReviewLoadingId("");
     }
   };
 
@@ -344,6 +443,7 @@ export default function ReservationsPage({ user }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                   {filteredWorkers.map((worker) => {
                     const active = String(form.workerId) === String(worker._id);
+
                     return (
                       <button
                         key={worker._id}
@@ -379,6 +479,7 @@ export default function ReservationsPage({ user }) {
                             </span>
                           ))}
                         </div>
+
                       </button>
                     );
                   })}
@@ -415,7 +516,9 @@ export default function ReservationsPage({ user }) {
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 8 }}>
                   {visibleDates.map((day) => {
-                    const freeCount = Array.isArray(day.availableHours) ? day.availableHours.length : 0;
+                    const baseHours = Array.isArray(day.availableHours) ? day.availableHours : [];
+                    const blockedSet = blockedHoursByDate.get(day.date) || new Set();
+                    const freeCount = baseHours.filter((hour) => !blockedSet.has(Number(hour))).length;
                     const active = form.bookingDate === day.date;
                     return (
                       <button
@@ -519,7 +622,7 @@ export default function ReservationsPage({ user }) {
                     rightAction={
                       ["pending", "accepted"].includes(reservation.status)
                         ? (
-                          <button className="mode-tab" onClick={() => cancelReservation(reservation._id)} disabled={actionLoading}>
+                          <button className="mode-tab" onClick={() => cancelReservation(reservation)} disabled={actionLoading}>
                             Annuler
                           </button>
                         )
@@ -537,9 +640,67 @@ export default function ReservationsPage({ user }) {
               <p style={{ margin: 0, color: "#9a7c68", fontSize: 13 }}>Aucun historique.</p>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {clientHistory.map((reservation) => (
-                  <ReservationRow key={reservation._id} reservation={reservation} />
-                ))}
+                {clientHistory.map((reservation) => {
+                  const hasReview = !!reservation?.clientReview?.rating;
+                  const isCompleted = reservation?.status === "completed";
+                  const formState = reviewForms[reservation._id] || { rating: "", comment: "", open: false };
+
+                  return (
+                    <ReservationRow
+                      key={reservation._id}
+                      reservation={reservation}
+                      rightAction={
+                        isCompleted ? (
+                          hasReview ? (
+                            <span style={{ fontSize: 11, color: "#2e7d32", fontWeight: 700 }}>Avis envoyé</span>
+                          ) : (
+                            <button className="mode-tab" onClick={() => toggleReviewForm(reservation._id)} disabled={reviewLoadingId === reservation._id}>
+                              {formState.open ? "Fermer" : "Laisser un avis"}
+                            </button>
+                          )
+                        ) : null
+                      }
+                    >
+                      {isCompleted && hasReview && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: "#9a7c68" }}>
+                          Note: {"★".repeat(Number(reservation.clientReview.rating))}{"☆".repeat(Math.max(0, 5 - Number(reservation.clientReview.rating)))}
+                          {reservation.clientReview.comment ? ` · ${reservation.clientReview.comment}` : ""}
+                        </div>
+                      )}
+
+                      {isCompleted && !hasReview && formState.open && (
+                        <div style={{ marginTop: 10, borderTop: "1px solid #f0e6da", paddingTop: 10, display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "#9a7c68" }}>
+                            Note
+                            <select
+                              value={formState.rating}
+                              onChange={(event) => updateReviewForm(reservation._id, "rating", event.target.value)}
+                              style={{ ...inputStyle, width: 96, padding: "8px 10px", fontSize: 12 }}
+                            >
+                              <option value="">--</option>
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                              <option value="3">3</option>
+                              <option value="4">4</option>
+                              <option value="5">5</option>
+                            </select>
+                          </div>
+                          <textarea
+                            value={formState.comment}
+                            onChange={(event) => updateReviewForm(reservation._id, "comment", event.target.value)}
+                            placeholder="Votre retour sur la mission (optionnel)"
+                            style={{ ...inputStyle, minHeight: 64, resize: "vertical", fontSize: 12 }}
+                          />
+                          <div>
+                            <button className="submit-btn" onClick={() => submitReview(reservation._id)} disabled={reviewLoadingId === reservation._id} style={{ maxWidth: 220 }}>
+                              {reviewLoadingId === reservation._id ? "Envoi..." : "Envoyer l'avis"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </ReservationRow>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -577,7 +738,7 @@ export default function ReservationsPage({ user }) {
   );
 }
 
-function ReservationRow({ reservation, rightAction }) {
+function ReservationRow({ reservation, rightAction, children }) {
   const worker = reservation.worker;
   const client = reservation.client;
   const person = worker || client || {};
@@ -597,6 +758,7 @@ function ReservationRow({ reservation, rightAction }) {
         <div style={{ fontSize: 11, marginTop: 3, color: "#9a7c68", textTransform: "uppercase", letterSpacing: ".08em" }}>
           Statut: {reservation.status}
         </div>
+        {children}
       </div>
       {rightAction}
     </div>
