@@ -83,7 +83,7 @@ export default function AppLayout({ user, activePage, onNavigate, onLogout, chil
           </button>
           <div className="al-brand">
             <div className="al-brand-mark">S</div>
-            <span className="al-brand-name">ServicePro</span>
+            <span className="al-brand-name">Servigo</span>
           </div>
         </div>
         <div className="al-topbar-right">
@@ -139,12 +139,12 @@ const styles = `
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  font-family: 'DM Sans', sans-serif;
-  background: var(--paper, #fff8f2);
+  font-family: 'Sora', sans-serif;
+  background: var(--paper, #f8fafc);
 }
 .al-topbar {
   position: sticky; top: 0; z-index: 200;
-  background: var(--ink, #1a1008);
+  background: var(--ink, #0f172e);
   height: 60px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 28px;
@@ -154,32 +154,32 @@ const styles = `
 .al-topbar-left { display: flex; align-items: center; gap: 14px; }
 .al-mobile-menu-btn {
   display: none;
-  background: transparent; border: none; color: var(--muted, #9a7c68);
+  background: transparent; border: none; color: var(--muted, #64748b);
   cursor: pointer; padding: 4px; border-radius: 6px;
   transition: color .2s;
 }
 .al-mobile-menu-btn:hover { color: #fff; }
 .al-brand { display: flex; align-items: center; gap: 10px; }
 .al-brand-mark {
-  width: 32px; height: 32px; border: 2px solid var(--orange, #e8620a);
+  width: 32px; height: 32px; border: 2px solid var(--orange, #06b6d4);
   border-radius: 4px; display: flex; align-items: center; justify-content: center;
-  font-family: 'Playfair Display', serif;
-  color: var(--orange, #e8620a); font-size: 16px; font-weight: 700;
+  font-family: 'Sora', sans-serif;
+  color: var(--orange, #06b6d4); font-size: 16px; font-weight: 700;
 }
 .al-brand-name {
   font-size: 10px; letter-spacing: .38em; text-transform: uppercase;
-  color: var(--muted, #9a7c68);
+  color: var(--muted, #64748b);
 }
 .al-topbar-right { display: flex; align-items: center; gap: 10px; }
 .al-topbar-avatar {
   width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--orange, #e8620a), #c44800);
-  border: 2px solid rgba(232,98,10,0.4);
+  background: linear-gradient(135deg, var(--orange, #06b6d4), #0891b2);
+  border: 2px solid rgba(6, 182, 212, 0.3);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; overflow: hidden; transition: border-color .2s;
-  font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #fff;
+  font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700; color: #fff;
 }
-.al-topbar-avatar:hover { border-color: var(--orange, #e8620a); }
+.al-topbar-avatar:hover { border-color: var(--orange, #06b6d4); }
 .al-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .al-body {
   display: flex;
@@ -189,7 +189,7 @@ const styles = `
 .al-sidebar {
   width: 256px;
   flex-shrink: 0;
-  background: var(--ink, #1a1008);
+  background: var(--ink, #0f172e);
   padding: 24px 16px 32px;
   display: flex; flex-direction: column; gap: 2px;
   overflow-y: auto;
@@ -198,64 +198,64 @@ const styles = `
 .al-sidebar::before {
   content: ''; position: absolute; top: -60px; right: -60px;
   width: 200px; height: 200px; border-radius: 50%;
-  border: 1px solid rgba(232,98,10,0.12); pointer-events: none;
+  border: 1px solid rgba(6, 182, 212, 0.12); pointer-events: none;
 }
 .al-profile-mini {
   display: flex; flex-direction: column; align-items: center;
   padding: 20px 12px; margin-bottom: 20px;
   background: rgba(255,255,255,0.04); border-radius: 12px;
-  border: 1px solid rgba(232,98,10,0.15);
+  border: 1px solid rgba(6, 182, 212, 0.15);
 }
 .al-avatar {
   width: 64px; height: 64px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--orange, #e8620a), #c44800);
+  background: linear-gradient(135deg, var(--orange, #06b6d4), #0891b2);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: #fff;
-  border: 2px solid rgba(232,98,10,0.4);
+  font-family: 'Sora', sans-serif; font-size: 1.4rem; font-weight: 700; color: #fff;
+  border: 2px solid rgba(6, 182, 212, 0.3);
   margin-bottom: 10px;
   background-size: cover; background-position: center;
 }
 .al-profile-name {
-  font-family: 'Playfair Display', serif; font-size: .95rem; color: #fff;
+  font-family: 'Sora', sans-serif; font-size: .95rem; color: #fff; font-weight: 600;
   margin-bottom: 6px; text-align: center;
 }
 .al-role-badge {
   font-size: 9px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
   padding: 3px 10px; border-radius: 100px;
-  background: rgba(232,98,10,0.15); color: var(--orange, #e8620a);
-  border: 1px solid rgba(232,98,10,0.3);
+  background: rgba(6, 182, 212, 0.15); color: var(--orange, #06b6d4);
+  border: 1px solid rgba(6, 182, 212, 0.3);
 }
 .al-role-badge.client {
-  background: rgba(154,124,104,0.15); color: var(--muted, #9a7c68);
-  border-color: rgba(154,124,104,0.3);
+  background: rgba(100,116,139,0.15); color: var(--muted, #64748b);
+  border-color: rgba(100,116,139,0.3);
 }
 .al-nav-label {
   font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px;
-  color: rgba(154,124,104,0.55); padding: 10px 12px 4px; margin-top: 6px;
+  color: rgba(100,116,139,0.65); padding: 10px 12px 4px; margin-top: 6px;
 }
 .al-nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; border-radius: 8px;
-  cursor: pointer; font-size: 13px; color: var(--muted, #9a7c68);
+  cursor: pointer; font-size: 13px; color: var(--muted, #64748b);
   transition: all .2s; border: 1px solid transparent;
   background: transparent; width: 100%; text-align: left;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Sora', sans-serif;
   position: relative;
 }
 .al-nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.al-nav-item.active { background: rgba(232,98,10,0.12); color: #fff; border-color: rgba(232,98,10,0.25); }
+.al-nav-item.active { background: rgba(6, 182, 212, 0.12); color: #fff; border-color: rgba(6, 182, 212, 0.25); }
 .al-nav-item span { flex: 1; }
 .al-nav-chevron { opacity: .5; }
 .al-logout-btn {
   display: flex; align-items: center; gap: 8px;
   margin-top: auto; padding: 10px 14px; border-radius: 8px;
-  border: 1.5px solid rgba(232,98,10,0.2);
-  background: transparent; color: var(--orange, #e8620a);
-  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  border: 1.5px solid rgba(6, 182, 212, 0.2);
+  background: transparent; color: var(--orange, #06b6d4);
+  font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600;
   cursor: pointer; transition: all .2s;
   letter-spacing: .05em; margin-top: 16px;
 }
-.al-logout-btn:hover { background: rgba(232,98,10,0.08); }
+.al-logout-btn:hover { background: rgba(6, 182, 212, 0.08); }
 .al-main {
   flex: 1;
   overflow-y: auto;

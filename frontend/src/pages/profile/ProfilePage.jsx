@@ -12,9 +12,9 @@ function Card({ children, danger }) {
   return (
     <div style={{
       background: danger ? "rgba(192,57,43,0.02)" : "#fff",
-      border: `1.5px solid ${danger ? "rgba(192,57,43,0.2)" : "#f0e6da"}`,
+      border: `1.5px solid ${danger ? "rgba(192,57,43,0.2)" : "#e2e8f0"}`,
       borderRadius: 12, padding: 28, marginBottom: 18,
-      boxShadow: "0 2px 16px rgba(232,98,10,0.05)",
+      boxShadow: "0 2px 16px rgba(6, 182, 212, 0.05)",
     }}>{children}</div>
   );
 }
@@ -23,12 +23,12 @@ function CardTitle({ icon: Icon, children, danger }) {
   return (
     <div style={{
       fontSize: 11, fontWeight: 600, letterSpacing: ".2em",
-      textTransform: "uppercase", color: danger ? "#c0392b" : "#9a7c68",
+      textTransform: "uppercase", color: danger ? "#c0392b" : "#64748b",
       marginBottom: 20, display: "flex", alignItems: "center", gap: 8,
     }}>
-      <Icon size={14} color={danger ? "#c0392b" : "#e8620a"} />
+      <Icon size={14} color={danger ? "#c0392b" : "#06b6d4"} />
       {children}
-      <div style={{ flex: 1, height: 1, background: "#f0e6da" }} />
+      <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
     </div>
   );
 }
@@ -36,7 +36,7 @@ function CardTitle({ icon: Icon, children, danger }) {
 function Field({ label, children, span2 }) {
   return (
     <div style={{ gridColumn: span2 ? "span 2" : undefined, display: "flex", flexDirection: "column", gap: 7 }}>
-      <label style={{ fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: "#9a7c68", fontWeight: 600 }}>
+      <label style={{ fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: "#64748b", fontWeight: 600 }}>
         {label}
       </label>
       {children}
@@ -45,9 +45,9 @@ function Field({ label, children, span2 }) {
 }
 
 const inputBase = {
-  width: "100%", padding: "11px 14px", background: "#f0e6da",
+  width: "100%", padding: "11px 14px", background: "#e2e8f0",
   border: "1.5px solid transparent", borderRadius: 8,
-  fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#1a1008", outline: "none",
+  fontFamily: "'Sora', sans-serif", fontSize: 14, color: "#0f172e", outline: "none",
   transition: "border-color .2s, background .2s, box-shadow .2s",
 };
 
@@ -55,7 +55,7 @@ function Input({ style, ...props }) {
   const [f, setF] = useState(false);
   return (
     <input {...props}
-      style={{ ...inputBase, ...(f ? { borderColor: "#e8620a", background: "#fff", boxShadow: "0 0 0 3px rgba(232,98,10,0.1)" } : {}), ...style }}
+      style={{ ...inputBase, ...(f ? { borderColor: "#06b6d4", background: "#fff", boxShadow: "0 0 0 3px rgba(6, 182, 212, 0.1)" } : {}), ...style }}
       onFocus={() => setF(true)} onBlur={() => setF(false)}
     />
   );
@@ -65,7 +65,7 @@ function Textarea(props) {
   const [f, setF] = useState(false);
   return (
     <textarea {...props}
-      style={{ ...inputBase, resize: "vertical", minHeight: 80, ...(f ? { borderColor: "#e8620a", background: "#fff", boxShadow: "0 0 0 3px rgba(232,98,10,0.1)" } : {}) }}
+      style={{ ...inputBase, resize: "vertical", minHeight: 80, ...(f ? { borderColor: "#06b6d4", background: "#fff", boxShadow: "0 0 0 3px rgba(6, 182, 212, 0.1)" } : {}) }}
       onFocus={() => setF(true)} onBlur={() => setF(false)}
     />
   );
@@ -75,19 +75,19 @@ function SelectField({ children, ...props }) {
   const [f, setF] = useState(false);
   return (
     <select {...props}
-      style={{ ...inputBase, appearance: "none", cursor: "pointer", ...(f ? { borderColor: "#e8620a", background: "#fff", boxShadow: "0 0 0 3px rgba(232,98,10,0.1)" } : {}) }}
+      style={{ ...inputBase, appearance: "none", cursor: "pointer", ...(f ? { borderColor: "#06b6d4", background: "#fff", boxShadow: "0 0 0 3px rgba(6, 182, 212, 0.1)" } : {}) }}
       onFocus={() => setF(true)} onBlur={() => setF(false)}
     >{children}</select>
   );
 }
 
 function Btn({ variant = "primary", loading = false, children, style, ...props }) {
-  const base = { padding: "11px 22px", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: ".15em", textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 7, transition: "all .2s", opacity: loading ? 0.7 : 1, border: "none" };
+  const base = { padding: "11px 22px", borderRadius: 8, fontFamily: "'Sora', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: ".15em", textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 7, transition: "all .2s", opacity: loading ? 0.7 : 1, border: "none" };
   const variants = {
-    primary:   { background: "#e8620a", color: "#fff", boxShadow: "0 4px 16px rgba(232,98,10,0.3)" },
-    secondary: { background: "transparent", color: "#9a7c68", border: "1.5px solid #f0e6da" },
+    primary:   { background: "#06b6d4", color: "#fff", boxShadow: "0 4px 16px rgba(6, 182, 212, 0.2)" },
+    secondary: { background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0" },
     danger:    { background: "transparent", color: "#c0392b", border: "1.5px solid rgba(192,57,43,0.2)" },
-    sm:        { background: "#e8620a", color: "#fff", padding: "8px 14px", fontSize: 11 },
+    sm:        { background: "#06b6d4", color: "#fff", padding: "8px 14px", fontSize: 11 },
   };
   return (
     <button disabled={loading} style={{ ...base, ...variants[variant], ...style }} {...props}>
@@ -99,7 +99,7 @@ function Btn({ variant = "primary", loading = false, children, style, ...props }
 
 function FormActions({ children }) {
   return (
-    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 20, borderTop: "1px solid #f0e6da" }}>
+    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
       {children}
     </div>
   );
@@ -107,7 +107,7 @@ function FormActions({ children }) {
 
 function Toggle({ on, onChange }) {
   return (
-    <div onClick={() => onChange(!on)} style={{ width: 42, height: 23, borderRadius: 100, background: on ? "#e8620a" : "#f0e6da", border: `1.5px solid ${on ? "#e8620a" : "rgba(232,98,10,0.15)"}`, position: "relative", cursor: "pointer", transition: "all .3s", flexShrink: 0 }}>
+    <div onClick={() => onChange(!on)} style={{ width: 42, height: 23, borderRadius: 100, background: on ? "#06b6d4" : "#e2e8f0", border: `1.5px solid ${on ? "#06b6d4" : "rgba(6, 182, 212, 0.15)"}`, position: "relative", cursor: "pointer", transition: "all .3s", flexShrink: 0 }}>
       <div style={{ width: 16, height: 16, background: "#fff", borderRadius: "50%", position: "absolute", top: 2, left: 2, transform: on ? "translateX(19px)" : "translateX(0)", transition: "transform .3s", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }} />
     </div>
   );
@@ -115,10 +115,10 @@ function Toggle({ on, onChange }) {
 
 function ToggleRow({ label, desc, value, onChange }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid #f0e6da" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid #e2e8f0" }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1008" }}>{label}</div>
-        {desc && <div style={{ fontSize: 12, color: "#9a7c68", marginTop: 2 }}>{desc}</div>}
+        <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172e" }}>{label}</div>
+        {desc && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{desc}</div>}
       </div>
       <Toggle on={value} onChange={onChange} />
     </div>
@@ -137,13 +137,13 @@ function TagBox({ tags, onChange }) {
   return (
     <div>
       <div onClick={() => document.getElementById("tag-inp")?.focus()}
-        style={{ background: f ? "#fff" : "#f0e6da", border: `1.5px solid ${f ? "#e8620a" : "transparent"}`, boxShadow: f ? "0 0 0 3px rgba(232,98,10,0.1)" : "none", borderRadius: 8, padding: "10px 12px", minHeight: 56, cursor: "text", transition: "all .2s" }}>
+        style={{ background: f ? "#fff" : "#e2e8f0", border: `1.5px solid ${f ? "#06b6d4" : "transparent"}`, boxShadow: f ? "0 0 0 3px rgba(6, 182, 212, 0.1)" : "none", borderRadius: 8, padding: "10px 12px", minHeight: 56, cursor: "text", transition: "all .2s" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: tags.length ? 8 : 0 }}>
           {tags.map(t => (
-            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 12px", borderRadius: 100, background: "#fff", color: "#e8620a", fontSize: 12, fontWeight: 500, border: "1.5px solid rgba(232,98,10,0.3)" }}>
+            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 12px", borderRadius: 100, background: "#fff", color: "#06b6d4", fontSize: 12, fontWeight: 500, border: "1.5px solid rgba(6, 182, 212, 0.3)" }}>
               {t}
               <button type="button" onClick={e => { e.stopPropagation(); onChange(tags.filter(x => x !== t)); }}
-                style={{ width: 16, height: 16, borderRadius: "50%", border: "none", background: "rgba(232,98,10,0.12)", color: "#e8620a", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                style={{ width: 16, height: 16, borderRadius: "50%", border: "none", background: "rgba(6, 182, 212, 0.12)", color: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
                 <X size={9} />
               </button>
             </span>
@@ -153,7 +153,7 @@ function TagBox({ tags, onChange }) {
           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           onFocus={() => setF(true)} onBlur={() => setF(false)}
           placeholder="Ajouter une compétence..."
-          style={{ border: "none", background: "transparent", outline: "none", fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "#1a1008", width: "100%", minWidth: 160 }}
+          style={{ border: "none", background: "transparent", outline: "none", fontFamily: "'Sora',sans-serif", fontSize: 13, color: "#0f172e", width: "100%", minWidth: 160 }}
         />
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
@@ -165,7 +165,7 @@ function TagBox({ tags, onChange }) {
 
 function Toast({ show, message, isError }) {
   return (
-    <div style={{ position: "fixed", bottom: 28, right: 28, padding: "13px 24px", background: isError ? "#c0392b" : "#1a1008", color: isError ? "#fff" : "#e8620a", border: `1.5px solid ${isError ? "rgba(192,57,43,0.4)" : "rgba(232,98,10,0.4)"}`, borderRadius: 100, fontSize: 13, fontWeight: 600, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(10px)", transition: "all .3s", zIndex: 9999, pointerEvents: "none", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", bottom: 28, right: 28, padding: "13px 24px", background: isError ? "#c0392b" : "#0f172e", color: isError ? "#fff" : "#06b6d4", border: `1.5px solid ${isError ? "rgba(192,57,43,0.4)" : "rgba(6, 182, 212, 0.4)"}`, borderRadius: 100, fontSize: 13, fontWeight: 600, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(10px)", transition: "all .3s", zIndex: 9999, pointerEvents: "none", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
       {isError ? <TriangleAlert size={16} /> : <Check size={16} />}
       {message}
     </div>
@@ -187,17 +187,17 @@ function PhotoModal({ onClose, onSave, loading }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(26,16,8,0.75)", backdropFilter: "blur(4px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: "min(420px,90vw)", border: "1.5px solid #f0e6da", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, color: "#1a1008", marginBottom: 6 }}>Photo de profil</div>
-        <div style={{ fontSize: 13, color: "#9a7c68", marginBottom: 24 }}>Choisissez une photo claire et professionnelle.</div>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: "min(420px,90vw)", border: "1.5px solid #e2e8f0", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172e", marginBottom: 6 }}>Photo de profil</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>Choisissez une photo claire et professionnelle.</div>
 
         {preview ? (
           <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <div style={{ width: 100, height: 100, borderRadius: "50%", overflow: "hidden", border: "3px solid #e8620a", margin: "0 auto 12px" }}>
+            <div style={{ width: 100, height: 100, borderRadius: "50%", overflow: "hidden", border: "3px solid #06b6d4", margin: "0 auto 12px" }}>
               <img src={preview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <button onClick={() => { setPreview(null); setFile(null); }}
-              style={{ background: "none", border: "none", color: "#9a7c68", fontSize: 12, cursor: "pointer" }}>
+              style={{ background: "none", border: "none", color: "#64748b", fontSize: 12, cursor: "pointer" }}>
               Choisir une autre photo
             </button>
           </div>
@@ -205,10 +205,10 @@ function PhotoModal({ onClose, onSave, loading }) {
           <div onClick={() => inputRef.current?.click()}
             onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}
-            style={{ border: "2px dashed rgba(232,98,10,0.3)", borderRadius: 12, padding: "32px 20px", textAlign: "center", cursor: "pointer", background: "#fff8f2", marginBottom: 16 }}>
-            <Camera size={36} color="#e8620a" style={{ display: "block", margin: "0 auto 10px" }} />
-            <p style={{ fontSize: 13, color: "#9a7c68" }}>Glissez votre photo ici ou <span style={{ color: "#e8620a", fontWeight: 600 }}>parcourir</span></p>
-            <p style={{ fontSize: 11, color: "#9a7c68", marginTop: 6 }}>JPG, PNG, WEBP — max 5 Mo</p>
+            style={{ border: "2px dashed rgba(6, 182, 212, 0.3)", borderRadius: 12, padding: "32px 20px", textAlign: "center", cursor: "pointer", background: "#f8fafc", marginBottom: 16 }}>
+            <Camera size={36} color="#06b6d4" style={{ display: "block", margin: "0 auto 10px" }} />
+            <p style={{ fontSize: 13, color: "#64748b" }}>Glissez votre photo ici ou <span style={{ color: "#06b6d4", fontWeight: 600 }}>parcourir</span></p>
+            <p style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>JPG, PNG, WEBP — max 5 Mo</p>
           </div>
         )}
 
@@ -336,23 +336,24 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
     <>
       {showModal && <PhotoModal onClose={() => setShowModal(false)} onSave={handlePhotoSave} loading={photoSaving} />}
 
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Informations personnelles</h1>
-      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Gérez vos informations de profil visibles par les autres utilisateurs.</p>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Informations personnelles</h1>
+      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Gérez vos informations de profil visibles par les autres utilisateurs.</p>
 
       {/* Photo */}
       <Card>
         <CardTitle icon={Camera}>Photo de profil</CardTitle>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <div onClick={() => setShowModal(true)}
-            style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#e8620a,#c44800)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontSize: "1.8rem", fontWeight: 700, color: "#fff", border: "2.5px solid rgba(232,98,10,0.3)", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}>
+            style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#06b6d4,#0891b2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora', sans-serif", fontSize: "1.8rem", fontWeight: 700, color: "#fff", border: "2.5px solid rgba(6, 182, 212, 0.3)", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}
+          >
             {currentAvatarUrl
               ? <img src={currentAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : initials
             }
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1008", marginBottom: 4 }}>Photo visible sur votre profil public</div>
-            <div style={{ fontSize: 12, color: "#9a7c68", marginBottom: 12 }}>JPG, PNG ou WEBP · max 5 Mo</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172e", marginBottom: 4 }}>Photo visible sur votre profil public</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>JPG, PNG ou WEBP · max 5 Mo</div>
             <div style={{ display: "flex", gap: 8 }}>
               <Btn variant="sm" onClick={() => setShowModal(true)} loading={photoSaving}>
                 <Upload size={13} /> Changer
@@ -375,7 +376,7 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
           <Field label="Nom"><Input value={form.lastName} onChange={set("lastName")} /></Field>
           <Field label="Email">
             <Input value={user.email} disabled
-              style={{ opacity: 0.6, cursor: "not-allowed", background: "#f0e6da" }} />
+              style={{ opacity: 0.6, cursor: "not-allowed", background: "#e2e8f0" }} />
           </Field>
           <Field label="Téléphone"><Input type="tel" value={form.phone} onChange={set("phone")} /></Field>
           <Field label="Bio / Présentation" span2>
@@ -383,15 +384,15 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
           </Field>
           {isWorker && (
             <Field label="Métiers enregistrés" span2>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, minHeight: 42, alignItems: "center", padding: "10px 12px", background: "#f0e6da", borderRadius: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, minHeight: 42, alignItems: "center", padding: "10px 12px", background: "#e2e8f0", borderRadius: 8 }}>
                 {(user.workerProfile?.professions || []).length > 0 ? (
                   user.workerProfile.professions.map((profession) => (
-                    <span key={profession} style={{ padding: "5px 10px", borderRadius: 100, background: "#fff", color: "#1a1008", border: "1px solid rgba(232,98,10,0.2)", fontSize: 12, fontWeight: 600 }}>
+                    <span key={profession} style={{ padding: "5px 10px", borderRadius: 100, background: "#fff", color: "#0f172e", border: "1px solid rgba(6, 182, 212, 0.2)", fontSize: 12, fontWeight: 600 }}>
                       {profession}
                     </span>
                   ))
                 ) : (
-                  <span style={{ fontSize: 12, color: "#9a7c68" }}>Aucun métier enregistré.</span>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>Aucun métier enregistré.</span>
                 )}
               </div>
             </Field>
@@ -405,7 +406,7 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
 
         {/* ── GPS detect button ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ fontSize: 12, color: "#9a7c68", margin: 0 }}>
+          <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
             Renseignez votre ville manuellement ou utilisez la détection automatique.
           </p>
           <button
@@ -415,11 +416,11 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "8px 14px", borderRadius: 8,
-              border: "1.5px solid rgba(232,98,10,0.3)",
-              background: "rgba(232,98,10,0.06)", color: "#e8620a",
+              border: "1.5px solid rgba(6, 182, 212, 0.3)",
+              background: "rgba(6, 182, 212, 0.06)", color: "#06b6d4",
               fontSize: 12, fontWeight: 600,
               cursor: locLoading ? "not-allowed" : "pointer",
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "'Sora',sans-serif",
               opacity: locLoading ? 0.6 : 1,
               transition: "all .2s", whiteSpace: "nowrap", flexShrink: 0, marginLeft: 16,
             }}
@@ -451,7 +452,7 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
               <Field label="Tarif horaire (TND)">
                 <div style={{ position: "relative" }}>
                   <Input type="number" value={form.hourlyRate} onChange={set("hourlyRate")} style={{ paddingRight: 52 }} />
-                  <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 12, fontWeight: 600, color: "#9a7c68", pointerEvents: "none" }}>TND</span>
+                  <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 12, fontWeight: 600, color: "#64748b", pointerEvents: "none" }}>TND</span>
                 </div>
               </Field>
             </>
@@ -495,14 +496,14 @@ function SectionCompetences({ user, onSaved, onToast }) {
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Compétences & Services</h1>
-      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Définissez vos domaines d'expertise et les services que vous proposez.</p>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Compétences & Services</h1>
+      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Définissez vos domaines d'expertise et les services que vous proposez.</p>
 
       <Card>
         <CardTitle icon={Tag}>Compétences / Métiers</CardTitle>
-        <p style={{ fontSize: 12, color: "#9a7c68", marginBottom: 14 }}>
+        <p style={{ fontSize: 12, color: "#64748b", marginBottom: 14 }}>
           Tapez une compétence et appuyez sur{" "}
-          <kbd style={{ background: "#f0e6da", border: "1px solid rgba(232,98,10,0.2)", borderRadius: 4, padding: "1px 6px", fontSize: 11 }}>Entrée</kbd>
+          <kbd style={{ background: "#e2e8f0", border: "1px solid rgba(6, 182, 212, 0.2)", borderRadius: 4, padding: "1px 6px", fontSize: 11 }}>Entrée</kbd>
         </p>
         <TagBox tags={professions} onChange={setProfessions} />
       </Card>
@@ -516,7 +517,7 @@ function SectionCompetences({ user, onSaved, onToast }) {
             </Field>
           ))}
           <button onClick={() => setServices([...services, ""])}
-            style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "1.5px dashed rgba(232,98,10,0.3)", borderRadius: 8, padding: "10px 16px", color: "#e8620a", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>
+            style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "1.5px dashed rgba(6, 182, 212, 0.3)", borderRadius: 8, padding: "10px 16px", color: "#06b6d4", fontSize: 13, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>
             <Plus size={14} /> Ajouter un service
           </button>
         </div>
@@ -639,8 +640,8 @@ function SectionPortfolio({ user, onSaved, onToast }) {
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Portfolio</h1>
-      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 18 }}>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Portfolio</h1>
+      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>
         Ajoutez seulement vos projets. La note et les avis sont laissés par les clients après une mission.
       </p>
 
@@ -654,7 +655,7 @@ function SectionPortfolio({ user, onSaved, onToast }) {
           </Field>
           <Field label="Photo du projet" span2>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, border: "1.5px solid #f0e6da", cursor: uploadingImage ? "not-allowed" : "pointer", opacity: uploadingImage ? 0.7 : 1 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", cursor: uploadingImage ? "not-allowed" : "pointer", opacity: uploadingImage ? 0.7 : 1 }}>
                 <Upload size={14} />
                 {uploadingImage ? "Import..." : "Choisir depuis l'appareil"}
                 <input
@@ -665,7 +666,7 @@ function SectionPortfolio({ user, onSaved, onToast }) {
                   onChange={(e) => handleImagePick(e.target.files?.[0])}
                 />
               </label>
-              {form.imageUrl && <span style={{ fontSize: 12, color: "#9a7c68" }}>Image prête ✓</span>}
+              {form.imageUrl && <span style={{ fontSize: 12, color: "#64748b" }}>Image prête ✓</span>}
             </div>
           </Field>
         </div>
@@ -679,31 +680,31 @@ function SectionPortfolio({ user, onSaved, onToast }) {
       <Card>
         <CardTitle icon={ListChecks}>Projets enregistrés</CardTitle>
         {projects.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#9a7c68", margin: 0 }}>Aucun projet pour le moment.</p>
+          <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Aucun projet pour le moment.</p>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             {projects.map((project, index) => (
-              <div key={`${project.title}-${index}`} style={{ border: "1.5px solid #f0e6da", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
+              <div key={`${project.title}-${index}`} style={{ border: "1.5px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
                 {project.imageUrl ? (
                   <div style={{ height: 160, background: `url(${avatarUrl(project.imageUrl) || project.imageUrl}) center/cover no-repeat` }} />
                 ) : (
-                  <div style={{ height: 80, background: "#fff8f2", borderBottom: "1.5px solid #f0e6da", display: "flex", alignItems: "center", justifyContent: "center", color: "#9a7c68", fontSize: 12 }}>
+                  <div style={{ height: 80, background: "#f8fafc", borderBottom: "1.5px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 12 }}>
                     Aucune image
                   </div>
                 )}
                 <div style={{ padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1008" }}>{project.title || "Projet"}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172e" }}>{project.title || "Projet"}</div>
                     {project.featured && (
-                      <span style={{ fontSize: 11, color: "#e8620a", border: "1px solid rgba(232,98,10,0.3)", padding: "2px 8px", borderRadius: 100 }}>
+                      <span style={{ fontSize: 11, color: "#06b6d4", border: "1px solid rgba(6, 182, 212, 0.3)", padding: "2px 8px", borderRadius: 100 }}>
                         En vedette
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "#9a7c68", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
                     {project.city || "Ville non précisée"}
                   </div>
-                  <div style={{ fontSize: 13, color: "#1a1008", marginBottom: 10 }}>{project.description || ""}</div>
+                  <div style={{ fontSize: 13, color: "#0f172e", marginBottom: 10 }}>{project.description || ""}</div>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     <Btn variant="secondary" onClick={() => toggleFeatured(index)} style={{ padding: "8px 14px", fontSize: 11 }}>
                       {project.featured ? "Retirer vedette" : "Mettre en vedette"}
@@ -859,24 +860,24 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
   const totalReservations = upcomingDates.reduce((sum, item) => sum + ((reservationsByDate[item.key] || []).length), 0);
 
   const getDateStatusStyle = (count) => {
-    if (count === 0) return { background: "#f7f2eb", color: "#9a7c68", border: "1px solid #f0e6da" };
-    if (count >= BOOKABLE_HOURS.length) return { background: "rgba(232,98,10,0.12)", color: "#e8620a", border: "1px solid rgba(232,98,10,0.28)" };
-    return { background: "rgba(232,98,10,0.08)", color: "#c85a09", border: "1px solid rgba(232,98,10,0.18)" };
+    if (count === 0) return { background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0" };
+    if (count >= BOOKABLE_HOURS.length) return { background: "rgba(6, 182, 212, 0.12)", color: "#06b6d4", border: "1px solid rgba(6, 182, 212, 0.28)" };
+    return { background: "rgba(6, 182, 212, 0.08)", color: "#0891b2", border: "1px solid rgba(6, 182, 212, 0.18)" };
   };
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Disponibilités</h1>
-      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Contrôlez votre visibilité auprès des clients.</p>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Disponibilités</h1>
+      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Contrôlez votre visibilité auprès des clients.</p>
 
       <Card>
         <CardTitle icon={CalendarDays}>Statut de disponibilité</CardTitle>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0" }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1008", marginBottom: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172e", marginBottom: 4 }}>
               {available ? "✅ Disponible pour des missions" : "🔴 Indisponible en ce moment"}
             </div>
-            <div style={{ fontSize: 13, color: "#9a7c68" }}>
+            <div style={{ fontSize: 13, color: "#64748b" }}>
               {available
                 ? "Les clients peuvent vous contacter."
                 : "Votre profil reste visible mais sans nouvelles demandes."}
@@ -884,12 +885,12 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
           </div>
           <Toggle on={available} onChange={handleToggle} />
         </div>
-        {loading && <div style={{ fontSize: 12, color: "#9a7c68" }}>Mise à jour...</div>}
+        {loading && <div style={{ fontSize: 12, color: "#64748b" }}>Mise à jour...</div>}
       </Card>
 
       <Card>
         <CardTitle icon={CalendarDays}>Calendrier des réservations (4 semaines)</CardTitle>
-        <p style={{ fontSize: 12, color: "#9a7c68", marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
           Le client réserve sur les horaires standard. Ici vous voyez vos réservations confirmées/pending sur 4 semaines.
         </p>
 
@@ -907,12 +908,12 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
                 type="button"
                 onClick={() => setSelectedWeekIndex(index)}
                 style={{
-                  border: active ? "1.5px solid #e8620a" : "1.5px solid #f0e6da",
-                  background: active ? "rgba(232,98,10,0.1)" : "#fff",
-                  color: active ? "#e8620a" : "#9a7c68",
+                  border: active ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
+                  background: active ? "rgba(6, 182, 212, 0.1)" : "#fff",
+                  color: active ? "#06b6d4" : "#64748b",
                   borderRadius: 10,
                   padding: "8px 12px",
-                  fontFamily: "'DM Sans',sans-serif",
+                  fontFamily: "'Sora',sans-serif",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -925,8 +926,8 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(420px, 1.4fr)", gap: 16, alignItems: "start" }}>
-          <div style={{ border: "1px solid #f0e6da", borderRadius: 12, padding: 12, background: "#fff" }}>
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#9a7c68", marginBottom: 10, fontWeight: 700 }}>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#64748b", marginBottom: 10, fontWeight: 700 }}>
               Dates de la semaine
             </div>
             <div style={{ display: "grid", gap: 8 }}>
@@ -940,18 +941,18 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
                     type="button"
                     onClick={() => setSelectedDateKey(item.key)}
                     style={{
-                      border: active ? "1.5px solid #e8620a" : "1px solid #f0e6da",
-                      background: active ? "rgba(232,98,10,0.08)" : "#fff",
+                      border: active ? "1.5px solid #06b6d4" : "1px solid #e2e8f0",
+                      background: active ? "rgba(6, 182, 212, 0.08)" : "#fff",
                       borderRadius: 10,
                       padding: "10px 12px",
                       display: "flex",
-                      justifyContent: "space-between",
+                      justifyContent: "space--between",
                       alignItems: "center",
                       gap: 10,
                       cursor: "pointer",
                     }}
                   >
-                    <span style={{ fontSize: 13, color: "#1a1008", fontWeight: active ? 700 : 600 }}>
+                    <span style={{ fontSize: 13, color: "#0f172e", fontWeight: active ? 700 : 600 }}>
                       {item.label}
                     </span>
                     <span style={{ ...statusStyle, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 100 }}>
@@ -963,32 +964,32 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
             </div>
           </div>
 
-          <div style={{ border: "1px solid #f0e6da", borderRadius: 12, padding: 14, background: "#fff" }}>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
               <div>
-                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#9a7c68", fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
                   Date sélectionnée
                 </div>
-                <div style={{ fontSize: 14, color: "#1a1008", fontWeight: 700 }}>
+                <div style={{ fontSize: 14, color: "#0f172e", fontWeight: 700 }}>
                   {selectedDateObj?.label || "Date"} · {selectedDateReservations.length} réservation(s)
                 </div>
               </div>
             </div>
 
             {loadingReservations ? (
-              <div style={{ fontSize: 12, color: "#9a7c68" }}>Chargement des réservations...</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>Chargement des réservations...</div>
             ) : selectedDateReservations.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#9a7c68" }}>Aucune réservation sur cette date.</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>Aucune réservation sur cette date.</div>
             ) : (
               <div style={{ display: "grid", gap: 8 }}>
                 {selectedDateReservations.map((reservation) => (
                   <div
                     key={reservation._id}
                     style={{
-                      border: "1px solid #f0e6da",
+                      border: "1px solid #e2e8f0",
                       borderRadius: 10,
                       padding: "10px 12px",
-                      background: "#fff8f2",
+                      background: "#f8fafc",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -996,12 +997,12 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 13, color: "#1a1008", fontWeight: 700 }}>
+                      <div style={{ fontSize: 13, color: "#0f172e", fontWeight: 700 }}>
                         {toHourLabel(reservation.bookingHour)} · {reservation.client?.firstName || "Client"} {reservation.client?.lastName || ""}
                       </div>
-                      <div style={{ fontSize: 12, color: "#9a7c68" }}>{reservation.serviceType || "Service"}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{reservation.serviceType || "Service"}</div>
                     </div>
-                    <span style={{ fontSize: 11, padding: "4px 8px", borderRadius: 100, background: "rgba(232,98,10,0.08)", color: "#e8620a", border: "1px solid rgba(232,98,10,0.2)", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700 }}>
+                    <span style={{ fontSize: 11, padding: "4px 8px", borderRadius: 100, background: "rgba(6, 182, 212, 0.08)", color: "#06b6d4", border: "1px solid rgba(6, 182, 212, 0.2)", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700 }}>
                       {reservation.status}
                     </span>
                   </div>
@@ -1011,7 +1012,7 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
           </div>
         </div>
 
-        <div style={{ fontSize: 12, color: "#9a7c68", marginTop: 14 }}>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 14 }}>
           Total sur 4 semaines: {totalReservations} réservation(s)
         </div>
       </Card>
@@ -1067,8 +1068,8 @@ function SectionAvis({ user }) {
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Avis & Évaluations</h1>
-      <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Les retours de vos clients.</p>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Avis & Évaluations</h1>
+      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 28 }}>Les retours de vos clients.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
         {[
@@ -1077,7 +1078,7 @@ function SectionAvis({ user }) {
           { value: completedMissions,  label: "Missions complétées" },
         ].map(s => (
           <div key={s.label} style={{ background: "#fff", border: "1.5px solid #f0e6da", borderRadius: 12, padding: 20, textAlign: "center", boxShadow: "0 2px 12px rgba(232,98,10,0.04)" }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", color: "#e8620a" }}>{s.value}</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: "2rem", fontWeight: 700, color: "#06b6d4" }}>{s.value}</div>
             {s.stars && <div style={{ color: "#e8620a", marginBottom: 2 }}>{"★".repeat(roundedStars)}{"☆".repeat(Math.max(0, 5 - roundedStars))}</div>}
             <div style={{ fontSize: 11, color: "#9a7c68" }}>{s.label}</div>
           </div>
@@ -1087,7 +1088,7 @@ function SectionAvis({ user }) {
       <Card>
         <CardTitle icon={MessageSquare}>Avis clients</CardTitle>
         {loadingReviews ? (
-          <p style={{ fontSize: 13, color: "#9a7c68", textAlign: "center", padding: "20px 0" }}>Chargement des avis...</p>
+          <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", padding: "20px 0" }}>Chargement des avis...</p>
         ) : reviews.length === 0 ? (
           <p style={{ fontSize: 13, color: "#9a7c68", textAlign: "center", padding: "20px 0" }}>
             Aucun avis pour l'instant. Complétez vos premières missions !
@@ -1103,15 +1104,15 @@ function SectionAvis({ user }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1008" }}>
                       {item.client?.firstName || "Client"} {item.client?.lastName || ""}
                     </div>
-                    <div style={{ fontSize: 12, color: "#e8620a", fontWeight: 700 }}>
+                    <div style={{ fontSize: 12, color: "#06b6d4", fontWeight: 700 }}>
                       {"★".repeat(stars)}{"☆".repeat(Math.max(0, 5 - stars))}
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#9a7c68", marginBottom: item?.clientReview?.comment ? 6 : 0 }}>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: item?.clientReview?.comment ? 6 : 0 }}>
                     {item.serviceType || "Service"}{reviewedAt ? ` · ${reviewedAt}` : ""}
                   </div>
                   {item?.clientReview?.comment && (
-                    <div style={{ fontSize: 13, color: "#1a1008" }}>{item.clientReview.comment}</div>
+                    <div style={{ fontSize: 13, color: "#0f172e" }}>{item.clientReview.comment}</div>
                   )}
                 </div>
               );
@@ -1151,7 +1152,7 @@ function SectionSecurite({ user, isWorker, onToast }) {
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Sécurité du compte</h1>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Sécurité du compte</h1>
       <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Protégez votre compte avec un mot de passe fort.</p>
 
       <Card>
@@ -1181,7 +1182,7 @@ function SectionNotifications({ onToast }) {
 
   return (
     <>
-      <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: "#1a1008", marginBottom: 5 }}>Préférences de notifications</h1>
+      <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Préférences de notifications</h1>
       <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 28 }}>Choisissez comment vous souhaitez être notifié par email.</p>
 
       <Card>
