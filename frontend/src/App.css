@@ -330,3 +330,45 @@ body:has(.al-root) {
   font-size: 13px;
   margin-bottom: 16px;
 }
+/* ── FIT CONTENT WITHOUT SCROLL ── */
+.main {
+  padding: 32px 44px;
+}
+
+.mode-tabs {
+  margin-bottom: 20px;
+}
+
+.form-head {
+  margin-bottom: 16px;
+}
+
+.form-title {
+  font-size: 22px;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 10px 14px;
+}
+
+.submit-btn {
+  padding: 12px;
+}
+
+.step-back {
+  margin-bottom: 12px;
+}
+
+.field-row {
+  gap: 12px;
+}
+
+.terms {
+  margin-top: 8px;
+}
