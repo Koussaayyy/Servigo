@@ -372,3 +372,11 @@ body:has(.al-root) {
 .terms {
   margin-top: 8px;
 }
+/* ── Type card icons ── */
+.type-icon {
+  color: var(--muted);
+  margin-bottom: 10px;
+  transition: color 0.2s;
+}
+.type-card:hover .type-icon  { color: var(--orange); }
+.type-card.selected .type-icon { color: var(--orange); }
