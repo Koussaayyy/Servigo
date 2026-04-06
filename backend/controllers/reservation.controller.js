@@ -233,7 +233,7 @@ exports.getWorkerReservations = async (req, res) => {
 
     const reservations = await Reservation.find(filter)
       .populate("client", "firstName lastName avatar phone")
-      .sort({ bookingDate: 1, bookingHour: 1, createdAt: -1 });
+      .sort({ bookingDate: -1, bookingHour: -1, createdAt: -1 });
 
     return res.json(reservations);
   } catch (err) {

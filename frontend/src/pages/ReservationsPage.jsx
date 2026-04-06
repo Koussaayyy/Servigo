@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { reservationApi, workerApi } from "../api";
 import { PROFESSIONS } from "../constants/data";
 
@@ -65,7 +65,7 @@ export default function ReservationsPage({ user }) {
     notes: "",
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -89,11 +89,11 @@ export default function ReservationsPage({ user }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isClient, isWorker]);
 
   useEffect(() => {
     loadData();
-  }, [isClient, isWorker]);
+  }, [loadData]);
 
   const datePages = useMemo(() => {
     const pages = [];
@@ -426,9 +426,6 @@ export default function ReservationsPage({ user }) {
                       }}
                     >
                       {profession}
-                      }}
-                    >
-                      {profession}
                     </button>
                   );
                 })}
@@ -743,7 +740,12 @@ export default function ReservationsPage({ user }) {
 function ReservationRow({ reservation, rightAction, children }) {
   const worker = reservation.worker;
   const client = reservation.client;
-  const person = worker || client || {};
+  const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
+  const person = isObject(worker)
+    ? worker
+    : isObject(client)
+      ? client
+      : {};
 
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
