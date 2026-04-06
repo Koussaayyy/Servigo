@@ -7,11 +7,11 @@ import ClientSignup  from "./pages/ClientSignup";
 import WorkerSignup  from "./pages/WorkerSignup";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
+import Onboarding    from "./pages/Onboarding/Onboarding";
 
-// ── Post-login pages
-import AppLayout   from "./components/AppLayout";
-import ProfilePage from "./pages/profile/ProfilePage";
-import Dashboard   from "./components/Dashboard";
+import AppLayout        from "./components/AppLayout";
+import ProfilePage      from "./pages/profile/ProfilePage";
+import Dashboard        from "./components/Dashboard";
 import ReservationsPage from "./pages/ReservationsPage";
 
 export default function App() {
@@ -22,6 +22,7 @@ export default function App() {
   const [activePage, setActivePage] = useState("dashboard");
   const [resetToken, setResetToken] = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
+  const [onboardingUser, setOnboardingUser]     = useState(null);
 
   const [loggedUser, setLoggedUser] = useState(() => {
     try {
@@ -30,7 +31,6 @@ export default function App() {
     } catch { return null; }
   });
 
-  // ── Check if URL is /reset-password/TOKEN ──────────────
   useEffect(() => {
     const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
     if (match) setResetToken(match[1]);
@@ -47,6 +47,10 @@ export default function App() {
   };
 
   const onSuccess = (user) => {
+    if (!user.onboardingComplete) {
+      setOnboardingUser(user);
+      return;
+    }
     setLoggedUser(user);
     setActivePage("dashboard");
   };
@@ -55,10 +59,11 @@ export default function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setLoggedUser(null);
+    setOnboardingUser(null);
     switchTo("login");
   };
 
-  // ── Reset password page ────────────────────────────────
+  // ── Reset password ─────────────────────────────────────
   if (resetToken) {
     return (
       <>
@@ -80,10 +85,27 @@ export default function App() {
     );
   }
 
-  // ── Logged-in view ─────────────────────────────────────
+  // ── Onboarding — full screen, no side panel ────────────
+  if (onboardingUser) {
+    return (
+      <div className="ob-fullpage">
+        <Onboarding
+          user={onboardingUser}
+          onComplete={(updatedUser) => {
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            setOnboardingUser(null);
+            setLoggedUser(updatedUser);
+            setActivePage("dashboard");
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ── Logged-in ──────────────────────────────────────────
   if (loggedUser) {
     const PROFILE_SUBPAGES = ["profile", "competences", "portfolio", "disponibilite", "avis", "securite", "notifications"];
-    const isProfilePage = PROFILE_SUBPAGES.includes(activePage);
+    const isProfilePage      = PROFILE_SUBPAGES.includes(activePage);
     const isReservationsPage = activePage === "reservations";
 
     return (
@@ -112,7 +134,7 @@ export default function App() {
     );
   }
 
-  // ── Auth view ──────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────
   return (
     <>
       <div className="bg-deco" />
@@ -123,35 +145,30 @@ export default function App() {
             <button
               className={`mode-tab ${mode === "login" ? "active" : ""}`}
               onClick={() => switchTo("login")}
-            >
-              Sign In
-            </button>
+            >Sign In</button>
             <button
               className={`mode-tab ${mode === "signup" ? "active" : ""}`}
               onClick={() => switchTo("signup")}
-            >
-              Create Account
-            </button>
+            >Create Account</button>
           </div>
-
-         <div className={exiting ? "panel-exit" : ""} key={panelKey}>
-  {mode === "login" && <LoginForm onSuccess={onSuccess} />}
-  {mode === "signup" && !signupType && !googleCredential && (
-    <SignupPicker
-      onSelect={(t) => switchTo("signup", t)}
-      onGoogleSuccess={onSuccess}
-      onGoogleComplete={(credential) => setGoogleCredential(credential)}
-    />
-  )}
-  {mode === "signup" && googleCredential && (
-    <GoogleCompleteSignup
-      googleCredential={googleCredential}
-      onSuccess={(user) => {
-        setGoogleCredential(null);
-        onSuccess(user);
-      }}
-    />
-  )}
+          <div className={exiting ? "panel-exit" : ""} key={panelKey}>
+            {mode === "login" && <LoginForm onSuccess={onSuccess} />}
+            {mode === "signup" && !signupType && !googleCredential && (
+              <SignupPicker
+                onSelect={(t) => switchTo("signup", t)}
+                onGoogleSuccess={onSuccess}
+                onGoogleComplete={(credential) => setGoogleCredential(credential)}
+              />
+            )}
+            {mode === "signup" && googleCredential && (
+              <GoogleCompleteSignup
+                googleCredential={googleCredential}
+                onSuccess={(user) => {
+                  setGoogleCredential(null);
+                  onSuccess(user);
+                }}
+              />
+            )}
             {mode === "signup" && signupType === "client" && (
               <ClientSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
             )}

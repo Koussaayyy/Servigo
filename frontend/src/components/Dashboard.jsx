@@ -1,10 +1,22 @@
+import {
+  Camera, Upload, Trash2, Save, Tag, ListChecks,
+  CalendarDays, MessageSquare, KeyRound, ShieldCheck,
+  TriangleAlert, Mail, Plus, X, Eye, Check,
+  Loader2, IdCard, MapPin, Building2,
+  CheckCircle, XCircle, UserRound, Wrench, Settings,
+} from "lucide-react";
 export default function Dashboard({ user, onLogout }) {
   const professions = user?.workerProfile?.professions || [];
 
   return (
     <div className="anim" style={{ textAlign: "center", padding: "40px 20px" }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>
-        {user.role === "client" ? "🙋" : user.role === "worker" ? "🧰" : "⚙️"}
+        {user.role === "client"
+        ? <UserRound size={56} color="#06b6d4" />
+        : user.role === "worker"
+        ? <Wrench size={56} color="#06b6d4" />
+        : <Settings size={56} color="#06b6d4" />
+        }
       </div>
       <h2 className="form-title">Welcome, {user.firstName}!</h2>
       <p className="form-sub" style={{ marginBottom: 8 }}>

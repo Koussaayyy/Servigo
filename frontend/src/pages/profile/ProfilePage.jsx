@@ -5,6 +5,7 @@ import {
   CalendarDays, MessageSquare, KeyRound, ShieldCheck,
   TriangleAlert, Mail, Plus, X, Eye, Check,
   Loader2, IdCard, MapPin, Building2,
+  CheckCircle, XCircle,
 } from "lucide-react";
 import { clientApi, workerApi, avatarUrl, reservationApi } from "../../api";
 
@@ -875,7 +876,10 @@ function SectionDisponibilite({ user, onSaved, onToast }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0" }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172e", marginBottom: 4 }}>
-              {available ? "✅ Disponible pour des missions" : "🔴 Indisponible en ce moment"}
+              {available
+              ? <><CheckCircle size={15} color="#22c55e" /> Disponible pour des missions</>
+              : <><XCircle size={15} color="#ef4444" /> Indisponible en ce moment</>
+              }
             </div>
             <div style={{ fontSize: 13, color: "#64748b" }}>
               {available

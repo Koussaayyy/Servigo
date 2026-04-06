@@ -10,10 +10,12 @@ const UserSchema = new mongoose.Schema(
     phone:      { type: String, required: true },
     password:   { type: String, required: true, minlength: 8 },
     role:       { type: String, enum: ["client", "worker", "admin"], default: "client" },
+    gender: { type: String, enum: ["male", "female", "other", ""], default: "" },
+    birthDate: { type: String, default: "" }, 
     avatar:     { type: String, default: "" },
     isVerified: { type: Boolean, default: false },
     isActive:   { type: Boolean, default: true },
-
+    onboardingComplete:  { type: Boolean, default: false },  // ← ADD THIS
     // ── Reset password ─────────────────────────────────────
     resetPasswordToken:  { type: String },
     resetPasswordExpire: { type: Date },
