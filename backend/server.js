@@ -4,14 +4,15 @@ const mongoose = require("mongoose");
 const cors     = require("cors");
 const dotenv   = require("dotenv");
 const path     = require("path");
+
 dotenv.config();
 
 const app = express();
+
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 
 // ── Serve uploaded files statically ───────────────────────
-// Avatar URL example: http://localhost:5000/uploads/avatars/filename.jpg
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ── Log every request ──────────────────────────────────────
@@ -21,11 +22,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/api/auth",   require("./routes/auth.routes"));
-app.use("/api/client", require("./routes/client.routes"));
-app.use("/api/worker", require("./routes/worker.routes"));
-app.use("/api/admin",  require("./routes/admin.routes"));
+app.use("/api/auth",         require("./routes/auth.routes"));
+app.use("/api/client",       require("./routes/client.routes"));
+app.use("/api/worker",       require("./routes/worker.routes"));
+app.use("/api/admin",        require("./routes/admin.routes"));
 app.use("/api/reservations", require("./routes/reservation.routes"));
+app.use("/api/onboarding",   require("./routes/onboarding.routes"));  // ← ADDED
 
 app.get("/", (req, res) => res.json({ message: "Servigo API running ✅" }));
 

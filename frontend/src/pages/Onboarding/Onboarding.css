@@ -1,0 +1,388 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
+
+.ob-fullpage {
+  position: fixed;
+  inset: 0;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ob-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.ob-card {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 2.25rem;
+  box-shadow:
+    0 0 0 1.5px rgba(6, 182, 212, 0.15),
+    0 8px 32px rgba(6, 182, 212, 0.08),
+    0 32px 80px rgba(0,0,0,0.10);
+  border: 1.5px solid rgba(6, 182, 212, 0.12);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ── Logo ── */
+.ob-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+.ob-logo-box {
+  width: 44px;
+  height: 44px;
+  border: 2px solid #06b6d4;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #06b6d4;
+}
+.ob-logo-name {
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* ── Progress bar ── */
+.ob-progress {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.ob-progress-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.ob-progress-item:last-child { flex: 0; }
+.ob-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.25s;
+}
+.ob-dot.active {
+  background: #0f172e;
+  border-color: #0f172e;
+  color: #fff;
+}
+.ob-dot.done {
+  background: #06b6d4;
+  border-color: #06b6d4;
+  color: #fff;
+}
+.ob-line {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  transition: background 0.3s;
+}
+.ob-line.done { background: #06b6d4; }
+
+.ob-step-label {
+  font-family: 'Sora', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.2rem;
+}
+
+/* ── Form head ── */
+.ob-card .form-head { margin-bottom: 26px; }
+.ob-card .form-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f172e;
+  margin-bottom: 6px;
+}
+.ob-card .form-sub {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* ── Fields ── */
+.ob-card .field { margin-bottom: 18px; }
+.ob-card .field label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #0f172e;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-family: 'Sora', sans-serif;
+}
+.ob-card .field input,
+.ob-card .field select,
+.ob-card .field textarea {
+  width: 100%;
+  padding: 13px 16px;
+  background: #e2e8f0;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  font-family: 'Sora', sans-serif;
+  font-size: 14px;
+  color: #0f172e;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.ob-card .field input:focus,
+.ob-card .field select:focus,
+.ob-card .field textarea:focus {
+  border-color: #06b6d4;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+.ob-card .field textarea { resize: vertical; min-height: 90px; }
+.ob-card .field select { appearance: none; cursor: pointer; }
+
+/* ── Error msg ── */
+.ob-card .error-msg {
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  color: #c0392b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  font-family: 'Sora', sans-serif;
+}
+
+/* ── Gender buttons ── */
+.ob-gender-group {
+  display: flex;
+  gap: 10px;
+}
+.ob-gender-btn {
+  flex: 1;
+  padding: 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #e2e8f0;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+.ob-gender-btn:hover {
+  border-color: #06b6d4;
+  color: #0f172e;
+}
+.ob-gender-btn.selected {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.08);
+  color: #0f172e;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+/* ── Services grid ── */
+.ob-services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 0.5rem;
+}
+.ob-svc-btn {
+  padding: 11px 6px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #e2e8f0;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  color: #64748b;
+  text-align: center;
+}
+.ob-svc-btn:hover {
+  border-color: #06b6d4;
+  color: #0f172e;
+}
+.ob-svc-btn.selected {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.08);
+  color: #0f172e;
+  font-weight: 600;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+/* ── Avatar ── */
+.ob-avatar-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+.ob-avatar-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px dashed #94a3b8;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.ob-avatar-circle:hover { border-color: #06b6d4; }
+.ob-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.ob-avatar-placeholder {
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 8px;
+}
+.ob-avatar-hint {
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+/* ── Misc ── */
+.ob-char-count {
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+  margin-top: 4px;
+}
+.ob-optional {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ob-required {
+  color: #06b6d4;
+  margin-left: 2px;
+}
+
+/* ── Nav buttons ── */
+.ob-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2rem;
+}
+.ob-back-btn {
+  padding: 13px 20px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.ob-back-btn:hover {
+  border-color: #06b6d4;
+  color: #0f172e;
+}
+.ob-skip-btn {
+  padding: 13px 20px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.ob-skip-btn:hover {
+  border-color: #94a3b8;
+  color: #64748b;
+}
+.ob-next-btn {
+  margin-left: auto;
+  padding: 15px 28px;
+  border: none;
+  border-radius: 8px;
+  background: #06b6d4;
+  color: #fff;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.2);
+}
+.ob-next-btn:hover {
+  background: #22d3ee;
+  box-shadow: 0 6px 24px rgba(6, 182, 212, 0.3);
+  transform: translateY(-1px);
+}
+.ob-next-btn:active { transform: translateY(0); }
+.ob-next-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .ob-card {
+    padding: 1.5rem 1.25rem;
+    max-height: 95vh;
+    margin: 0 1rem;
+  }
+  .ob-services-grid { grid-template-columns: repeat(2, 1fr); }
+  .ob-gender-group { gap: 8px; }
+  .ob-card .form-title { font-size: 22px; }
+}
