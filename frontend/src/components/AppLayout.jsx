@@ -138,7 +138,8 @@ const styles = `
 .al-root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   font-family: 'Sora', sans-serif;
   background: var(--paper, #f8fafc);
 }
@@ -185,6 +186,7 @@ const styles = `
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden; 
 }
 .al-sidebar {
   width: 256px;
@@ -192,7 +194,8 @@ const styles = `
   background: var(--ink, #0f172e);
   padding: 24px 16px 32px;
   display: flex; flex-direction: column; gap: 2px;
-  overflow-y: auto;
+    overflow-y: auto;       
+  overflow-x: hidden; 
   position: relative;
 }
 .al-sidebar::before {
