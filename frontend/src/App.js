@@ -14,12 +14,28 @@ import ProfilePage      from "./pages/profile/ProfilePage";
 import Dashboard        from "./components/Dashboard";
 import ReservationsPage from "./pages/ReservationsPage";
 
+const PAGE_STORAGE_KEY = "activePage";
+const VALID_PAGES = [
+  "dashboard",
+  "profile",
+  "competences",
+  "portfolio",
+  "disponibilite",
+  "avis",
+  "securite",
+  "notifications",
+  "reservations",
+];
+
 export default function App() {
   const [mode, setMode]             = useState("login");
   const [signupType, setSignupType] = useState(null);
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState(() => {
+    const saved = localStorage.getItem(PAGE_STORAGE_KEY);
+    return VALID_PAGES.includes(saved) ? saved : "dashboard";
+  });
   const [resetToken, setResetToken] = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
@@ -35,6 +51,12 @@ export default function App() {
     const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
     if (match) setResetToken(match[1]);
   }, []);
+
+  useEffect(() => {
+    if (loggedUser && VALID_PAGES.includes(activePage)) {
+      localStorage.setItem(PAGE_STORAGE_KEY, activePage);
+    }
+  }, [activePage, loggedUser]);
 
   const switchTo = (newMode, newType = null) => {
     setExiting(true);
@@ -58,8 +80,10 @@ export default function App() {
   const onLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem(PAGE_STORAGE_KEY);
     setLoggedUser(null);
     setOnboardingUser(null);
+    setActivePage("dashboard");
     switchTo("login");
   };
 
@@ -122,6 +146,7 @@ export default function App() {
           <ProfilePage
             user={loggedUser}
             subPage={activePage}
+            onAccountDeleted={onLogout}
             onSave={(updated) => {
               const merged = { ...loggedUser, ...updated };
               localStorage.setItem("user", JSON.stringify(merged));

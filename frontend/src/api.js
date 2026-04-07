@@ -91,6 +91,13 @@ export const clientApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }).then(handle),
 
+  deleteAccount: (currentPassword) =>
+    fetch(`${BASE}/client/account`, {
+      method: "DELETE",
+      headers: authHeaders(),
+      body: JSON.stringify({ currentPassword }),
+    }).then(handle),
+
   uploadAvatar: (file) => {
     const form = new FormData();
     form.append("avatar", file);
@@ -132,6 +139,13 @@ export const workerApi = {
       method: "PUT",
       headers: authHeaders(),
       body: JSON.stringify({ currentPassword, newPassword }),
+    }).then(handle),
+
+  deleteAccount: (currentPassword) =>
+    fetch(`${BASE}/worker/account`, {
+      method: "DELETE",
+      headers: authHeaders(),
+      body: JSON.stringify({ currentPassword }),
     }).then(handle),
 
   uploadAvatar: (file) => {

@@ -12,6 +12,7 @@ router.get("/all", workerController.getAllWorkers);
 router.get("/profile",      protect, authorize("worker"), workerController.getProfile);
 router.put("/profile",      protect, authorize("worker"), workerController.updateProfile);
 router.put("/password",     protect, authorize("worker"), workerController.changePassword);
+router.delete("/account",  protect, authorize("worker"), workerController.deleteAccount);
 router.put("/avatar",       protect, authorize("worker"), uploadAvatar, workerController.updateAvatar);
 router.delete("/avatar",    protect, authorize("worker"), workerController.deleteAvatar);
 router.post("/portfolio/image", protect, authorize("worker"), uploadPortfolioImage, workerController.uploadPortfolioImage);

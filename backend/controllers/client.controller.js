@@ -104,3 +104,33 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// ── @DELETE /api/client/account ───────────────────────────
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { currentPassword } = req.body;
+    if (!currentPassword) {
+      return res.status(400).json({ message: "Current password is required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    user.isActive = false;
+    user.email = `deleted_${user._id}_${Date.now()}@deleted.local`;
+    user.phone = "deleted";
+    user.avatar = "";
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

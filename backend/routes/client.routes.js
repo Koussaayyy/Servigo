@@ -8,6 +8,7 @@ const { uploadAvatar }       = require("../middleware/Upload.middleware");
 router.get("/profile",   protect, authorize("client"), clientController.getProfile);
 router.put("/profile",   protect, authorize("client"), clientController.updateProfile);
 router.put("/password",  protect, authorize("client"), clientController.changePassword);
+router.delete("/account", protect, authorize("client"), clientController.deleteAccount);
 router.put("/avatar",    protect, authorize("client"), uploadAvatar, clientController.updateAvatar);
 router.delete("/avatar", protect, authorize("client"), clientController.deleteAvatar);
 

@@ -227,6 +227,103 @@ function PhotoModal({ onClose, onSave, loading }) {
   );
 }
 
+function DeleteAccountModal({ onClose, onConfirm, loading }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const canSubmit = currentPassword.trim() && confirmation.trim().toUpperCase() === "SUPPRIMER";
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && !loading) onClose();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [loading, onClose]);
+
+  return (
+    <div
+      role="presentation"
+      onMouseDown={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 46, 0.7)", backdropFilter: "blur(8px)", zIndex: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-account-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ width: "min(520px, 100%)", background: "#fff", borderRadius: 20, border: "1px solid rgba(192,57,43,0.15)", boxShadow: "0 24px 70px rgba(15, 23, 46, 0.35)", overflow: "hidden" }}
+      >
+        <div style={{ padding: 24, borderBottom: "1px solid #e2e8f0", background: "linear-gradient(180deg, rgba(192,57,43,0.05), #fff)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <div id="delete-account-title" style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: "#0f172e", marginBottom: 6 }}>
+                Supprimer le compte
+              </div>
+              <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+                Cette action est définitive. Votre profil sera désactivé et vous serez déconnecté immédiatement.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              style={{ width: 36, height: 36, borderRadius: 999, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: 24, display: "grid", gap: 18 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 14, borderRadius: 14, background: "rgba(192,57,43,0.06)", border: "1px solid rgba(192,57,43,0.12)" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 999, background: "rgba(192,57,43,0.12)", color: "#c0392b", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <TriangleAlert size={18} />
+            </div>
+            <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
+              Pour confirmer, entrez votre mot de passe actuel puis tapez <strong>SUPPRIMER</strong> dans le champ de validation.
+            </div>
+          </div>
+
+          <Field label="Mot de passe actuel">
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="••••••••"
+            />
+          </Field>
+
+          <Field label="Validation finale">
+            <Input
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="SUPPRIMER"
+              autoCapitalize="characters"
+              autoCorrect="off"
+            />
+          </Field>
+        </div>
+
+        <div style={{ padding: 24, borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+          <Btn variant="secondary" onClick={onClose} disabled={loading}>
+            Annuler
+          </Btn>
+          <Btn
+            variant="danger"
+            onClick={() => onConfirm(currentPassword.trim())}
+            loading={loading}
+            disabled={!canSubmit || loading}
+            style={{ opacity: canSubmit ? 1 : 0.45 }}
+          >
+            <Trash2 size={13} /> Supprimer définitivement
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionInformations({ user, isWorker, onSaved, onToast }) {
   const api = isWorker ? workerApi : clientApi;
   const [saving,      setSaving]     = useState(false);
@@ -1128,9 +1225,11 @@ function SectionAvis({ user }) {
   );
 }
 
-function SectionSecurite({ user, isWorker, onToast }) {
+function SectionSecurite({ user, isWorker, onToast, onAccountDeleted }) {
   const api = isWorker ? workerApi : clientApi;
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [form,   setForm]   = useState({ current: "", next: "", confirm: "" });
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -1154,6 +1253,25 @@ function SectionSecurite({ user, isWorker, onToast }) {
     }
   };
 
+  const handleDeleteAccount = async (currentPassword) => {
+    if (!currentPassword) {
+      onToast("Mot de passe requis pour supprimer le compte", true);
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await api.deleteAccount(currentPassword);
+      onToast("Compte supprimé");
+      setShowDeleteModal(false);
+      onAccountDeleted?.();
+    } catch (err) {
+      onToast(err.message, true);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <h1 style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, color: "#0f172e", marginBottom: 5 }}>Sécurité du compte</h1>
@@ -1174,8 +1292,16 @@ function SectionSecurite({ user, isWorker, onToast }) {
       <Card danger>
         <CardTitle icon={TriangleAlert} danger>Zone de danger</CardTitle>
         <p style={{ fontSize: 13, color: "#9a7c68", marginBottom: 16 }}>Ces actions sont irréversibles.</p>
-        <Btn variant="danger"><Trash2 size={13} /> Supprimer mon compte</Btn>
+        <Btn variant="danger" onClick={() => setShowDeleteModal(true)} loading={deleting}><Trash2 size={13} /> Supprimer mon compte</Btn>
       </Card>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          loading={deleting}
+          onClose={() => { if (!deleting) setShowDeleteModal(false); }}
+          onConfirm={handleDeleteAccount}
+        />
+      )}
     </>
   );
 }
@@ -1204,7 +1330,7 @@ function SectionNotifications({ onToast }) {
   );
 }
 
-export default function ProfilePage({ user: initialUser, subPage = "profile", onSave }) {
+export default function ProfilePage({ user: initialUser, subPage = "profile", onSave, onAccountDeleted }) {
   const [user,  setUser]  = useState(initialUser);
   const [toast, setToast] = useState({ show: false, message: "", isError: false });
 
@@ -1224,7 +1350,7 @@ export default function ProfilePage({ user: initialUser, subPage = "profile", on
   onSave?.(merged);
 };
 
-  const shared = { user, isWorker, onSaved: handleSaved, onToast: showToast };
+  const shared = { user, isWorker, onSaved: handleSaved, onToast: showToast, onAccountDeleted };
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto" }}>
