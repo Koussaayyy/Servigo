@@ -314,12 +314,14 @@ body:has(.al-root) {
   align-items: unset;
   justify-content: unset;
   padding: 0;
+  overflow: hidden;
   background: var(--paper);
 }
 
 .al-root {
   width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 .success-msg {
   background: #f0fff4;
