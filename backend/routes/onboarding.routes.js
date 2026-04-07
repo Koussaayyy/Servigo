@@ -31,7 +31,7 @@ router.put("/complete", protect, uploadAvatar, async (req, res) => {
       }
     }
 
-    if (req.file) user.avatar = req.file.path;
+  if (req.file) user.avatar = "/" + req.file.path.replace(/\\/g, "/").replace(/^.*uploads\//, "uploads/");
 
     user.onboardingComplete = true;
     await user.save();

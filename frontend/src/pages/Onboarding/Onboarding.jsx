@@ -93,6 +93,7 @@ export default function Onboarding({ user, onComplete }) {
         body:    data,
       });
       const json = await res.json();
+      console.log("onboarding user:", json.user);
       if (!res.ok) throw new Error(json.message || "Error");
 
       localStorage.setItem("user", JSON.stringify(json.user));

@@ -20,14 +20,16 @@ const NAV_ACCOUNT = [
 // ── Helper: resolve avatar URL ─────────────────────────────
 const resolveAvatar = (avatar) => {
   if (!avatar) return null;
-  if (avatar.startsWith("http")) return avatar; // Google avatar
-  return `http://localhost:5000${avatar}`;       // local upload
+  if (avatar.startsWith("http")) return avatar;
+  return `http://localhost:5000${avatar}`;
 };
 
 export default function AppLayout({ user, activePage, onNavigate, onLogout, children }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isWorker  = user?.role === "worker" || user?.type === "worker";
   const avatarSrc = resolveAvatar(user?.avatar);
+  console.log("avatar raw:", user?.avatar);
+console.log("avatar resolved:", resolveAvatar(user?.avatar));
 
   const initials = user
     ? ((user.firstName || user.prenom || user.name || "?")[0] +
@@ -132,7 +134,9 @@ function SideItem({ icon: Icon, label, pageKey, activePage, onNavigate, setMobil
       {active && <ChevronRight size={12} className="al-nav-chevron" />}
     </button>
   );
+  
 }
+
 
 const styles = `
 .al-root {
@@ -194,7 +198,7 @@ const styles = `
   background: var(--ink, #0f172e);
   padding: 24px 16px 32px;
   display: flex; flex-direction: column; gap: 2px;
-    overflow-y: auto;       
+    overflow-y: hidden;       
   overflow-x: hidden; 
   position: relative;
 }
