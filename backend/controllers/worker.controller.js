@@ -3,6 +3,8 @@ const User = require("../models/User.model");
 const path = require("path");
 const fs   = require("fs");
 
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // ── @GET /api/worker/profile ───────────────────────────────
 exports.getProfile = async (req, res) => {
   try {
@@ -142,14 +144,20 @@ exports.getAllWorkers = async (req, res) => {
   try {
     const { profession, city, includeUnavailable } = req.query;
     const filter = { role: "worker", isActive: true };
+    
     if (includeUnavailable !== "1") {
       filter["workerProfile.isAvailable"] = true;
     }
-    if (profession) filter["workerProfile.professions"] = { $in: [profession] };
-    if (city)       filter["workerProfile.city"] = city;
+    
+    // Only filter by city from backend; let frontend handle profession filtering
+    if (city) {
+      filter["workerProfile.city"] = { $regex: `^${escapeRegex(city)}$`, $options: "i" };
+    }
+    
     const workers = await User.find(filter).select("-password -clientProfile");
     res.json(workers);
   } catch (err) {
+    console.error("❌ getAllWorkers error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };

@@ -35,9 +35,10 @@ const toLocalISODate = (value) => {
   return `${year}-${month}-${day}`;
 };
 
-export default function ReservationsPage({ user }) {
+export default function ReservationsPage({ user, preselectedWorkerId = "", preselectedProfession = "", onPrefillApplied }) {
   const isClient = user?.role === "client";
   const isWorker = user?.role === "worker";
+  const [prefillDone, setPrefillDone] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -94,6 +95,54 @@ export default function ReservationsPage({ user }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!isClient || prefillDone) return;
+
+    const consumePrefill = () => {
+      setPrefillDone(true);
+      onPrefillApplied?.();
+    };
+
+    if (!preselectedWorkerId && !preselectedProfession) {
+      consumePrefill();
+      return;
+    }
+
+    const worker = workers.find((item) => String(item?._id) === String(preselectedWorkerId));
+
+    if (worker) {
+      const profession = preselectedProfession || worker.workerProfile?.professions?.[0] || "";
+      if (profession) setSelectedService(profession);
+      setForm((prev) => ({
+        ...prev,
+        serviceType: profession || prev.serviceType,
+        workerId: String(worker._id),
+        bookingHour: "",
+      }));
+      consumePrefill();
+      return;
+    }
+
+    if (!loading && preselectedProfession) {
+      setSelectedService(preselectedProfession);
+      setForm((prev) => ({ ...prev, serviceType: preselectedProfession, bookingHour: "" }));
+      consumePrefill();
+      return;
+    }
+
+    if (!loading && preselectedWorkerId && !preselectedProfession) {
+      consumePrefill();
+    }
+  }, [
+    isClient,
+    prefillDone,
+    preselectedWorkerId,
+    preselectedProfession,
+    workers,
+    loading,
+    onPrefillApplied,
+  ]);
 
   const datePages = useMemo(() => {
     const pages = [];

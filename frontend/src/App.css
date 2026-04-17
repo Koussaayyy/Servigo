@@ -318,6 +318,15 @@ body:has(.al-root) {
   background: var(--paper);
 }
 
+body:has(.hp-root) {
+  display: block;
+  align-items: unset;
+  justify-content: unset;
+  padding: 0;
+  overflow: auto;
+  background: #f4f7fb;
+}
+
 .al-root {
   width: 100%;
   min-height: 100vh;

@@ -119,6 +119,14 @@ export const clientApi = {
 //  WORKER
 // ════════════════════════════════════════════
 export const workerApi = {
+  getMarketplaceWorkers: ({ profession = "", city = "" } = {}) => {
+    const query = new URLSearchParams();
+    if (profession) query.set("profession", profession);
+    if (city) query.set("city", city);
+    const qs = query.toString();
+    return fetch(`${BASE}/workers${qs ? `?${qs}` : ""}`).then(handle);
+  },
+
   getAllWorkers: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return fetch(`${BASE}/worker/all${query ? `?${query}` : ""}`).then(handle);

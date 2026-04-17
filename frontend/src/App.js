@@ -6,6 +6,7 @@ import SignupPicker  from "./pages/SignupPicker";
 import ClientSignup  from "./pages/ClientSignup";
 import WorkerSignup  from "./pages/WorkerSignup";
 import ResetPassword from "./pages/ResetPassword";
+import HomePage      from "./pages/HomePage";
 import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 import Onboarding    from "./pages/Onboarding/Onboarding";
 
@@ -28,7 +29,7 @@ const VALID_PAGES = [
 ];
 
 export default function App() {
-  const [mode, setMode]             = useState("login");
+  const [mode, setMode]             = useState("home");
   const [signupType, setSignupType] = useState(null);
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
@@ -39,6 +40,14 @@ export default function App() {
   const [resetToken, setResetToken] = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
+  const [pendingReservation, setPendingReservation] = useState(() => {
+    try {
+      const raw = localStorage.getItem("pendingReservation");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [loggedUser, setLoggedUser] = useState(() => {
     try {
@@ -74,7 +83,13 @@ export default function App() {
       return;
     }
     setLoggedUser(user);
-    setActivePage("dashboard");
+    if (user.role === "client" && pendingReservation?.workerId) {
+      setActivePage("reservations");
+    } else {
+      localStorage.removeItem("pendingReservation");
+      setPendingReservation(null);
+      setActivePage("dashboard");
+    }
   };
 
   const onLogout = () => {
@@ -154,8 +169,36 @@ export default function App() {
             }}
           />
         )}
-        {isReservationsPage && <ReservationsPage user={loggedUser} />}
+        {isReservationsPage && (
+          <ReservationsPage
+            user={loggedUser}
+            preselectedWorkerId={pendingReservation?.workerId || ""}
+            preselectedProfession={pendingReservation?.profession || ""}
+            onPrefillApplied={() => {
+              localStorage.removeItem("pendingReservation");
+              setPendingReservation(null);
+            }}
+          />
+        )}
       </AppLayout>
+    );
+  }
+
+  if (mode === "home") {
+    return (
+      <HomePage
+        onLogin={() => switchTo("login")}
+        onSignup={() => switchTo("signup")}
+        onReserveWorker={(worker) => {
+          const payload = {
+            workerId: worker?._id,
+            profession: worker?.workerProfile?.professions?.[0] || "",
+          };
+          localStorage.setItem("pendingReservation", JSON.stringify(payload));
+          setPendingReservation(payload);
+          switchTo("login");
+        }}
+      />
     );
   }
 
@@ -166,6 +209,9 @@ export default function App() {
       <div className="wrapper">
         <SidePanel />
         <div className="main">
+          <button className="step-back" onClick={() => switchTo("home")}>
+            ← Retour a l'accueil
+          </button>
           <div className="mode-tabs">
             <button
               className={`mode-tab ${mode === "login" ? "active" : ""}`}
