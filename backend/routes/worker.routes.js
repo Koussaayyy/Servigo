@@ -18,4 +18,9 @@ router.delete("/avatar",    protect, authorize("worker"), workerController.delet
 router.post("/portfolio/image", protect, authorize("worker"), uploadPortfolioImage, workerController.uploadPortfolioImage);
 router.put("/availability", protect, authorize("worker"), workerController.toggleAvailability);
 
+// Notifications
+router.get("/notifications", protect, authorize("worker"), workerController.getNotifications);
+router.put("/notifications/:notificationId/read", protect, authorize("worker"), workerController.markNotificationAsRead);
+router.put("/notifications/read-all", protect, authorize("worker"), workerController.markAllNotificationsAsRead);
+
 module.exports = router;

@@ -50,7 +50,7 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
   const [clientReservations, setClientReservations] = useState([]);
   const [clientHistory, setClientHistory] = useState([]);
   const [workerReservations, setWorkerReservations] = useState([]);
-  const [availableHours, setAvailableHours] = useState([]);
+  const [slots, setSlots] = useState([]);
   const [monthAvailability, setMonthAvailability] = useState([]);
   const [selectedService, setSelectedService] = useState("");
   const [datePage, setDatePage] = useState(0);
@@ -154,27 +154,6 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
   const visibleDates = datePages[datePage] || [];
 
-  const blockedHoursByDate = useMemo(() => {
-    if (!isClient || !form.workerId) return new Map();
-    const map = new Map();
-
-    clientReservations
-      .filter((reservation) => {
-        const sameWorker = String(reservation?.worker?._id || reservation?.worker) === String(form.workerId);
-        const activeStatus = ["pending", "accepted"].includes(reservation?.status);
-        return sameWorker && activeStatus;
-      })
-      .forEach((reservation) => {
-        const key = toLocalISODate(reservation?.bookingDate);
-        const hour = Number(reservation?.bookingHour);
-        if (!key || !Number.isInteger(hour)) return;
-        if (!map.has(key)) map.set(key, new Set());
-        map.get(key).add(hour);
-      });
-
-    return map;
-  }, [isClient, form.workerId, clientReservations]);
-
   const professions = useMemo(() => {
     const values = new Set();
     PROFESSIONS.forEach((profession) => {
@@ -210,7 +189,7 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
       }
       return { ...prev, serviceType: selectedService, workerId: "", bookingHour: "" };
     });
-    setAvailableHours([]);
+    setSlots([]);
   }, [selectedService, filteredWorkers]);
 
   useEffect(() => {
@@ -225,7 +204,7 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
     const fetchMonth = async () => {
       if (!isClient || !form.workerId || !selectedService) {
         setMonthAvailability([]);
-        setAvailableHours([]);
+        setSlots([]);
         setForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
         return;
       }
@@ -235,16 +214,28 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
         let days = [];
         try {
           const data = await reservationApi.getWorkerMonthAvailability(form.workerId, selectedService);
-          days = Array.isArray(data?.days) ? data.days : [];
+          const rawDays = Array.isArray(data?.days) ? data.days : [];
+          days = rawDays.map((day) => {
+            if (Array.isArray(day?.slots)) {
+              return { date: day.date, slots: day.slots };
+            }
+
+            const hours = Array.isArray(day?.availableHours) ? day.availableHours : [];
+            const slotsFromHours = [8, 9, 10, 11, 12, 14, 15, 16, 17].map((hour) => ({
+              hour,
+              status: hours.includes(hour) ? "available" : "accepted",
+            }));
+            return { date: day.date, slots: slotsFromHours };
+          });
         } catch {
           const dates = next30Days();
           const results = await Promise.all(
             dates.map(async (date) => {
               try {
                 const daily = await reservationApi.getWorkerAvailableSlots(form.workerId, date, selectedService);
-                return { date, availableHours: Array.isArray(daily?.availableHours) ? daily.availableHours : [] };
+                return { date, slots: Array.isArray(daily?.slots) ? daily.slots : [] };
               } catch {
-                return { date, availableHours: [] };
+                return { date, slots: [] };
               }
             })
           );
@@ -253,11 +244,11 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
         setMonthAvailability(days);
 
-        const firstBookable = days.find((item) => Array.isArray(item.availableHours) && item.availableHours.length > 0);
+        const firstBookable = days.find((item) => Array.isArray(item.slots) && item.slots.some(s => s.status === "available"));
         const nextDate = firstBookable?.date || days[0]?.date || "";
-        const nextHours = (days.find((item) => item.date === nextDate)?.availableHours || []);
+        const nextSlots = (days.find((item) => item.date === nextDate)?.slots || []);
 
-        setAvailableHours(nextHours);
+        setSlots(nextSlots);
         if (nextDate) {
           const pageIndex = Math.max(0, Math.floor(days.findIndex((item) => item.date === nextDate) / 7));
           setDatePage(pageIndex);
@@ -269,7 +260,7 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
         }));
       } catch (err) {
         setMonthAvailability([]);
-        setAvailableHours([]);
+        setSlots([]);
         setError(err.message || "Impossible de charger la disponibilité du mois");
       } finally {
         setSlotsLoading(false);
@@ -281,16 +272,15 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
   useEffect(() => {
     if (!form.bookingDate) {
-      setAvailableHours([]);
+      setSlots([]);
       return;
     }
     const selectedDay = monthAvailability.find((item) => item.date === form.bookingDate);
-    const dayHours = Array.isArray(selectedDay?.availableHours) ? selectedDay.availableHours : [];
-    const blockedSet = blockedHoursByDate.get(form.bookingDate) || new Set();
-    const filteredDayHours = dayHours.filter((hour) => !blockedSet.has(Number(hour)));
-    setAvailableHours(filteredDayHours);
-    setForm((prev) => (filteredDayHours.includes(Number(prev.bookingHour)) ? prev : { ...prev, bookingHour: "" }));
-  }, [form.bookingDate, monthAvailability, blockedHoursByDate]);
+    const daySlots = Array.isArray(selectedDay?.slots) ? selectedDay.slots : [];
+    setSlots(daySlots);
+    const isBookingValid = daySlots.find((s) => s.status === "available" && String(s.hour) === String(form.bookingHour));
+    setForm((prev) => (isBookingValid ? prev : { ...prev, bookingHour: "" }));
+  }, [form.bookingDate, monthAvailability]);
 
   const updateForm = (key) => (e) => {
     const value = e.target.value;
@@ -318,6 +308,19 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
       setMessage("Reservation created ✅");
       setForm((prev) => ({ ...prev, bookingHour: "", notes: "" }));
+      
+      // Refresh available slots for this date
+      try {
+        const updatedData = await reservationApi.getWorkerAvailableSlots(form.workerId, form.bookingDate, selectedService);
+        const newSlots = Array.isArray(updatedData?.slots) ? updatedData.slots : [];
+        setMonthAvailability((prev) =>
+          prev.map((item) => item.date === form.bookingDate ? { ...item, slots: newSlots } : item)
+        );
+        setSlots(newSlots);
+      } catch (err) {
+        console.error("Failed to refresh slots:", err);
+      }
+      
       await loadData();
     } catch (err) {
       setError(err.message || "Reservation failed.");
@@ -564,9 +567,8 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 8 }}>
                   {visibleDates.map((day) => {
-                    const baseHours = Array.isArray(day.availableHours) ? day.availableHours : [];
-                    const blockedSet = blockedHoursByDate.get(day.date) || new Set();
-                    const freeCount = baseHours.filter((hour) => !blockedSet.has(Number(hour))).length;
+                    const daySlots = Array.isArray(day.slots) ? day.slots : [];
+                    const freeCount = daySlots.filter((slot) => slot.status === "available").length;
                     const active = form.bookingDate === day.date;
                     return (
                       <button
@@ -602,43 +604,99 @@ export default function ReservationsPage({ user, preselectedWorkerId = "", prese
 
               <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#64748b" }}>
                 4. Choisissez l'heure libre
+                <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#64748b", marginBottom: 4, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, background: "#ecfdf5", border: "1px solid #10b981" }}></div>
+                    <span>Libre</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, background: "#fffbeb", border: "1px solid #f59e0b" }}></div>
+                    <span>En attente</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, background: "#fee2e2", border: "1px solid #ef4444" }}></div>
+                    <span>Réservé</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, background: "#f1f5f9", border: "1px solid #94a3b8" }}></div>
+                    <span>Passé</span>
+                  </div>
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0,1fr))", gap: 8 }}>
-                  {availableHours.map((hour) => {
-                    const active = String(form.bookingHour) === String(hour);
+                  {slots.map((slot) => {
+                    const active = String(form.bookingHour) === String(slot.hour);
+                    const isAvailable = slot.status === "available";
+                    const isPending = slot.status === "pending";
+                    const isTaken = slot.status === "accepted" || slot.status === "completed";
+                    const isPassed = slot.status === "passed";
+                    
+                    let bgColor = "#fff";
+                    let borderColor = "#e2e8f0";
+                    let textColor = "#0f172e";
+                    let opacity = 1;
+                    let cursor = "pointer";
+                    
+                    if (isAvailable && active) {
+                      bgColor = "#10b981"; // Green when selected
+                      borderColor = "#10b981";
+                      textColor = "#fff";
+                    } else if (isAvailable && !active) {
+                      bgColor = "#ecfdf5"; // Light green
+                      borderColor = "#10b981";
+                      textColor = "#059669";
+                    } else if (isPending && active) {
+                      bgColor = "#f59e0b"; // Orange when selected
+                      borderColor = "#f59e0b";
+                      textColor = "#fff";
+                    } else if (isPending && !active) {
+                      bgColor = "#fffbeb"; // Light orange
+                      borderColor = "#f59e0b";
+                      textColor = "#b45309";
+                    } else if (isTaken) {
+                      bgColor = "#fee2e2"; // Light red
+                      borderColor = "#ef4444";
+                      textColor = "#991b1b";
+                      cursor = "not-allowed";
+                      opacity = 0.7;
+                    } else if (isPassed) {
+                      bgColor = "#f1f5f9";
+                      borderColor = "#94a3b8";
+                      textColor = "#64748b";
+                      cursor = "not-allowed";
+                      opacity = 0.75;
+                    }
+                    
                     return (
                       <button
-                        key={hour}
+                        key={`${slot.hour}`}
                         type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, bookingHour: String(hour) }))}
-                        disabled={!form.bookingDate || slotsLoading}
+                        onClick={() => isAvailable && setForm((prev) => ({ ...prev, bookingHour: String(slot.hour) }))}
+                        disabled={!isAvailable || !form.bookingDate || slotsLoading}
+                        title={`${fmtHour(slot.hour)} - ${slot.status === "available" ? "Libre" : slot.status === "pending" ? "En attente" : slot.status === "passed" ? "Passé" : "Réservé"}`}
                         style={{
                           padding: "10px 8px",
                           borderRadius: 8,
-                          border: active ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
-                          background: active ? "#06b6d4" : "#fff",
-                          color: active ? "#fff" : "#0f172e",
-                          cursor: (!form.bookingDate || slotsLoading) ? "not-allowed" : "pointer",
-                          opacity: (!form.bookingDate || slotsLoading) ? 0.6 : 1,
+                          border: `1.5px solid ${borderColor}`,
+                          background: bgColor,
+                          color: textColor,
+                          cursor: (!form.bookingDate || slotsLoading) ? "not-allowed" : cursor,
+                          opacity: (!form.bookingDate || slotsLoading) ? 0.6 : opacity,
                           fontFamily: "'Sora', sans-serif",
-                          fontSize: 13,
                           fontWeight: 600,
+                          fontSize: 13,
+                          transition: "all .2s",
                         }}
                       >
-                        {fmtHour(hour)}
+                        {fmtHour(slot.hour)}
                       </button>
                     );
                   })}
-                  {!slotsLoading && availableHours.length === 0 && (
-                    <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "#64748b", paddingTop: 8 }}>
-                      {!form.bookingDate ? "Choisissez une date" : "Aucune heure libre ce jour"}
-                    </div>
-                  )}
-                  {slotsLoading && (
-                    <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "#64748b", paddingTop: 8 }}>
-                      Chargement des disponibilités du mois...
-                    </div>
-                  )}
                 </div>
+                {slots.length === 0 && (
+                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                    {!form.workerId ? "Choisissez un prestataire" : "Aucune disponibilité trouvée ce mois"}
+                  </div>
+                )}
               </div>
 
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#64748b", gridColumn: "span 2" }}>

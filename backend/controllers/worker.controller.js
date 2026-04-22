@@ -18,7 +18,7 @@ exports.getProfile = async (req, res) => {
 // ── @PUT /api/worker/profile ───────────────────────────────
 exports.updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phone, workerProfile } = req.body;
+    const { firstName, lastName, phone, gender, birthDate, workerProfile } = req.body;
 
     // workerProfile arrives as JSON string when sent via FormData
     let parsed = workerProfile;
@@ -30,6 +30,8 @@ exports.updateProfile = async (req, res) => {
     if (firstName)  data.firstName     = firstName;
     if (lastName)   data.lastName      = lastName;
     if (phone)      data.phone         = phone;
+    if (gender)     data.gender        = gender;
+    if (birthDate)  data.birthDate     = birthDate;
     if (parsed)     data.workerProfile = parsed;
 
     const user = await User.findByIdAndUpdate(
@@ -180,9 +182,64 @@ exports.toggleAvailability = async (req, res) => {
 // ── @POST /api/worker/portfolio/image ─────────────────────
 exports.uploadPortfolioImage = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    console.log("📤 Portfolio upload attempt from user:", req.user?._id);
+    if (!req.file) {
+      console.warn("⚠️ No file provided");
+      return res.status(400).json({ message: "No file uploaded" });
+    }
     const imageUrl = `/uploads/portfolio/${req.file.filename}`;
+    console.log("✅ Portfolio image uploaded:", imageUrl);
     return res.json({ message: "Image uploaded", imageUrl });
+  } catch (err) {
+    console.error("❌ Portfolio upload error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/worker/notifications ────────────────────────
+exports.getNotifications = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("notifications");
+    const notifications = (user?.notifications || []).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const unreadCount = notifications.filter(n => !n.read).length;
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/worker/notifications/:notificationId/read ───
+exports.markNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { "notifications.$[elem].read": true } },
+      { arrayFilters: [{ "elem._id": notificationId }], new: true }
+    ).select("notifications");
+    res.json({ message: "Notification marked as read", notifications: user?.notifications || [] });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/worker/notifications/read-all ───────────────
+exports.markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("notifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.notifications = (user.notifications || []).map((item) => ({
+      ...item.toObject(),
+      read: true,
+    }));
+
+    await user.save();
+    return res.json({ message: "All notifications marked as read", notifications: user.notifications });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
   }

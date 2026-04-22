@@ -187,6 +187,21 @@ export const workerApi = {
       method: "PUT",
       headers: authHeaders(),
     }).then(handle),
+
+  getNotifications: () =>
+    fetch(`${BASE}/worker/notifications`, { headers: authHeaders() }).then(handle),
+
+  markAllNotificationsAsRead: () =>
+    fetch(`${BASE}/worker/notifications/read-all`, {
+      method: "PUT",
+      headers: authHeaders(),
+    }).then(handle),
+
+  markNotificationAsRead: (notificationId) =>
+    fetch(`${BASE}/worker/notifications/${notificationId}/read`, {
+      method: "PUT",
+      headers: authHeaders(),
+    }).then(handle),
 };
 
 // ════════════════════════════════════════════

@@ -128,17 +128,37 @@ exports.createReservation = async (req, res) => {
       return res.status(400).json({ message: "Cannot reserve a past date" });
     }
 
+    const now = new Date();
+    const isToday = date.getTime() === today.getTime();
+    if (isToday && hour <= now.getHours()) {
+      return res.status(400).json({ message: "Cannot reserve a past time today" });
+    }
+
     const { start: dayStart, end: dayEnd } = getDayRange(date);
 
-    const exists = await Reservation.findOne({
+    // Check if slot is already taken by active reservation (pending/accepted)
+    const activeExists = await Reservation.findOne({
       worker: workerId,
       bookingDate: { $gte: dayStart, $lte: dayEnd },
       bookingHour: hour,
       status: { $in: ACTIVE_STATUSES },
     });
 
-    if (exists) {
+    if (activeExists) {
       return res.status(409).json({ message: "This slot is already reserved" });
+    }
+
+    // Check if THIS CLIENT already has ANY reservation with this worker at this time
+    const clientConflict = await Reservation.findOne({
+      client: req.user.id,
+      worker: workerId,
+      bookingDate: { $gte: dayStart, $lte: dayEnd },
+      bookingHour: hour,
+      status: { $nin: ["cancelled", "rejected"] }, // Exclude cancelled/rejected reservations
+    });
+
+    if (clientConflict) {
+      return res.status(409).json({ message: "You already have a reservation with this worker at this time" });
     }
 
     const reservation = await Reservation.create({
@@ -150,6 +170,26 @@ exports.createReservation = async (req, res) => {
       address: address || "",
       notes: notes || "",
     });
+
+    // ── Create notification for worker ─────────────────────
+    const clientName = req.user.firstName || "Un client";
+    await User.findByIdAndUpdate(
+      workerId,
+      {
+        $push: {
+          notifications: {
+            type: "reservation",
+            title: `Nouvelle réservation de ${clientName}`,
+            message: `${clientName} a réservé votre service pour le ${bookingDate} à ${bookingHour}h`,
+            reservationId: reservation._id,
+            read: false,
+            createdAt: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+    console.log("📢 Notification créée pour le prestataire:", workerId);
 
     const populated = await Reservation.findById(reservation._id)
       .populate("worker", "firstName lastName avatar workerProfile.city workerProfile.professions")
@@ -233,7 +273,7 @@ exports.getWorkerReservations = async (req, res) => {
 
     const reservations = await Reservation.find(filter)
       .populate("client", "firstName lastName avatar phone")
-      .sort({ bookingDate: -1, bookingHour: -1, createdAt: -1 });
+      .sort({ createdAt: -1, bookingDate: -1, bookingHour: -1 });
 
     return res.json(reservations);
   } catch (err) {
@@ -340,35 +380,43 @@ exports.getWorkerAvailableSlots = async (req, res) => {
     }
 
     if (!worker.isActive || !worker.workerProfile?.isAvailable) {
-      return res.json({ workerId, date, availableHours: [] });
+      return res.json({ workerId, date, slots: [] });
     }
 
     const scheduleHours = [...BOOKABLE_HOURS];
 
     if (scheduleHours.length === 0) {
-      return res.json({ workerId, date, availableHours: [] });
+      return res.json({ workerId, date, slots: [] });
     }
 
     const { start: dayStart, end: dayEnd } = getDayRange(bookingDate);
 
-    const takenReservations = await Reservation.find({
+    // Get all reservations for this day
+    const allReservations = await Reservation.find({
       worker: workerId,
       bookingDate: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: ACTIVE_STATUSES },
-    }).select("bookingHour");
+      status: { $nin: ["cancelled", "rejected"] },
+    }).select("bookingHour status");
 
-    const taken = new Set(takenReservations.map((item) => item.bookingHour));
-    let availableHours = scheduleHours.filter((hour) => !taken.has(hour));
+    // Create status map for each hour
+    const slotStatuses = {};
+    allReservations.forEach((res) => {
+      slotStatuses[res.bookingHour] = res.status; // "pending", "accepted", or "completed"
+    });
 
+    // Build slots array with status
     const now = new Date();
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    if (bookingDate.getTime() === startOfToday.getTime()) {
-      const currentHour = now.getHours();
-      availableHours = availableHours.filter((hour) => hour > currentHour);
-    }
+    const isToday = bookingDate.getTime() === startOfToday.getTime();
+    const currentHour = now.getHours();
 
-    return res.json({ workerId, date, availableHours });
+    let slots = scheduleHours.map((hour) => ({
+      hour,
+      status: slotStatuses[hour] || (isToday && hour <= currentHour ? "passed" : "available"),
+    }));
+
+    return res.json({ workerId, date, slots });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -398,14 +446,14 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
     const reservations = await Reservation.find({
       worker: workerId,
       bookingDate: { $gte: today, $lte: endDate },
-      status: { $in: ACTIVE_STATUSES },
-    }).select("bookingDate bookingHour");
+      status: { $nin: ["cancelled", "rejected"] },
+    }).select("bookingDate bookingHour status");
 
-    const takenByDate = new Map();
+    const statusByDateHour = new Map();
     reservations.forEach((reservation) => {
       const key = toISODateString(reservation.bookingDate);
-      if (!takenByDate.has(key)) takenByDate.set(key, new Set());
-      takenByDate.get(key).add(reservation.bookingHour);
+      if (!statusByDateHour.has(key)) statusByDateHour.set(key, new Map());
+      statusByDateHour.get(key).set(Number(reservation.bookingHour), reservation.status);
     });
 
     const days = [];
@@ -415,17 +463,23 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
 
       const isoDate = toISODateString(date);
       const scheduleHours = [...BOOKABLE_HOURS];
-      const takenSet = takenByDate.get(isoDate) || new Set();
+      const dayStatuses = statusByDateHour.get(isoDate) || new Map();
 
-      let availableHours = scheduleHours.filter((hour) => !takenSet.has(hour));
+      const isCurrentDay = index === 0;
+      const currentHour = new Date().getHours();
 
-      if (index === 0) {
-        const currentHour = new Date().getHours();
-        availableHours = availableHours.filter((hour) => hour > currentHour);
-      }
+      let slots = scheduleHours.map((hour) => ({
+        hour,
+        status: dayStatuses.get(hour) || (isCurrentDay && hour <= currentHour ? "passed" : "available"),
+      }));
+
+      const availableHours = slots
+        .filter((slot) => slot.status === "available")
+        .map((slot) => slot.hour);
 
       days.push({
         date: isoDate,
+        slots,
         availableHours,
       });
     }

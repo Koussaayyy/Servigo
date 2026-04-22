@@ -335,6 +335,8 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
     firstName:  user.firstName || "",
     lastName:   user.lastName  || "",
     phone:      user.phone     || "",
+    gender:     user.gender    || "",
+    birthDate:  user.birthDate || "",
     bio:        isWorker ? (user.workerProfile?.bio  || "") : (user.clientProfile?.bio  || ""),
     city:       isWorker ? (user.workerProfile?.city || "") : (user.clientProfile?.city || ""),
     address:    user.clientProfile?.address   || "",
@@ -373,7 +375,13 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = { firstName: form.firstName, lastName: form.lastName, phone: form.phone };
+      const payload = { 
+        firstName: form.firstName, 
+        lastName: form.lastName, 
+        phone: form.phone,
+        gender: form.gender,
+        birthDate: form.birthDate,
+      };
       if (isWorker) {
         payload.workerProfile = {
           ...user.workerProfile,
@@ -477,6 +485,15 @@ function SectionInformations({ user, isWorker, onSaved, onToast }) {
               style={{ opacity: 0.6, cursor: "not-allowed", background: "#e2e8f0" }} />
           </Field>
           <Field label="Téléphone"><Input type="tel" value={form.phone} onChange={set("phone")} /></Field>
+          <Field label="Genre">
+            <SelectField value={form.gender} onChange={set("gender")}>
+              <option value="">Sélectionner...</option>
+              <option value="male">Homme</option>
+              <option value="female">Femme</option>
+              <option value="other">Autre</option>
+            </SelectField>
+          </Field>
+          <Field label="Date de naissance"><Input type="date" value={form.birthDate} onChange={set("birthDate")} /></Field>
           <Field label="Bio / Présentation" span2>
             <Textarea value={form.bio} onChange={set("bio")} placeholder="Présentez-vous..." />
           </Field>
@@ -662,7 +679,12 @@ function SectionPortfolio({ user, onSaved, onToast }) {
       setForm((prev) => ({ ...prev, imageUrl: res.imageUrl || "" }));
       onToast("Image importée ✓");
     } catch (err) {
-      onToast(err.message || "Upload image échoué", true);
+      console.error("Portfolio upload error:", err);
+      if (err.message.includes("Token") || err.message.includes("401")) {
+        onToast("Session expirée. Veuillez vous reconnecter.", true);
+      } else {
+        onToast(err.message || "Échec de l'import d'image", true);
+      }
     } finally {
       setUploadingImage(false);
     }

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import {
   LayoutDashboard, User, Zap, FolderOpen, Calendar,
-  Star, Lock, Bell, LogOut, ChevronRight, Menu, X, CalendarCheck
+  Star, Lock, Bell, LogOut, ChevronRight, Menu, X, CalendarCheck, CheckCheck
 } from "lucide-react";
+import { workerApi } from "../api";
+import { useEffect } from "react";
 
 const NAV_PROFILE = [
   { key: "profile",        icon: User,       label: "Mon Profil" },
@@ -26,6 +28,8 @@ const resolveAvatar = (avatar) => {
 
 export default function AppLayout({ user, activePage, onNavigate, onLogout, children }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const isWorker  = user?.role === "worker" || user?.type === "worker";
   const avatarSrc = resolveAvatar(user?.avatar);
   console.log("avatar raw:", user?.avatar);
@@ -35,6 +39,63 @@ console.log("avatar resolved:", resolveAvatar(user?.avatar));
     ? ((user.firstName || user.prenom || user.name || "?")[0] +
        (user.lastName && user.lastName !== "N/A" ? user.lastName[0] : "")).toUpperCase()
     : "?";
+
+  // Fetch notifications for workers
+  useEffect(() => {
+    if (!isWorker) return;
+    const fetchNotifications = async () => {
+      try {
+        const res = await workerApi.getNotifications();
+        setNotifications(res.notifications || []);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+      }
+    };
+    fetchNotifications();
+    // Refetch every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [isWorker]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadNotifications = notifications.filter((n) => !n.read);
+
+  const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0) return;
+    try {
+      await workerApi.markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await workerApi.markNotificationAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(n => n._id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    handleMarkAsRead(notification._id);
+    setShowNotifications(false);
+    // Navigate to reservations page
+    onNavigate("reservations");
+  };
+
+  const handleToggleNotifications = async () => {
+    if (showNotifications) {
+      await handleMarkAllAsRead();
+      setShowNotifications(false);
+      return;
+    }
+    setShowNotifications(true);
+  };
 
   const SidebarContent = () => (
     <>
@@ -89,6 +150,49 @@ console.log("avatar resolved:", resolveAvatar(user?.avatar));
           </div>
         </div>
         <div className="al-topbar-right">
+          {isWorker && (
+            <div className="al-notification-container" style={{ position: "relative" }}>
+              <button 
+                className="al-notification-bell"
+                onClick={handleToggleNotifications}
+                style={{ position: "relative" }}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="al-notification-badge">{unreadCount}</span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="al-notification-dropdown">
+                  <div className="al-notif-header">
+                    <span>Nouvelles notifications ({unreadCount})</span>
+                    <button className="al-notif-readall" onClick={handleMarkAllAsRead} title="Tout marquer comme lu">
+                      <CheckCheck size={14} />
+                    </button>
+                  </div>
+                  <div className="al-notif-list">
+                    {unreadNotifications.length === 0 ? (
+                      <div className="al-notif-empty">Aucune notification</div>
+                    ) : (
+                      unreadNotifications.map(notif => (
+                        <div 
+                          key={notif._id}
+                          className={`al-notif-item ${notif.read ? "read" : "unread"}`}
+                          onClick={() => handleNotificationClick(notif)}
+                        >
+                          <div className="al-notif-title">{notif.title}</div>
+                          <div className="al-notif-message">{notif.message}</div>
+                          <div className="al-notif-time">
+                            {new Date(notif.createdAt).toLocaleDateString('fr-FR')}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div className="al-topbar-avatar" onClick={() => onNavigate("profile")}>
             {avatarSrc
               ? <img src={avatarSrc} alt="avatar" />
@@ -278,9 +382,122 @@ const styles = `
   z-index: 160; width: 256px;
   box-shadow: 4px 0 24px rgba(0,0,0,0.3);
 }
+
+/* ── Notification Bell & Dropdown ─────── */
+.al-notification-container { position: relative; }
+.al-notification-bell {
+  background: transparent;
+  border: none;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .2s;
+  position: relative;
+}
+.al-notification-bell:hover { color: #fff; }
+.al-notification-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink, #0f172e);
+}
+.al-notification-dropdown {
+  position: absolute;
+  top: 48px; right: 0;
+  width: 320px;
+  background: var(--ink, #0f172e);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 300;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.al-notif-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.al-notif-readall {
+  background: rgba(6, 182, 212, 0.18);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  color: #e0f7ff;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.al-notif-readall:hover {
+  background: rgba(6, 182, 212, 0.3);
+}
+.al-notif-list {
+  display: flex;
+  flex-direction: column;
+}
+.al-notif-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+.al-notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.1);
+  cursor: pointer;
+  transition: background .2s;
+}
+.al-notif-item:hover {
+  background: rgba(6, 182, 212, 0.08);
+}
+.al-notif-item.unread {
+  background: rgba(6, 182, 212, 0.12);
+}
+.al-notif-title {
+  font-weight: 600;
+  color: #fff;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.al-notif-message {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.al-notif-time {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
 @media (max-width: 768px) {
   .al-mobile-menu-btn { display: flex; }
   .al-sidebar:not(.al-sidebar-mobile) { display: none; }
   .al-main { padding: 24px 16px; }
+  .al-notification-dropdown {
+    width: calc(100vw - 32px);
+    right: auto;
+    left: 16px;
+  }
 }
 `;

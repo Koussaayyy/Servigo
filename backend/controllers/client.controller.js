@@ -16,7 +16,7 @@ exports.getProfile = async (req, res) => {
 // ── @PUT /api/client/profile ───────────────────────────────
 exports.updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phone, clientProfile } = req.body;
+    const { firstName, lastName, phone, gender, birthDate, clientProfile } = req.body;
 
     let parsed = clientProfile;
     if (typeof clientProfile === "string") {
@@ -27,6 +27,8 @@ exports.updateProfile = async (req, res) => {
     if (firstName) data.firstName     = firstName;
     if (lastName)  data.lastName      = lastName;
     if (phone)     data.phone         = phone;
+    if (gender)    data.gender        = gender;
+    if (birthDate) data.birthDate     = birthDate;
     if (parsed)    data.clientProfile = parsed;
 
     const user = await User.findByIdAndUpdate(

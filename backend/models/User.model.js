@@ -16,6 +16,23 @@ const UserSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     isActive:   { type: Boolean, default: true },
     onboardingComplete:  { type: Boolean, default: false },  // ← ADD THIS
+    
+    // ── Notifications ──────────────────────────────────────
+    notifications: {
+      type: [
+        {
+          id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+          type: { type: String, enum: ["reservation", "message", "review"], default: "reservation" },
+          title: { type: String, default: "" },
+          message: { type: String, default: "" },
+          reservationId: { type: mongoose.Schema.Types.ObjectId, ref: "Reservation" },
+          read: { type: Boolean, default: false },
+          createdAt: { type: Date, default: Date.now },
+        }
+      ],
+      default: [],
+    },
+
     // ── Reset password ─────────────────────────────────────
     resetPasswordToken:  { type: String },
     resetPasswordExpire: { type: Date },

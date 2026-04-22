@@ -21,7 +21,13 @@ exports.protect = async (req, res, next) => {
     return next();
 
   } catch (err) {
-    console.error("PROTECT ERROR:", err);
+    console.error("🔐 AUTH MIDDLEWARE ERROR:", err.message);
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired. Please log in again." });
+    }
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token format" });
+    }
     return res.status(401).json({ message: "Token invalid or expired" });
   }
 };

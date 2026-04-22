@@ -20,15 +20,18 @@ const transporter = nodemailer.createTransport({
 
 // ── Helper: full user object ───────────────────────────────
 const fullUser = (user) => ({
-  id:            user._id,
-  firstName:     user.firstName,
-  lastName:      user.lastName,
-  email:         user.email,
-  role:          user.role,
-  avatar:        user.avatar,
-  phone:         user.phone,
-  clientProfile: user.clientProfile,
-  workerProfile: user.workerProfile,
+  id:                   user._id,
+  firstName:            user.firstName,
+  lastName:             user.lastName,
+  email:                user.email,
+  role:                 user.role,
+  avatar:               user.avatar,
+  phone:                user.phone,
+  gender:               user.gender,
+  birthDate:            user.birthDate,
+  onboardingComplete:   user.onboardingComplete,
+  clientProfile:        user.clientProfile,
+  workerProfile:        user.workerProfile,
 });
 
 exports.register = async (req, res) => {
