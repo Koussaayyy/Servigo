@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import SidePanel     from "./components/SidePanel";
-import LoginForm     from "./pages/LoginForm";
-import SignupPicker  from "./pages/SignupPicker";
-import ClientSignup  from "./pages/ClientSignup";
-import WorkerSignup  from "./pages/WorkerSignup";
-import ResetPassword from "./pages/ResetPassword";
-import HomePage      from "./pages/HomePage";
+import SidePanel            from "./components/SidePanel";
+import LoginForm            from "./pages/LoginForm";
+import SignupPicker         from "./pages/SignupPicker";
+import ClientSignup         from "./pages/ClientSignup";
+import WorkerSignup         from "./pages/WorkerSignup";
+import ResetPassword        from "./pages/ResetPassword";
+import Explore              from "./pages/Explore";
+import HomePage             from "./pages/HomePage";          // ← your ServigoPro landing
 import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
-import Onboarding    from "./pages/Onboarding/Onboarding";
-
-import AppLayout        from "./components/AppLayout";
-import ProfilePage      from "./pages/profile/ProfilePage";
-import Dashboard        from "./components/Dashboard";
-import ReservationsPage from "./pages/ReservationsPage";
+import Onboarding           from "./pages/Onboarding/Onboarding";
+import AppLayout            from "./components/AppLayout";
+import ProfilePage          from "./pages/profile/ProfilePage";
+import Dashboard            from "./components/Dashboard";
+import ReservationsPage     from "./pages/ReservationsPage";
 
 const PAGE_STORAGE_KEY = "activePage";
 const VALID_PAGES = [
@@ -29,6 +29,7 @@ const VALID_PAGES = [
 ];
 
 export default function App() {
+  // "home" = landing (ServigoPro), "explore" = marketplace, "login" / "signup" = auth
   const [mode, setMode]             = useState("home");
   const [signupType, setSignupType] = useState(null);
   const [exiting, setExiting]       = useState(false);
@@ -37,7 +38,7 @@ export default function App() {
     const saved = localStorage.getItem(PAGE_STORAGE_KEY);
     return VALID_PAGES.includes(saved) ? saved : "dashboard";
   });
-  const [resetToken, setResetToken] = useState(null);
+  const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
   const [pendingReservation, setPendingReservation] = useState(() => {
@@ -56,11 +57,13 @@ export default function App() {
     } catch { return null; }
   });
 
+  // Detect reset-password token in URL
   useEffect(() => {
     const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
     if (match) setResetToken(match[1]);
   }, []);
 
+  // Persist active page for logged-in users
   useEffect(() => {
     if (loggedUser && VALID_PAGES.includes(activePage)) {
       localStorage.setItem(PAGE_STORAGE_KEY, activePage);
@@ -99,10 +102,10 @@ export default function App() {
     setLoggedUser(null);
     setOnboardingUser(null);
     setActivePage("dashboard");
-    switchTo("login");
+    switchTo("home");           // go back to landing page on logout
   };
 
-  // ── Reset password ─────────────────────────────────────
+  // ── Reset password ────────────────────────────────────────────────────────
   if (resetToken) {
     return (
       <>
@@ -124,7 +127,7 @@ export default function App() {
     );
   }
 
-  // ── Onboarding — full screen, no side panel ────────────
+  // ── Onboarding — full screen, no side panel ───────────────────────────────
   if (onboardingUser) {
     return (
       <div className="ob-fullpage">
@@ -141,9 +144,9 @@ export default function App() {
     );
   }
 
-  // ── Logged-in ──────────────────────────────────────────
+  // ── Logged-in ─────────────────────────────────────────────────────────────
   if (loggedUser) {
-    const PROFILE_SUBPAGES = ["profile", "competences", "portfolio", "disponibilite", "avis", "securite", "notifications"];
+    const PROFILE_SUBPAGES   = ["profile","competences","portfolio","disponibilite","avis","securite","notifications"];
     const isProfilePage      = PROFILE_SUBPAGES.includes(activePage);
     const isReservationsPage = activePage === "reservations";
 
@@ -184,14 +187,27 @@ export default function App() {
     );
   }
 
+  // ── Public landing page ───────────────────────────────────────────────────
   if (mode === "home") {
     return (
       <HomePage
-        onLogin={() => switchTo("login")}
-        onSignup={() => switchTo("signup")}
+        onLogin={()   => switchTo("login")}
+        onSignup={()  => switchTo("signup")}
+        onExplore={()  => switchTo("explore")}   // "Voir les artisans" CTA
+      />
+    );
+  }
+
+  // ── Marketplace (Explore) ─────────────────────────────────────────────────
+  if (mode === "explore") {
+    return (
+      <Explore
+        onLogin={()   => switchTo("login")}
+        onSignup={()  => switchTo("signup")}
+        onHome={()    => switchTo("home")}
         onReserveWorker={(worker) => {
           const payload = {
-            workerId: worker?._id,
+            workerId:   worker?._id,
             profession: worker?.workerProfile?.professions?.[0] || "",
           };
           localStorage.setItem("pendingReservation", JSON.stringify(payload));
@@ -202,7 +218,7 @@ export default function App() {
     );
   }
 
-  // ── Auth ───────────────────────────────────────────────
+  // ── Auth screens ──────────────────────────────────────────────────────────
   return (
     <>
       <div className="bg-deco" />
@@ -210,7 +226,7 @@ export default function App() {
         <SidePanel />
         <div className="main">
           <button className="step-back" onClick={() => switchTo("home")}>
-            ← Retour a l'accueil
+            ← Retour à l'accueil
           </button>
           <div className="mode-tabs">
             <button
