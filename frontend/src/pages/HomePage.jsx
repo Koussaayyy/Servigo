@@ -1,4 +1,4 @@
-// HomePage.jsx  –  ServigoPro landing page
+﻿// HomePage.jsx  –  ServigoPro landing page
 // Props:
 //   onLogin()    → go to login screen
 //   onSignup()   → go to signup screen

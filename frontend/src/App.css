@@ -17,10 +17,10 @@ body {
   font-family: 'Sora', sans-serif;
   background: var(--paper);
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  display: block;
+  align-items: unset;
+  justify-content: unset;
+  padding: 0;
 }
 
 /* ── BACKGROUND ── */

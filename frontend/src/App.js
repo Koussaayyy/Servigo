@@ -14,6 +14,7 @@ import AppLayout            from "./components/AppLayout";
 import ProfilePage          from "./pages/profile/ProfilePage";
 import Dashboard            from "./components/Dashboard";
 import ReservationsPage     from "./pages/ReservationsPage";
+import AuthModal            from "./components/AuthModal";
 
 const PAGE_STORAGE_KEY = "activePage";
 const VALID_PAGES = [
@@ -41,6 +42,8 @@ export default function App() {
   const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
+  const [authModalOpen, setAuthModalOpen]       = useState(false);
+  const [authModalMode, setAuthModalMode]       = useState("login");
   const [pendingReservation, setPendingReservation] = useState(() => {
     try {
       const raw = localStorage.getItem("pendingReservation");
@@ -71,6 +74,7 @@ export default function App() {
   }, [activePage, loggedUser]);
 
   const switchTo = (newMode, newType = null) => {
+    setAuthModalOpen(false);
     setExiting(true);
     setTimeout(() => {
       setMode(newMode);
@@ -104,6 +108,19 @@ export default function App() {
     setActivePage("dashboard");
     switchTo("home");           // go back to landing page on logout
   };
+
+  const openAuthModal = (nextMode = "login") => {
+    setAuthModalMode(nextMode);
+    setAuthModalOpen(true);
+  };
+
+  const authModalNode = authModalOpen ? (
+    <AuthModal
+      mode={authModalMode}
+      onClose={() => setAuthModalOpen(false)}
+      onSuccess={onSuccess}
+    />
+  ) : null;
 
   // ── Reset password ────────────────────────────────────────────────────────
   if (resetToken) {
@@ -151,6 +168,7 @@ export default function App() {
     const isReservationsPage = activePage === "reservations";
 
     return (
+      <>
       <AppLayout
         user={loggedUser}
         activePage={activePage}
@@ -184,37 +202,45 @@ export default function App() {
           />
         )}
       </AppLayout>
+      {authModalNode}
+      </>
     );
   }
 
   // ── Public landing page ───────────────────────────────────────────────────
   if (mode === "home") {
     return (
-      <HomePage
-        onLogin={()   => switchTo("login")}
-        onSignup={()  => switchTo("signup")}
-        onExplore={()  => switchTo("explore")}   // "Voir les artisans" CTA
-      />
+      <>
+        <HomePage
+          onLogin={()   => openAuthModal("login")}
+          onSignup={()  => openAuthModal("signup")}
+          onExplore={()  => switchTo("explore")}   // "Voir les artisans" CTA
+        />
+        {authModalNode}
+      </>
     );
   }
 
   // ── Marketplace (Explore) ─────────────────────────────────────────────────
   if (mode === "explore") {
     return (
-      <Explore
-        onLogin={()   => switchTo("login")}
-        onSignup={()  => switchTo("signup")}
-        onHome={()    => switchTo("home")}
-        onReserveWorker={(worker) => {
-          const payload = {
-            workerId:   worker?._id,
-            profession: worker?.workerProfile?.professions?.[0] || "",
-          };
-          localStorage.setItem("pendingReservation", JSON.stringify(payload));
-          setPendingReservation(payload);
-          switchTo("login");
-        }}
-      />
+      <>
+        <Explore
+          onLogin={()   => openAuthModal("login")}
+          onSignup={()  => openAuthModal("signup")}
+          onHome={()    => switchTo("home")}
+          onReserveWorker={(worker) => {
+            const payload = {
+              workerId:   worker?._id,
+              profession: worker?.workerProfile?.professions?.[0] || "",
+            };
+            localStorage.setItem("pendingReservation", JSON.stringify(payload));
+            setPendingReservation(payload);
+            openAuthModal("login");
+          }}
+        />
+        {authModalNode}
+      </>
     );
   }
 
@@ -225,7 +251,7 @@ export default function App() {
       <div className="wrapper">
         <SidePanel />
         <div className="main">
-          <button className="step-back" onClick={() => switchTo("home")}>
+          <button className="step-back" onClick={() => switchTo("home")}> 
             ← Retour à l'accueil
           </button>
           <div className="mode-tabs">
@@ -265,6 +291,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      {authModalNode}
     </>
   );
 }
