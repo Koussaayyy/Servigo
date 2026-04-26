@@ -61,9 +61,22 @@ function WorkerCard({ worker }) {
       {hov && <div style={{ position:"absolute",top:0,left:0,right:0,height:2.5,background:"linear-gradient(90deg,#06b6d4,#22d3ee)",borderRadius:"12px 12px 0 0" }} />}
       <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:14 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-          <div style={{ width:44,height:44,borderRadius:10,background:hov?"#0f172e":"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:700,color:hov?"#06b6d4":"#64748b",flexShrink:0,transition:"all 0.25s" }}>
-            {avatarInitials(fn)}
-          </div>
+        <div style={{
+  width:44,
+  height:44,
+  borderRadius:10,
+  background:"#f1f5f9",
+  display:"flex",
+  alignItems:"center",
+  justifyContent:"center",
+  fontSize:17,
+  fontWeight:700,
+  color:"#64748b",
+  flexShrink:0,
+  transition:"none"
+}}>
+  {avatarInitials(fn)}
+</div>
           <div>
             <div style={{ fontSize:14,fontWeight:700,color:"#0f172e" }}>{fn} {ln}</div>
             <div style={{ fontSize:11,fontWeight:600,color:"#06b6d4",marginTop:2,letterSpacing:"0.06em" }}>{prof}</div>
@@ -105,6 +118,18 @@ function WorkerCard({ worker }) {
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+.hide-desktop {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .hide-desktop {
+    display: flex !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+}
 html { scroll-behavior:smooth; }
 body { background:#f8fafc; color:#0f172e; font-family:'Sora',sans-serif; -webkit-font-smoothing:antialiased; }
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
@@ -135,6 +160,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
 
 /* ─── HomePage ───────────────────────────────────────────────────────────── */
 export default function HomePage({ onLogin, onSignup, onExplore }) {
+  const [hovered, setHovered] = useState(null);
   const [navOpen,       setNavOpen]       = useState(false);
   const [search,        setSearch]        = useState("");
   const [activeCat,     setActiveCat]     = useState("");
@@ -207,14 +233,14 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
             </div>
             <div className="hide-mobile" style={{ display:"flex",gap:2,flex:1 }}>
               {NAV_LINKS.map(l => (
-                <button key={l} onClick={() => scrollTo(l)} style={{ background:activeSection===l?"rgba(6,182,212,0.08)":"none",border:activeSection===l?"1.5px solid rgba(6,182,212,0.2)":"1.5px solid transparent",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:"0.06em",color:activeSection===l?"#06b6d4":"#64748b",padding:"7px 14px",borderRadius:8,transition:"all .2s" }}>
+                <button key={l} onClick={() => scrollTo(l)} style={{ background:activeSection===l?"rgba(6,182,212,0.08)":"none",border:activeSection===l?"1.5px solid rgba(6,182,212,0.2)":"1.5px solid transparent",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:"0.06em",color:activeSection===l?"#06b6d4":"#64748b",padding:"7px 14px",borderRadius:24,transition:"all .2s" }}>
                   {l}
                 </button>
               ))}
             </div>
             <div className="hide-mobile" style={{ display:"flex",gap:10 }}>
-              <button onClick={onLogin}  style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:"9px 20px",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s" }}>Se connecter</button>
-              <button onClick={onSignup} style={{ border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:8,padding:"9px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.15)" }}>Créer un compte</button>
+              <button onClick={onLogin}  style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:24,padding:"9px 20px",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s" }}>Se connecter</button>
+              <button onClick={onSignup} style={{ border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:24,padding:"9px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.15)" }}>Créer un compte</button>
             </div>
             <button className="hide-desktop" onClick={() => setNavOpen(o => !o)} style={{ marginLeft:"auto",background:"#fff",border:"1.5px solid #e2e8f0",color:"#0f172e",borderRadius:8,padding:8,cursor:"pointer",display:"flex" }}>
               {navOpen ? <X size={18} /> : <Menu size={18} />}
@@ -242,16 +268,16 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
               <p className="anim-3" style={{ fontSize:15,color:"#64748b",lineHeight:1.9,marginBottom:36,maxWidth:440 }}>
                 Trouvez, comparez et réservez les meilleurs artisans en quelques secondes. Qualité garantie, tarifs transparents.
               </p>
-              <div className="anim-3" style={{ display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"5px 5px 5px 16px",marginBottom:16,maxWidth:500,boxShadow:"0 4px 20px rgba(0,0,0,0.06)" }}>
+              <div className="anim-3" style={{ display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:24,padding:"5px 5px 5px 16px",marginBottom:16,maxWidth:500,boxShadow:"0 4px 20px rgba(0,0,0,0.06)" }}>
                 <Search size={16} color="#94a3b8" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Plombier, électricien, peintre..." style={{ flex:1,border:"none",outline:"none",fontSize:13,color:"#0f172e",background:"transparent",padding:"8px 0",boxShadow:"none" }} />
-                <button onClick={() => servicesRef.current?.scrollIntoView({ behavior:"smooth" })} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:7,padding:"11px 20px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.1em",textTransform:"uppercase" }}>Rechercher</button>
+                <button onClick={() => servicesRef.current?.scrollIntoView({ behavior:"smooth" })} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:24,padding:"11px 20px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.1em",textTransform:"uppercase" }}>Rechercher</button>
               </div>
               {/* Explore CTA */}
               <div className="anim-3" style={{ marginBottom:36 }}>
                 <button
                   onClick={onExplore}
-                  style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.25)",color:"#06b6d4",borderRadius:8,padding:"10px 20px",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.06em",transition:"all .2s" }}
+                  style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.25)",color:"#06b6d4",borderRadius:24,padding:"10px 20px",fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.06em",transition:"all .2s" }}
                 >
                   Voir tous les artisans <ChevronRight size={14} />
                 </button>
@@ -272,7 +298,7 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                 <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:24 }}>
                   <div style={{ width:48,height:48,borderRadius:10,border:"2px solid rgba(6,182,212,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#06b6d4" }}>A</div>
                   <div>
-                    <div style={{ fontSize:15,fontWeight:700,color:"#fff" }}>Ahmed Ben Ali</div>
+                    <div style={{ fontSize:15,fontWeight:700,color:"#fff" }}>Foulen Fouleni</div>
                     <div style={{ fontSize:11,color:"#06b6d4",fontWeight:600,letterSpacing:"0.06em" }}>Plombier certifié</div>
                   </div>
                   <div style={{ marginLeft:"auto",background:"rgba(16,185,129,0.1)",border:"1.5px solid rgba(16,185,129,0.25)",borderRadius:999,padding:"5px 12px",fontSize:10,fontWeight:700,color:"#10b981",display:"flex",alignItems:"center",gap:5 }}>
@@ -316,31 +342,84 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
           </div>
         </div>
 
-        {/* HOW IT WORKS */}
-        <section ref={howRef} style={{ position:"relative",zIndex:1,padding:"100px 28px",background:"#fff" }}>
-          <div style={{ maxWidth:1160,margin:"0 auto" }}>
-            <div style={{ textAlign:"center",marginBottom:60 }}>
-              <Badge label="Processus" />
-              <h2 style={{ fontFamily:"'Sora',sans-serif",fontSize:40,fontWeight:800,letterSpacing:"-1.5px",color:"#0f172e",marginBottom:10,lineHeight:1.15 }}>Comment ça marche</h2>
-              <p style={{ fontSize:14,color:"#64748b",lineHeight:1.8,maxWidth:400,margin:"0 auto" }}>Réservez un professionnel en 4 étapes ultra simples</p>
-            </div>
-            <div className="how-grid" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,position:"relative" }}>
-              <div className="hide-mobile" style={{ position:"absolute",top:40,left:"14%",right:"14%",height:"1px",background:"repeating-linear-gradient(90deg,#e2e8f0,#e2e8f0 4px,transparent 4px,transparent 10px)",zIndex:0 }} />
-              {[
-                { emoji:"🔍",title:"Recherchez",desc:"Trouvez l'artisan idéal selon votre ville et votre besoin." },
-                { emoji:"📅",title:"Réservez",desc:"Choisissez la date et l'heure qui vous convient." },
-                { emoji:"💬",title:"Discutez",desc:"Échangez directement avec l'artisan avant l'intervention." },
-                { emoji:"⭐",title:"Évaluez",desc:"Notez votre expérience et aidez la communauté." },
-              ].map((item,i) => (
-                <div key={i} style={{ position:"relative",zIndex:1,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"28px 20px 24px",textAlign:"center" }}>
-                  <div style={{ width:64,height:64,borderRadius:"50%",background:"#fff",border:"1.5px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px",fontSize:28,boxShadow:"0 4px 16px rgba(0,0,0,0.05)" }}>{item.emoji}</div>
-                  <div style={{ fontSize:15,fontWeight:700,color:"#0f172e",marginBottom:8 }}>{item.title}</div>
-                  <div style={{ fontSize:12,color:"#64748b",lineHeight:1.7 }}>{item.desc}</div>
-                </div>
-              ))}
-            </div>
+       {/* HOW IT WORKS */}
+<section ref={howRef} style={{ position:"relative",zIndex:1,padding:"100px 28px",background:"#fff" }}>
+  <div style={{ maxWidth:1160,margin:"0 auto" }}>
+
+    <div style={{ textAlign:"center",marginBottom:60 }}>
+      <Badge label="Processus" />
+      <h2 style={{ fontFamily:"'Sora',sans-serif",fontSize:40,fontWeight:800,letterSpacing:"-1.5px",color:"#0f172e",marginBottom:10,lineHeight:1.15 }}>
+        Comment ça marche
+      </h2>
+      <p style={{ fontSize:14,color:"#64748b",lineHeight:1.8,maxWidth:400,margin:"0 auto" }}>
+        Réservez un professionnel en 4 étapes ultra simples
+      </p>
+    </div>
+
+    <div className="how-grid" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,position:"relative" }}>
+
+      <div className="hide-mobile" style={{
+        position:"absolute",
+        top:40,
+        left:"14%",
+        right:"14%",
+        height:"1px",
+        background:"repeating-linear-gradient(90deg,#e2e8f0,#e2e8f0 4px,transparent 4px,transparent 10px)",
+        zIndex:0
+      }} />
+
+      {[
+        { icon:"/icons/search.png", title:"Recherchez", desc:"Trouvez l'artisan idéal selon votre ville et votre besoin." },
+        { icon:"/icons/calenda.png", title:"Réservez", desc:"Choisissez la date et l'heure qui vous convient." },
+        { icon:"/icons/noname.png", title:"Confirmez", desc:"Validez les détails en toute sécurité." },
+        { icon:"/icons/star.png", title:"Évaluez", desc:"Notez votre expérience et aidez la communauté." },
+      ].map((item,i) => (
+
+        <div
+          key={i}
+          onMouseEnter={() => setHovered(i)}
+          onMouseLeave={() => setHovered(null)}
+          style={{
+            position:"relative",
+            zIndex:1,
+            background:"#f8fafc",
+            border:"1.5px solid #e2e8f0",
+            borderRadius:12,
+            padding:"28px 20px 24px",
+            textAlign:"center",
+            transition:"all 0.3s ease"
+          }}
+        >
+
+         <img 
+  src={item.icon}
+  alt={item.title}
+  style={{
+    width:60,
+    height:60,
+    objectFit:"contain",
+    transition:"transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
+    transform: hovered === i
+      ? "scale(1.06) translateY(-2px) rotate(6deg)"
+      : "scale(1) rotate(0deg)"
+  }}
+/>
+
+          <div style={{ fontSize:15,fontWeight:700,color:"#0f172e",marginBottom:8 }}>
+            {item.title}
           </div>
-        </section>
+
+          <div style={{ fontSize:12,color:"#64748b",lineHeight:1.7 }}>
+            {item.desc}
+          </div>
+
+        </div>
+      ))}
+
+    </div>
+
+  </div>
+</section>
 
         {/* SERVICES */}
         <section ref={servicesRef} style={{ position:"relative",zIndex:1,padding:"100px 28px",background:"#f8fafc" }}>
@@ -362,7 +441,7 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                 );
               })}
             </div>
-            <div style={{ display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",marginBottom:36,maxWidth:460,marginLeft:"auto",marginRight:"auto",boxShadow:"0 2px 12px rgba(0,0,0,0.04)" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:24,padding:"10px 18px",marginBottom:36,maxWidth:460,marginLeft:"auto",marginRight:"auto",boxShadow:"0 2px 12px rgba(0,0,0,0.04)" }}>
               <Search size={14} color="#94a3b8" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un prestataire, ville..." style={{ flex:1,border:"none",outline:"none",fontSize:13,color:"#0f172e",background:"transparent",padding:0,boxShadow:"none" }} />
             </div>
@@ -374,11 +453,6 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
             </div>
             {/* Show all / go to Explore */}
             <div style={{ textAlign:"center",marginTop:40,display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
-              {!showAll && filtered.length > 9 && (
-                <button onClick={() => setShowAll(true)} style={{ background:"#fff",border:"1.5px solid #e2e8f0",color:"#0f172e",borderRadius:999,padding:"12px 30px",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8,letterSpacing:"0.1em",textTransform:"uppercase" }}>
-                  Voir plus <ChevronRight size={15} />
-                </button>
-              )}
               <button onClick={onExplore} style={{ background:"#0f172e",border:"none",color:"#06b6d4",borderRadius:999,padding:"12px 30px",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8,letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.12)" }}>
                 Explorer tous les artisans <ChevronRight size={15} />
               </button>
@@ -396,7 +470,7 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                   La plateforme de{" "}<em style={{ fontStyle:"italic",color:"#06b6d4" }}>confiance</em>{" "}en Tunisie
                 </h2>
                 <p style={{ fontSize:14,color:"#64748b",lineHeight:1.9,marginBottom:14,maxWidth:440 }}>Servigo connecte particuliers et artisans qualifiés. Chaque prestataire est vérifié manuellement pour garantir des profils authentiques et des avis réels.</p>
-                <p style={{ fontSize:14,color:"#64748b",lineHeight:1.9,marginBottom:36,maxWidth:440 }}>Communication directe, paiement sécurisé, service client 24/7. Parce que votre maison mérite le meilleur.</p>
+                <p style={{ fontSize:14,color:"#64748b",lineHeight:1.9,marginBottom:36,maxWidth:440 }}> Recherche, réservation, avis , service client 24/7 . Parce que votre maison mérite le meilleur.</p>
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
                   {[
                     { icon:<Shield size={15} />,text:"Artisans vérifiés" },
@@ -424,7 +498,7 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                   <div style={{ background:"rgba(6,182,212,0.07)",border:"1.5px solid rgba(6,182,212,0.15)",borderRadius:10,padding:"16px 18px",display:"flex",alignItems:"center",gap:14 }}>
                     <div style={{ width:40,height:40,borderRadius:10,border:"1.5px solid rgba(6,182,212,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>🏆</div>
                     <div>
-                      <div style={{ fontSize:13,fontWeight:700,color:"#fff",marginBottom:2 }}>Meilleure plateforme 2024</div>
+                      <div style={{ fontSize:13,fontWeight:700,color:"#fff",marginBottom:2 }}>Meilleure plateforme 2026</div>
                       <div style={{ fontSize:11,color:"#64748b" }}>Récompensée par TechTunisie Awards</div>
                     </div>
                   </div>
@@ -471,7 +545,7 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                     <textarea value={form.message} onChange={e => setForm(p => ({ ...p,message:e.target.value }))} placeholder="Décrivez votre problème..." style={{ minHeight:120,resize:"vertical" }} />
                   </div>
                   <div style={{ gridColumn:"1/-1" }}>
-                    <button onClick={handleSubmit} disabled={formLoading} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:8,padding:"14px 28px",fontSize:11,fontWeight:700,cursor:formLoading?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:8,opacity:formLoading?0.6:1,letterSpacing:"0.12em",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(6,182,212,0.12)" }}>
+                    <button onClick={handleSubmit} disabled={formLoading} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:24,padding:"14px 28px",fontSize:11,fontWeight:700,cursor:formLoading?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:8,opacity:formLoading?0.6:1,letterSpacing:"0.12em",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(6,182,212,0.12)" }}>
                       {formLoading?"Envoi en cours...":<><Send size={13} />Envoyer le message</>}
                     </button>
                   </div>
@@ -513,8 +587,8 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
               ))}
             </div>
             <div style={{ borderTop:"1.5px solid rgba(255,255,255,0.06)",paddingTop:24,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12 }}>
-              <span style={{ fontSize:12,color:"#334155" }}>© 2024 Servigo. Tous droits réservés.</span>
-              <span style={{ fontSize:12,color:"#334155" }}>Fait avec ❤️ en Tunisie</span>
+              <span style={{ fontSize:12,color:"#334155" }}>© 2026 Servigo. Tous droits réservés.</span>
+              <span style={{ fontSize:12,color:"#334155" }}>2TWo09NAS</span>
             </div>
           </div>
         </footer>
