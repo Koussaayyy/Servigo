@@ -163,6 +163,25 @@ export default function App() {
 
   // ── Logged-in ─────────────────────────────────────────────────────────────
   if (loggedUser) {
+    if (mode === "home") {
+      return (
+        <>
+          <HomePage
+            onLogin={() => openAuthModal("login")}
+            onSignup={() => openAuthModal("signup")}
+            onExplore={() => switchTo("explore")}
+            user={loggedUser}
+            onLogout={onLogout}
+            onNavigate={(page) => {
+              setActivePage(page);
+              setMode("app");
+            }}
+          />
+          {authModalNode}
+        </>
+      );
+    }
+
     const PROFILE_SUBPAGES   = ["profile","competences","portfolio","disponibilite","avis","securite","notifications"];
     const isProfilePage      = PROFILE_SUBPAGES.includes(activePage);
     const isReservationsPage = activePage === "reservations";

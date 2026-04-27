@@ -1,4 +1,5 @@
 const User = require("../models/User.model");
+const Reclamation = require("../models/Reclamation.model");
 
 // ── @GET /api/admin/users ──────────────────────────────────
 exports.getAllUsers = async (req, res) => {
@@ -47,6 +48,16 @@ exports.getStats = async (req, res) => {
     const totalUsers   = totalClients + totalWorkers + totalAdmins;
 
     res.json({ totalUsers, totalClients, totalWorkers, totalAdmins });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/reclamations ──────────────────────────
+exports.getReclamations = async (_req, res) => {
+  try {
+    const reclamations = await Reclamation.find().sort({ createdAt: -1 });
+    res.json(reclamations);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

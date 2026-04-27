@@ -11,6 +11,7 @@ import {
   CheckCircle2, Send, Shield, Award, Users, TrendingUp,
   Facebook, Instagram, Twitter,
 } from "lucide-react";
+import { reclamationApi } from "../api";
 
 const MOCK_WORKERS = [
   { _id:"1",  firstName:"Ahmed",   lastName:"Ben Ali",   workerProfile:{ professions:["Plombier"],       city:"Tunis",    hourlyRate:45, rating:4.8, totalReviews:127, isAvailable:true  }},
@@ -159,15 +160,17 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
 `;
 
 /* ─── HomePage ───────────────────────────────────────────────────────────── */
-export default function HomePage({ onLogin, onSignup, onExplore }) {
+export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout, onNavigate }) {
   const [hovered, setHovered] = useState(null);
   const [navOpen,       setNavOpen]       = useState(false);
+  const [profileOpen,   setProfileOpen]   = useState(false);
   const [search,        setSearch]        = useState("");
   const [activeCat,     setActiveCat]     = useState("");
   const [showAll,       setShowAll]       = useState(false);
   const [form,          setForm]          = useState({ name:"",email:"",subject:"",message:"" });
   const [formSent,      setFormSent]      = useState(false);
   const [formLoading,   setFormLoading]   = useState(false);
+  const [formError,     setFormError]     = useState("");
   const [activeSection, setActiveSection] = useState("Accueil");
   const [scrolled,      setScrolled]      = useState(false);
 
@@ -175,6 +178,10 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
   const howRef      = useRef(null);
   const aboutRef    = useRef(null);
   const reclamRef   = useRef(null);
+  const profileRef  = useRef(null);
+
+  const isLoggedIn = Boolean(user);
+  const userInitial = avatarInitials(user?.firstName || user?.name || user?.email || "U");
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -182,8 +189,18 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
     return () => window.removeEventListener("scroll", h);
   }, []);
 
+  useEffect(() => {
+    const onDocClick = (event) => {
+      if (!profileRef.current?.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
   const scrollTo = (s) => {
-    setNavOpen(false); setActiveSection(s);
+    setNavOpen(false); setProfileOpen(false); setActiveSection(s);
     const map = { "Comment ça marche":howRef, "Services":servicesRef, "À propos":aboutRef };
     if (s === "Accueil") window.scrollTo({ top:0, behavior:"smooth" });
     else map[s]?.current?.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -203,11 +220,38 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
 
   const displayed = showAll ? filtered : filtered.slice(0, 9);
 
+  // Validation helpers
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    const errors = [];
+    if (!form.name || form.name.trim().length < 2) errors.push("Nom complet: minimum 2 caractères");
+    if (!form.email || !validateEmail(form.email)) errors.push("Email: format invalide");
+    if (!form.message || form.message.trim().length < 10) errors.push("Message: minimum 10 caractères");
+    return errors;
+  };
+
+  const validationErrors = validateForm();
+  const isFormValid = validationErrors.length === 0;
+
   const handleSubmit = async () => {
-    if (!form.name || !form.email || !form.message) return;
+    if (!isFormValid) {
+      setFormError(validationErrors.join(" | "));
+      return;
+    }
+    setFormError("");
     setFormLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setFormSent(true); setFormLoading(false);
+    try {
+      await reclamationApi.create(form);
+      setFormSent(true);
+    } catch (err) {
+      setFormError(err.message || "Échec d'envoi, veuillez réessayer.");
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const Badge = ({ label }) => (
@@ -238,9 +282,69 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                 </button>
               ))}
             </div>
-            <div className="hide-mobile" style={{ display:"flex",gap:10 }}>
-              <button onClick={onLogin}  style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:24,padding:"9px 20px",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s" }}>Se connecter</button>
-              <button onClick={onSignup} style={{ border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:24,padding:"9px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.15)" }}>Créer un compte</button>
+            <div className="hide-mobile" style={{ display:"flex",gap:10,position:"relative" }} ref={profileRef}>
+              {!isLoggedIn ? (
+                <>
+                  <button onClick={onLogin}  style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:24,padding:"9px 20px",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s" }}>Se connecter</button>
+                  <button onClick={onSignup} style={{ border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:24,padding:"9px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.15)" }}>Créer un compte</button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setProfileOpen((p) => !p)}
+                    style={{
+                      width:36,
+                      height:36,
+                      borderRadius:"50%",
+                      border:"1.5px solid rgba(6,182,212,0.35)",
+                      background:"#0f172e",
+                      color:"#06b6d4",
+                      fontWeight:700,
+                      fontSize:14,
+                      cursor:"pointer",
+                    }}
+                  >
+                    {userInitial}
+                  </button>
+                  {profileOpen && (
+                    <div
+                      style={{
+                        position:"absolute",
+                        top:44,
+                        right:0,
+                        minWidth:190,
+                        background:"#fff",
+                        border:"1.5px solid #e2e8f0",
+                        borderRadius:10,
+                        boxShadow:"0 14px 36px rgba(15,23,46,0.12)",
+                        padding:8,
+                        zIndex:1200,
+                        display:"grid",
+                        gap:4,
+                      }}
+                    >
+                      <button
+                        onClick={() => { setProfileOpen(false); onNavigate?.("profile"); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}
+                      >
+                        Mon Profil
+                      </button>
+                      <button
+                        onClick={() => { setProfileOpen(false); onNavigate?.("reservations"); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}
+                      >
+                        Mes Réservations
+                      </button>
+                      <button
+                        onClick={() => { setProfileOpen(false); onLogout?.(); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#b91c1c",fontWeight:700 }}
+                      >
+                        Déconnexion
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <button className="hide-desktop" onClick={() => setNavOpen(o => !o)} style={{ marginLeft:"auto",background:"#fff",border:"1.5px solid #e2e8f0",color:"#0f172e",borderRadius:8,padding:8,cursor:"pointer",display:"flex" }}>
               {navOpen ? <X size={18} /> : <Menu size={18} />}
@@ -249,10 +353,18 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
           {navOpen && (
             <div style={{ background:"rgba(248,250,252,0.98)",backdropFilter:"blur(20px)",borderTop:"1.5px solid #e2e8f0",padding:"16px 28px 20px",display:"flex",flexDirection:"column",gap:4 }}>
               {NAV_LINKS.map(l => <button key={l} onClick={() => scrollTo(l)} style={{ background:"none",border:"none",color:"#64748b",fontSize:14,fontWeight:600,textAlign:"left",padding:"10px 0",cursor:"pointer",borderBottom:"1px solid #f1f5f9" }}>{l}</button>)}
-              <div style={{ display:"flex",gap:10,marginTop:12 }}>
-                <button onClick={onLogin}  style={{ flex:1,border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer" }}>Se connecter</button>
-                <button onClick={onSignup} style={{ flex:1,border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:8,padding:10,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.08em" }}>Créer un compte</button>
-              </div>
+              {!isLoggedIn ? (
+                <div style={{ display:"flex",gap:10,marginTop:12 }}>
+                  <button onClick={onLogin}  style={{ flex:1,border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer" }}>Se connecter</button>
+                  <button onClick={onSignup} style={{ flex:1,border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:8,padding:10,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.08em" }}>Créer un compte</button>
+                </div>
+              ) : (
+                <div style={{ display:"grid",gap:8,marginTop:12 }}>
+                  <button onClick={() => { setNavOpen(false); onNavigate?.("profile"); }} style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left" }}>Mon Profil</button>
+                  <button onClick={() => { setNavOpen(false); onNavigate?.("reservations"); }} style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left" }}>Mes Réservations</button>
+                  <button onClick={() => { setNavOpen(false); onLogout?.(); }} style={{ border:"1.5px solid rgba(239,68,68,0.35)",background:"#fff",color:"#b91c1c",borderRadius:8,padding:10,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"left" }}>Déconnexion</button>
+                </div>
+              )}
             </div>
           )}
         </nav>
@@ -545,9 +657,19 @@ export default function HomePage({ onLogin, onSignup, onExplore }) {
                     <textarea value={form.message} onChange={e => setForm(p => ({ ...p,message:e.target.value }))} placeholder="Décrivez votre problème..." style={{ minHeight:120,resize:"vertical" }} />
                   </div>
                   <div style={{ gridColumn:"1/-1" }}>
-                    <button onClick={handleSubmit} disabled={formLoading} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:24,padding:"14px 28px",fontSize:11,fontWeight:700,cursor:formLoading?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:8,opacity:formLoading?0.6:1,letterSpacing:"0.12em",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(6,182,212,0.12)" }}>
+                    <button onClick={handleSubmit} disabled={formLoading || !isFormValid} style={{ background:isFormValid && !formLoading?"#0f172e":"#cbd5e1",color:"#06b6d4",border:"none",borderRadius:24,padding:"14px 28px",fontSize:11,fontWeight:700,cursor:!isFormValid || formLoading?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:8,opacity:(!isFormValid || formLoading)?0.6:1,letterSpacing:"0.12em",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(6,182,212,0.12)",transition:"all .2s" }}>
                       {formLoading?"Envoi en cours...":<><Send size={13} />Envoyer le message</>}
                     </button>
+                      {formError && (
+                        <p style={{ marginTop:10,fontSize:12,color:"#b91c1c",lineHeight:1.5 }}>{formError}</p>
+                      )}
+                      {!isFormValid && !formError && (
+                        <p style={{ marginTop:10,fontSize:11,color:"#f59e0b",lineHeight:1.5 }}>
+                          ✓ {validationErrors.map((err, i) => (
+                            <div key={i} style={{ marginTop: i === 0 ? 0 : 4 }}>• {err}</div>
+                          ))}
+                        </p>
+                      )}
                   </div>
                 </div>
               )}

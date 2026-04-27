@@ -283,3 +283,25 @@ export const reservationApi = {
       body: JSON.stringify({ status }),
     }).then(handle),
 };
+
+// ════════════════════════════════════════════
+//  RECLAMATIONS
+// ════════════════════════════════════════════
+export const reclamationApi = {
+  create: (payload) =>
+    fetch(`${BASE}/reclamations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(handle),
+};
+
+// ════════════════════════════════════════════
+//  ADMIN
+// ════════════════════════════════════════════
+export const adminApi = {
+  getReclamations: () =>
+    fetch(`${BASE}/admin/reclamations`, {
+      headers: authHeaders(),
+    }).then(handle),
+};
