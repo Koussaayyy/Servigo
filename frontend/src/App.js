@@ -7,50 +7,38 @@ import ClientSignup         from "./pages/ClientSignup";
 import WorkerSignup         from "./pages/WorkerSignup";
 import ResetPassword        from "./pages/ResetPassword";
 import Explore              from "./pages/Explore";
-import HomePage             from "./pages/HomePage";          // ← your ServigoPro landing
+import HomePage             from "./pages/HomePage";
 import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 import Onboarding           from "./pages/Onboarding/Onboarding";
 import AppLayout            from "./components/AppLayout";
-import ProfilePage          from "./pages/profile/ProfilePage";
+import Profile              from "./pages/Profile";
 import Dashboard            from "./components/Dashboard";
 import ReservationsPage     from "./pages/ReservationsPage";
 import AuthModal            from "./components/AuthModal";
 
-const PAGE_STORAGE_KEY = "activePage";
-const VALID_PAGES = [
-  "dashboard",
-  "profile",
-  "competences",
-  "portfolio",
-  "disponibilite",
-  "avis",
-  "securite",
-  "notifications",
-  "reservations",
-];
-
 export default function App() {
-  // "home" = landing (ServigoPro), "explore" = marketplace, "login" / "signup" = auth
   const [mode, setMode]             = useState("home");
   const [signupType, setSignupType] = useState(null);
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
-  const [activePage, setActivePage] = useState(() => {
-    const saved = localStorage.getItem(PAGE_STORAGE_KEY);
-    return VALID_PAGES.includes(saved) ? saved : "dashboard";
-  });
+
+  // Always start on dashboard — never restore "profile" from storage on refresh
+  const [activePage, setActivePage] = useState("dashboard");
+
+  // The user whose profile to display (null = own profile)
+  const [profileTarget, setProfileTarget] = useState(null);
+
   const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
   const [authModalOpen, setAuthModalOpen]       = useState(false);
   const [authModalMode, setAuthModalMode]       = useState("login");
+
   const [pendingReservation, setPendingReservation] = useState(() => {
     try {
       const raw = localStorage.getItem("pendingReservation");
       return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   });
 
   const [loggedUser, setLoggedUser] = useState(() => {
@@ -60,21 +48,50 @@ export default function App() {
     } catch { return null; }
   });
 
-  // Detect reset-password token in URL
+  // ── SYNC MODE FROM URL ON LOAD ──────────────────────────────────────────
+  useEffect(() => {
+    const path = window.location.pathname.replace("/", "");
+    if (path === "explore") {
+      setMode("explore");
+    } else if (path === "app") {
+      setMode("app");
+      // On a hard refresh of /app, always land on dashboard — never profile
+      setActivePage("dashboard");
+      setProfileTarget(null);
+    } else if (path) {
+      setMode(path);
+    }
+  }, []);
+
+  // ── HANDLE BACK / FORWARD BUTTON ───────────────────────────────────────
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (state?.mode) {
+        setMode(state.mode);
+        if (state?.activePage)    setActivePage(state.activePage);
+        if (state?.profileTarget) setProfileTarget(state.profileTarget);
+        else                      setProfileTarget(null);
+      } else {
+        const path = window.location.pathname.replace("/", "");
+        setMode(path || "home");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // ── DETECT RESET TOKEN ──────────────────────────────────────────────────
   useEffect(() => {
     const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
     if (match) setResetToken(match[1]);
   }, []);
 
-  // Persist active page for logged-in users
-  useEffect(() => {
-    if (loggedUser && VALID_PAGES.includes(activePage)) {
-      localStorage.setItem(PAGE_STORAGE_KEY, activePage);
-    }
-  }, [activePage, loggedUser]);
-
+  // ── NAVIGATION HELPERS ──────────────────────────────────────────────────
   const switchTo = (newMode, newType = null) => {
     setAuthModalOpen(false);
+    const path = newMode === "home" ? "/" : `/${newMode}`;
+    window.history.pushState({ mode: newMode }, "", path);
     setExiting(true);
     setTimeout(() => {
       setMode(newMode);
@@ -84,33 +101,49 @@ export default function App() {
     }, 150);
   };
 
+  /**
+   * Navigate to an in-app page.
+   *
+   * onNavigate("profile")                          → own profile (no sidebar)
+   * onNavigate("profile", { profileUser: worker }) → another user's profile
+   * onNavigate("dashboard")                        → dashboard (with sidebar)
+   * onNavigate("reservations")                     → reservations (with sidebar)
+   */
+  const handleNavigate = (page, state = {}) => {
+    setMode("app");
+    setActivePage(page);
+
+    if (page === "profile") {
+      setProfileTarget(state?.profileUser || null);
+    } else {
+      setProfileTarget(null);
+    }
+
+    window.history.pushState(
+      { mode: "app", activePage: page, profileTarget: state?.profileUser || null },
+      "",
+      "/app"
+    );
+  };
+
   const onSuccess = (user) => {
     if (!user.onboardingComplete) {
       setOnboardingUser(user);
       return;
     }
     setLoggedUser(user);
-    if (user.role === "client" && pendingReservation?.workerId) {
-      setActivePage("reservations");
-    } else {
-      localStorage.removeItem("pendingReservation");
-      setPendingReservation(null);
-      setActivePage("dashboard");
-    }
+    setActivePage("dashboard");
   };
 
   const onLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem(PAGE_STORAGE_KEY);
+    localStorage.clear();
     setLoggedUser(null);
-    setOnboardingUser(null);
-    setActivePage("dashboard");
-    switchTo("home");           // go back to landing page on logout
+    setProfileTarget(null);
+    switchTo("home");
   };
 
-  const openAuthModal = (nextMode = "login") => {
-    setAuthModalMode(nextMode);
+  const openAuthModal = (m = "login") => {
+    setAuthModalMode(m);
     setAuthModalOpen(true);
   };
 
@@ -122,47 +155,50 @@ export default function App() {
     />
   ) : null;
 
-  // ── Reset password ────────────────────────────────────────────────────────
+  // ── RESET PASSWORD ──────────────────────────────────────────────────────
   if (resetToken) {
+    return <ResetPassword token={resetToken} />;
+  }
+
+  // ── ONBOARDING ──────────────────────────────────────────────────────────
+  if (onboardingUser) {
+    return (
+      <Onboarding
+        user={onboardingUser}
+        onComplete={(u) => {
+          setLoggedUser(u);
+          setOnboardingUser(null);
+        }}
+      />
+    );
+  }
+
+  // ── EXPLORE ─────────────────────────────────────────────────────────────
+  if (mode === "explore") {
     return (
       <>
-        <div className="bg-deco" />
-        <div className="wrapper">
-          <SidePanel />
-          <div className="main">
-            <ResetPassword
-              token={resetToken}
-              onSuccess={() => {
-                setResetToken(null);
-                window.history.pushState({}, "", "/");
-                switchTo("login");
-              }}
-            />
-          </div>
-        </div>
+        <Explore
+          onHome={() => switchTo("home")}
+          onExplore={() => switchTo("explore")}
+          onReserveWorker={() => {
+            setActivePage("reservations");
+            setMode("app");
+          }}
+          user={loggedUser}
+          onLogout={onLogout}
+          onLogin={() => openAuthModal("login")}
+          onSignup={() => openAuthModal("signup")}
+          onNavigate={handleNavigate}
+        />
+        {authModalNode}
       </>
     );
   }
 
-  // ── Onboarding — full screen, no side panel ───────────────────────────────
-  if (onboardingUser) {
-    return (
-      <div className="ob-fullpage">
-        <Onboarding
-          user={onboardingUser}
-          onComplete={(updatedUser) => {
-            localStorage.setItem("user", JSON.stringify(updatedUser));
-            setOnboardingUser(null);
-            setLoggedUser(updatedUser);
-            setActivePage("dashboard");
-          }}
-        />
-      </div>
-    );
-  }
-
-  // ── Logged-in ─────────────────────────────────────────────────────────────
+  // ── LOGGED-IN USER ───────────────────────────────────────────────────────
   if (loggedUser) {
+
+    // Home page (logged in)
     if (mode === "home") {
       return (
         <>
@@ -172,143 +208,58 @@ export default function App() {
             onExplore={() => switchTo("explore")}
             user={loggedUser}
             onLogout={onLogout}
-            onNavigate={(page) => {
-              setActivePage(page);
-              setMode("app");
-            }}
+            onNavigate={handleNavigate}
           />
           {authModalNode}
         </>
       );
     }
 
-    const PROFILE_SUBPAGES   = ["profile","competences","portfolio","disponibilite","avis","securite","notifications"];
-    const isProfilePage      = PROFILE_SUBPAGES.includes(activePage);
-    const isReservationsPage = activePage === "reservations";
+    // ── PROFILE — standalone, NO AppLayout sidebar ───────────────────────
+    if (activePage === "profile") {
+      return (
+        <Profile
+          profileUser={profileTarget || loggedUser}
+          currentUser={loggedUser}
+          onBack={() => setActivePage("dashboard")}
+          onHome={() => switchTo("home")}
+          onNavigate={handleNavigate}
+          onLogout={onLogout}
+        />
+      );
+    }
 
+    // ── ALL OTHER PAGES — wrapped in AppLayout (sidebar visible) ─────────
     return (
-      <>
-      <AppLayout
-        user={loggedUser}
-        activePage={activePage}
-        onNavigate={setActivePage}
-        onLogout={onLogout}
-      >
-        {!isProfilePage && !isReservationsPage && (
-          <Dashboard user={loggedUser} onLogout={onLogout} onNavigate={setActivePage} />
-        )}
-        {isProfilePage && (
-          <ProfilePage
-            user={loggedUser}
-            subPage={activePage}
-            onAccountDeleted={onLogout}
-            onSave={(updated) => {
-              const merged = { ...loggedUser, ...updated };
-              localStorage.setItem("user", JSON.stringify(merged));
-              setLoggedUser(merged);
-            }}
-          />
-        )}
-        {isReservationsPage && (
-          <ReservationsPage
-            user={loggedUser}
-            preselectedWorkerId={pendingReservation?.workerId || ""}
-            preselectedProfession={pendingReservation?.profession || ""}
-            onPrefillApplied={() => {
-              localStorage.removeItem("pendingReservation");
-              setPendingReservation(null);
-            }}
-          />
-        )}
+      <AppLayout user={loggedUser} onLogout={onLogout}>
+        {activePage === "reservations" && <ReservationsPage user={loggedUser} />}
+        {activePage === "dashboard"    && <Dashboard        user={loggedUser} />}
       </AppLayout>
-      {authModalNode}
-      </>
     );
   }
 
-  // ── Public landing page ───────────────────────────────────────────────────
+  // ── PUBLIC HOME ─────────────────────────────────────────────────────────
   if (mode === "home") {
     return (
       <>
         <HomePage
-          onLogin={()   => openAuthModal("login")}
-          onSignup={()  => openAuthModal("signup")}
-          onExplore={()  => switchTo("explore")}   // "Voir les artisans" CTA
+          onLogin={() => openAuthModal("login")}
+          onSignup={() => openAuthModal("signup")}
+          onExplore={() => switchTo("explore")}
         />
         {authModalNode}
       </>
     );
   }
 
-  // ── Marketplace (Explore) ─────────────────────────────────────────────────
-  if (mode === "explore") {
-    return (
-      <>
-        <Explore
-          onLogin={()   => openAuthModal("login")}
-          onSignup={()  => openAuthModal("signup")}
-          onHome={()    => switchTo("home")}
-          onReserveWorker={(worker) => {
-            const payload = {
-              workerId:   worker?._id,
-              profession: worker?.workerProfile?.professions?.[0] || "",
-            };
-            localStorage.setItem("pendingReservation", JSON.stringify(payload));
-            setPendingReservation(payload);
-            openAuthModal("login");
-          }}
-        />
-        {authModalNode}
-      </>
-    );
-  }
-
-  // ── Auth screens ──────────────────────────────────────────────────────────
+  // ── AUTH SCREENS ────────────────────────────────────────────────────────
   return (
     <>
-      <div className="bg-deco" />
-      <div className="wrapper">
-        <SidePanel />
-        <div className="main">
-          <button className="step-back" onClick={() => switchTo("home")}> 
-            ← Retour à l'accueil
-          </button>
-          <div className="mode-tabs">
-            <button
-              className={`mode-tab ${mode === "login" ? "active" : ""}`}
-              onClick={() => switchTo("login")}
-            >Sign In</button>
-            <button
-              className={`mode-tab ${mode === "signup" ? "active" : ""}`}
-              onClick={() => switchTo("signup")}
-            >Create Account</button>
-          </div>
-          <div className={exiting ? "panel-exit" : ""} key={panelKey}>
-            {mode === "login" && <LoginForm onSuccess={onSuccess} />}
-            {mode === "signup" && !signupType && !googleCredential && (
-              <SignupPicker
-                onSelect={(t) => switchTo("signup", t)}
-                onGoogleSuccess={onSuccess}
-                onGoogleComplete={(credential) => setGoogleCredential(credential)}
-              />
-            )}
-            {mode === "signup" && googleCredential && (
-              <GoogleCompleteSignup
-                googleCredential={googleCredential}
-                onSuccess={(user) => {
-                  setGoogleCredential(null);
-                  onSuccess(user);
-                }}
-              />
-            )}
-            {mode === "signup" && signupType === "client" && (
-              <ClientSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
-            )}
-            {mode === "signup" && signupType === "worker" && (
-              <WorkerSignup onBack={() => switchTo("signup", null)} onSuccess={onSuccess} />
-            )}
-          </div>
-        </div>
+      <SidePanel />
+      <div className="main">
+        <button onClick={() => switchTo("home")}>← Home</button>
+        {mode === "login"  && <LoginForm   onSuccess={onSuccess} />}
+        {mode === "signup" && <SignupPicker />}
       </div>
       {authModalNode}
     </>

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Search, MapPin, Wrench, Zap, Paintbrush, Hammer, Snowflake,
-  ShieldCheck, Star, Bookmark, SlidersHorizontal, ChevronLeft,
+  ShieldCheck, Star, Bookmark, SlidersHorizontal,
   CheckCircle2, Clock3, X, Filter,
 } from "lucide-react";
 import { avatarUrl, workerApi } from "../api";
@@ -33,8 +33,7 @@ const professionMatches = (profs = [], cat = "") => {
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 
 /* ─── WorkerCard ─────────────────────────────────────────────────────────── */
-
-function WorkerCard({ worker, onReserve }) {
+function WorkerCard({ worker, onReserve, onNavigate }) {
   const [saved, setSaved] = useState(false);
   const [hov,   setHov]   = useState(false);
 
@@ -47,6 +46,12 @@ function WorkerCard({ worker, onReserve }) {
   const reviews = Number(worker?.workerProfile?.totalReviews || 0);
   const avail   = worker?.workerProfile?.isAvailable !== false;
   const avatar  = typeof avatarUrl === "function" ? avatarUrl(worker?.avatar) : null;
+
+  const handleViewProfile = () => {
+    if (typeof onNavigate === "function") {
+      onNavigate("profile", { profileUser: worker });
+    }
+  };
 
   return (
     <div
@@ -130,12 +135,21 @@ function WorkerCard({ worker, onReserve }) {
         </div>
       </div>
 
-      <button
-        onClick={() => onReserve(worker)}
-        style={{ width:"100%",background:hov?"#0f172e":"#f8fafc",color:hov?"#06b6d4":"#0f172e",border:`1.5px solid ${hov?"#0f172e":"#e2e8f0"}`,borderRadius:8,padding:"10px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.12em",textTransform:"uppercase",transition:"all 0.25s" }}
-      >
-        Réserver maintenant
-      </button>
+      {/* Buttons row */}
+      <div style={{ display:"flex",gap:8 }}>
+        <button
+          onClick={() => typeof onReserve === "function" && onReserve(worker)}
+          style={{ flex:1,background:hov?"#0f172e":"#f8fafc",color:hov?"#06b6d4":"#0f172e",border:`1.5px solid ${hov?"#0f172e":"#e2e8f0"}`,borderRadius:8,padding:"10px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.12em",textTransform:"uppercase",transition:"all 0.25s" }}
+        >
+          Réserver
+        </button>
+        <button
+          onClick={handleViewProfile}
+          style={{ flex:1,background:"transparent",color:"#06b6d4",border:"1.5px solid rgba(6,182,212,0.35)",borderRadius:8,padding:"10px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.12em",textTransform:"uppercase",transition:"all 0.25s" }}
+        >
+          Voir profil
+        </button>
+      </div>
     </div>
   );
 }
@@ -178,7 +192,7 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
   display: flex; align-items: center; gap: 16px; padding: 0 28px;
 }
 .ex-logo-wrap {
-  display: flex; align-items: center; gap: 10px; flex-shrink:0; margin-right: 24px;
+  display: flex; align-items: center; gap: 10px; flex-shrink:0; margin-right: 8px;
 }
 .ex-logo-box {
   width:34px; height:34px; border:2px solid #06b6d4; border-radius:6px;
@@ -186,24 +200,7 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
   font-weight:800; font-size:16px; color:#06b6d4;
 }
 .ex-logo-text { font-weight:700; font-size:16px; letter-spacing:-0.3px; color:#0f172e; }
-.ex-back-btn {
-  display: flex; align-items: center; gap: 6px;
-  background: #fff; border: 1.5px solid #e2e8f0; border-radius: 8px;
-  padding: 7px 14px; font-size: 12px; font-weight: 600; color: #64748b;
-  cursor: pointer; transition: all .2s; flex-shrink:0;
-  letter-spacing: 0.04em;
-}
-.ex-back-btn:hover { color:#0f172e; border-color:#cbd5e1; }
-.ex-search-bar {
-  flex: 1; display:flex; align-items:center; gap:8px;
-  background: #fff; border: 1.5px solid #e2e8f0; border-radius:8px;
-  padding: 0 14px; height:38px; max-width:480px;
-}
-.ex-search-bar input {
-  flex:1; border:none; outline:none; font-size:13px; color:#0f172e; background:transparent;
-}
-.ex-search-bar input::placeholder { color:#94a3b8; }
-.ex-nav-auth { display:flex; gap:10px; margin-left:auto; flex-shrink:0; }
+.ex-nav-auth { display:flex; gap:10px; }
 .ex-btn-ghost {
   border:1.5px solid #e2e8f0; background:#fff; color:#0f172e;
   border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600;
@@ -221,7 +218,7 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 /* HERO BAND */
 .ex-hero {
   position: relative; z-index:1;
-  padding: 88px 28px 40px;
+  padding: 88px 28px 48px;
   background: #0f172e;
   border-bottom: 1.5px solid rgba(6,182,212,0.15);
 }
@@ -237,7 +234,34 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
   line-height:1.1; margin-bottom:12px;
 }
 .ex-hero h1 em { font-style:italic; color:#06b6d4; }
-.ex-hero p { font-size:14px; color:#64748b; line-height:1.8; max-width:520px; }
+.ex-hero p { font-size:14px; color:#64748b; line-height:1.8; max-width:520px; margin-bottom:28px; }
+
+/* HERO SEARCH BAR */
+.ex-hero-search {
+  display: flex; align-items: center; gap: 10px;
+  background: #fff; border: 2px solid rgba(6,182,212,0.3);
+  border-radius: 12px; padding: 0 18px; height: 52px;
+  max-width: 600px;
+  box-shadow: 0 8px 32px rgba(6,182,212,0.15);
+  transition: border-color .2s, box-shadow .2s;
+}
+.ex-hero-search:focus-within {
+  border-color: rgba(6,182,212,0.7);
+  box-shadow: 0 8px 32px rgba(6,182,212,0.25);
+}
+.ex-hero-search input {
+  flex: 1; border: none; outline: none;
+  font-size: 14px; color: #0f172e; background: transparent;
+  font-family: 'Sora', sans-serif;
+}
+.ex-hero-search input::placeholder { color: #94a3b8; }
+.ex-hero-search-btn {
+  background: #06b6d4; border: none; border-radius: 8px;
+  width: 34px; height: 34px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; flex-shrink: 0;
+  transition: background .2s;
+}
+.ex-hero-search-btn:hover { background: #0891b2; }
 
 /* CATEGORIES */
 .ex-cats {
@@ -379,11 +403,10 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 @media(max-width:768px) {
   .ex-hero h1 { font-size:28px; }
   .ex-nav-inner { padding:0 16px; }
-  .ex-back-btn span { display:none; }
   .ex-body { padding:24px 16px 48px; }
   .ex-cats { padding:20px 16px; }
-  .ex-hero { padding:80px 16px 32px; }
-  .ex-search-bar { max-width:unset; }
+  .ex-hero { padding:80px 16px 36px; }
+  .ex-hero-search { max-width:unset; }
 }
 @media(max-width:480px) {
   .ex-cards-grid { grid-template-columns:1fr; }
@@ -391,21 +414,32 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 }
 `;
 
-export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) {
-  const [workers,   setWorkers]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState("");
+export default function Explore({ onLogin, onSignup, onHome, onExplore, onReserveWorker, user, onLogout, onNavigate }) {
+  const [workers,    setWorkers]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState("");
 
-  const [search,    setSearch]    = useState("");
-  const [city,      setCity]      = useState("");
-  const [profession,setProfession]= useState("");
-  const [minRating, setMinRating] = useState(0);
-  const [priceMin,  setPriceMin]  = useState(0);
-  const [priceMax,  setPriceMax]  = useState(500);
-  const [availOnly, setAvailOnly] = useState(false);
-  const [drawerOpen,setDrawerOpen]= useState(false);
+  const [search,     setSearch]     = useState("");
+  const [city,       setCity]       = useState("");
+  const [profession, setProfession] = useState("");
+  const [minRating,  setMinRating]  = useState(0);
+  const [priceMin,   setPriceMin]   = useState(0);
+  const [priceMax,   setPriceMax]   = useState(500);
+  const [availOnly,  setAvailOnly]  = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [profileOpen,setProfileOpen]= useState(false);
 
-  // Fetch workers
+  const profileRef  = useRef(null);
+  const userInitial = avatarInitials(user?.firstName || user?.name || user?.email || "U");
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!profileRef.current?.contains(e.target)) setProfileOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true); setError("");
@@ -425,7 +459,7 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
   const cityOptions = useMemo(() => {
     const s = new Set();
     workers.forEach(w => { const c = String(w?.workerProfile?.city || "").trim(); if (c) s.add(c); });
-    return [...s].sort((a,b) => a.localeCompare(b));
+    return [...s].sort((a, b) => a.localeCompare(b));
   }, [workers]);
 
   const visible = useMemo(() => {
@@ -453,7 +487,19 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
     setPriceMin(0); setPriceMax(500); setAvailOnly(false);
   };
 
-  // Shared filter panel content
+  const safeNavigate = (page, state = {}) => {
+    if (typeof onNavigate === "function") {
+      onNavigate(page, state);
+    }
+  };
+
+  const navLinks = [
+    { label: "Explorer",     action: onExplore,                          active: true,  authRequired: false },
+    { label: "Profil",       action: () => safeNavigate("profile"),      active: false, authRequired: true  },
+    { label: "Réservations", action: () => safeNavigate("reservations"), active: false, authRequired: true  },
+    { label: "Dashboard",    action: () => safeNavigate("dashboard"),    active: false, authRequired: true  },
+  ].filter(item => !item.authRequired || !!user);
+
   const FilterPanel = () => (
     <>
       <div className="ex-filter-group">
@@ -482,9 +528,9 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
       <div className="ex-filter-group">
         <span className="ex-filter-label">Prix (TND/h)</span>
         <div className="ex-price-row">
-          <input type="number" min={0} value={priceMin} onChange={e => setPriceMin(Number(e.target.value)||0)} placeholder="Min" />
+          <input type="number" min={0} value={priceMin} onChange={e => setPriceMin(Number(e.target.value) || 0)} placeholder="Min" />
           <span>–</span>
-          <input type="number" min={0} value={priceMax} onChange={e => setPriceMax(Number(e.target.value)||0)} placeholder="Max" />
+          <input type="number" min={0} value={priceMax} onChange={e => setPriceMax(Number(e.target.value) || 0)} placeholder="Max" />
         </div>
       </div>
       <div className="ex-divider" />
@@ -500,49 +546,102 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
   return (
     <>
       <style>{css}</style>
-      {/* Fixed background layer */}
       <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"radial-gradient(ellipse 55% 45% at 10% 10%, rgba(6,182,212,0.05), transparent), radial-gradient(ellipse 50% 50% at 90% 90%, rgba(6,182,212,0.03), transparent), repeating-linear-gradient(45deg, transparent, transparent 60px, rgba(6,182,212,0.012) 60px, rgba(6,182,212,0.012) 61px)" }} />
 
       <div className="ex-root">
 
-        {/* NAVBAR */}
+        {/* ── NAVBAR ─────────────────────────────────────────────────────── */}
         <nav className="ex-nav">
           <div className="ex-nav-inner">
-            {/* Logo */}
-            <div className="ex-logo-wrap">
+
+            <div className="ex-logo-wrap" onClick={onHome} style={{ cursor:"pointer" }}>
               <div className="ex-logo-box">S</div>
               <span className="ex-logo-text">servigo</span>
             </div>
-            {/* Back to landing */}
-            {onHome && (
-              <button className="ex-back-btn" onClick={onHome}>
-                <ChevronLeft size={14} />
-                <span>Accueil</span>
-              </button>
-            )}
-            {/* Inline search */}
-            <div className="ex-search-bar">
-              <Search size={14} color="#94a3b8" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Plombier, électricien, ville..."
-              />
-              {search && (
-                <button onClick={() => setSearch("")} style={{ background:"none",border:"none",cursor:"pointer",color:"#94a3b8",display:"flex" }}>
-                  <X size={13} />
+
+            <div style={{ display:"flex",gap:2,alignItems:"center",flexShrink:0 }}>
+              {navLinks.map((item, i) => (
+                <button
+                  key={i}
+                  onClick={item.action}
+                  style={{
+                    background:  item.active ? "rgba(6,182,212,0.08)" : "none",
+                    border:      item.active ? "1.5px solid rgba(6,182,212,0.2)" : "1.5px solid transparent",
+                    color:       item.active ? "#06b6d4" : "#64748b",
+                    cursor:"pointer", fontSize:12, fontWeight:600, letterSpacing:"0.06em",
+                    padding:"7px 14px", borderRadius:24, transition:"all .2s", whiteSpace:"nowrap",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background="rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor="rgba(6,182,212,0.2)"; e.currentTarget.style.color="#06b6d4"; }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background  = item.active ? "rgba(6,182,212,0.08)" : "none";
+                    e.currentTarget.style.borderColor = item.active ? "rgba(6,182,212,0.2)"  : "transparent";
+                    e.currentTarget.style.color       = item.active ? "#06b6d4"              : "#64748b";
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ flex: 1 }} />
+
+            <div style={{ display:"flex",alignItems:"center",gap:10,flexShrink:0,position:"relative" }} ref={profileRef}>
+
+              {user && (
+                <button
+                  style={{ width:36,height:36,borderRadius:"50%",border:"1.5px solid #e2e8f0",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative",flexShrink:0,transition:"all .2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(6,182,212,0.35)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  <div style={{ position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:"#ef4444",border:"1.5px solid #fff" }} />
                 </button>
               )}
+
+              {user ? (
+                <>
+                  <button
+                    onClick={() => setProfileOpen(p => !p)}
+                    style={{ width:36,height:36,borderRadius:"50%",border:"1.5px solid rgba(6,182,212,0.35)",background:"#0f172e",color:"#06b6d4",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden" }}
+                  >
+                    {user.avatar ? (
+                      <img
+                        src={typeof avatarUrl === "function" ? avatarUrl(user.avatar) : user.avatar}
+                        style={{ width:36,height:36,borderRadius:"50%",objectFit:"cover" }}
+                        alt=""
+                      />
+                    ) : (
+                      userInitial
+                    )}
+                  </button>
+
+                  {profileOpen && (
+                    <div style={{ position:"absolute",top:44,right:0,minWidth:190,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 14px 36px rgba(15,23,46,0.12)",padding:8,zIndex:1200,display:"grid",gap:4 }}>
+                      <div style={{ padding:"8px 12px 10px",borderBottom:"1px solid #f1f5f9",marginBottom:4 }}>
+                        <div style={{ fontSize:13,fontWeight:700,color:"#0f172e" }}>{user.firstName || user.name || "Utilisateur"}</div>
+                        <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{user.email || ""}</div>
+                      </div>
+                      <button onClick={() => { setProfileOpen(false); safeNavigate("profile"); }}       style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}>Mon Profil</button>
+                      <button onClick={() => { setProfileOpen(false); safeNavigate("reservations"); }} style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}>Mes Réservations</button>
+                      <button onClick={() => { setProfileOpen(false); onLogout?.(); }}                 style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#b91c1c",fontWeight:700 }}>Déconnexion</button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="ex-nav-auth">
+                  <button className="ex-btn-ghost" onClick={onLogin}>Se connecter</button>
+                  <button className="ex-btn-solid" onClick={onSignup}>Créer un compte</button>
+                </div>
+              )}
             </div>
-            {/* Auth */}
-            <div className="ex-nav-auth">
-              <button className="ex-btn-ghost" onClick={onLogin}>Se connecter</button>
-              <button className="ex-btn-solid" onClick={onSignup}>Créer un compte</button>
-            </div>
+
           </div>
         </nav>
 
-        {/* HERO BAND */}
+        {/* ── HERO BAND ──────────────────────────────────────────────────── */}
         <section className="ex-hero">
           <div className="ex-hero-inner">
             <div className="ex-anim-1">
@@ -555,17 +654,17 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
               Trouvez le bon<br /><em>prestataire</em>
             </h1>
             <p className="ex-anim-3">
-              {visible.length > 0 ? `${visible.length} prestataire${visible.length > 1 ? "s" : ""} disponible${visible.length > 1 ? "s" : ""} — filtrez par ville, métier, tarif ou note.` : "Comparez et réservez les meilleurs artisans qualifiés en quelques clics."}
+              Comparez et réservez les meilleurs artisans qualifiés en quelques clics.
             </p>
           </div>
         </section>
 
-        {/* CATEGORY PILLS */}
+        {/* ── CATEGORY PILLS ─────────────────────────────────────────────── */}
         <div className="ex-cats">
           <div className="ex-cats-inner">
             <div className="ex-cats-grid">
               <button
-                className={`ex-cat-btn ex-cat-all ${profession === "" ? "" : "ex-cat-not-active"}`}
+                className="ex-cat-btn ex-cat-all"
                 onClick={() => setProfession("")}
                 style={profession === "" ? { background:"#0f172e",borderColor:"#0f172e",color:"#06b6d4" } : { background:"#fff",borderColor:"#e2e8f0",color:"#64748b" }}
               >
@@ -588,10 +687,9 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
           </div>
         </div>
 
-        {/* MAIN */}
+        {/* ── MAIN ───────────────────────────────────────────────────────── */}
         <div className="ex-body">
 
-          {/* Desktop sidebar filters */}
           <aside className="ex-filters">
             <div className="ex-filters-title">
               <SlidersHorizontal size={15} />
@@ -600,9 +698,7 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
             <FilterPanel />
           </aside>
 
-          {/* Results */}
           <div>
-            {/* Mobile filter button */}
             <button className="ex-mobile-filter-btn" onClick={() => setDrawerOpen(true)}>
               <Filter size={14} />
               Filtres
@@ -610,6 +706,27 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
                 <span style={{ background:"#06b6d4",color:"#0f172e",borderRadius:999,width:18,height:18,fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>!</span>
               )}
             </button>
+
+            {/* ── SEARCH BAR ── */}
+            <div className="ex-hero-search" style={{ maxWidth:"unset",marginBottom:16 }}>
+              <Search size={16} color="#94a3b8" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Plombier, électricien, ville..."
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  style={{ background:"none",border:"none",cursor:"pointer",color:"#94a3b8",display:"flex",padding:0 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <button className="ex-hero-search-btn">
+                <Search size={14} color="#fff" />
+              </button>
+            </div>
 
             <div className="ex-results-head">
               <h2>Prestataires</h2>
@@ -620,14 +737,20 @@ export default function Explore({ onLogin, onSignup, onHome, onReserveWorker }) 
               {loading && <div className="ex-state">Chargement des prestataires…</div>}
               {!loading && error && <div className="ex-state error">{error}</div>}
               {!loading && !error && visible.length === 0 && (
-                <div className="ex-state">Aucun prestataire pour ces critères.<br /><br />
+                <div className="ex-state">
+                  Aucun prestataire pour ces critères.<br /><br />
                   <button onClick={resetFilters} style={{ background:"#0f172e",color:"#06b6d4",border:"none",borderRadius:8,padding:"10px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase" }}>
                     Réinitialiser les filtres
                   </button>
                 </div>
               )}
               {!loading && !error && visible.map(w => (
-                <WorkerCard key={w._id} worker={w} onReserve={onReserveWorker} />
+                <WorkerCard
+                  key={w._id}
+                  worker={w}
+                  onReserve={onReserveWorker}
+                  onNavigate={safeNavigate}
+                />
               ))}
             </div>
           </div>
