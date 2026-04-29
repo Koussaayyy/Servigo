@@ -32,3 +32,72 @@ exports.getAllReclamations = async (_req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+exports.updateReclamationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, adminNotes } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: "Reclamation ID required" });
+    }
+
+    if (!status || !["new", "in_progress", "resolved"].includes(status)) {
+      return res.status(400).json({ message: "Valid status required: new, in_progress, or resolved" });
+    }
+
+    const updateData = { status };
+    
+    if (priority && ["low", "medium", "high", "urgent"].includes(priority)) {
+      updateData.priority = priority;
+    }
+    
+    if (adminNotes !== undefined) {
+      updateData.adminNotes = String(adminNotes).trim();
+    }
+
+    // Set resolvedAt when status changes to resolved
+    if (status === "resolved") {
+      updateData.resolvedAt = new Date();
+    } else {
+      updateData.resolvedAt = null;
+    }
+
+    const reclamation = await Reclamation.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!reclamation) {
+      return res.status(404).json({ message: "Reclamation not found" });
+    }
+
+    return res.json({
+      message: "Reclamation updated",
+      reclamation,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.deleteReclamation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Reclamation ID required" });
+    }
+
+    const reclamation = await Reclamation.findByIdAndDelete(id);
+
+    if (!reclamation) {
+      return res.status(404).json({ message: "Reclamation not found" });
+    }
+
+    return res.json({ message: "Reclamation deleted" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

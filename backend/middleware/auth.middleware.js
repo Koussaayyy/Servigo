@@ -14,10 +14,25 @@ exports.protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-    if (!req.user || !req.user.isActive) {
-      return res.status(401).json({ message: "Account disabled or not found" });
+    
+    // If admin user, set req.user from decoded token (admin is not in DB)
+    if (decoded.role === "admin") {
+      req.user = {
+        _id: decoded._id,
+        email: decoded.email,
+        role: "admin",
+        firstName: decoded.firstName,
+        lastName: decoded.lastName,
+        isActive: true,
+      };
+    } else {
+      // Regular user, fetch from database
+      req.user = await User.findById(decoded.id || decoded._id).select("-password");
+      if (!req.user || !req.user.isActive) {
+        return res.status(401).json({ message: "Account disabled or not found" });
+      }
     }
+    
     return next();
 
   } catch (err) {

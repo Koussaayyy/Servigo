@@ -47,7 +47,49 @@ exports.getStats = async (req, res) => {
     const totalAdmins  = await User.countDocuments({ role: "admin" });
     const totalUsers   = totalClients + totalWorkers + totalAdmins;
 
-    res.json({ totalUsers, totalClients, totalWorkers, totalAdmins });
+    // Reclamation statistics
+    const totalReclamations = await Reclamation.countDocuments();
+    const newReclamations = await Reclamation.countDocuments({ status: "new" });
+    const inProgressReclamations = await Reclamation.countDocuments({ status: "in_progress" });
+    const resolvedReclamations = await Reclamation.countDocuments({ status: "resolved" });
+
+    // Category breakdown
+    const categoryCounts = await Reclamation.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Priority breakdown
+    const priorityCounts = await Reclamation.aggregate([
+      { $group: { _id: "$priority", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Average resolution time (for resolved reclamations)
+    const avgResolutionTime = await Reclamation.aggregate([
+      { $match: { status: "resolved", resolvedAt: { $ne: null } } },
+      {
+        $project: {
+          resolutionTime: { $subtract: ["$resolvedAt", "$createdAt"] }
+        }
+      },
+      { $group: { _id: null, avgTime: { $avg: "$resolutionTime" } } }
+    ]);
+
+    res.json({
+      users: { totalUsers, totalClients, totalWorkers, totalAdmins },
+      reclamations: {
+        total: totalReclamations,
+        new: newReclamations,
+        inProgress: inProgressReclamations,
+        resolved: resolvedReclamations,
+      },
+      categories: categoryCounts.map(c => ({ category: c._id, count: c.count })),
+      priorities: priorityCounts.map(p => ({ priority: p._id, count: p.count })),
+      avgResolutionTimeDays: avgResolutionTime[0]
+        ? Math.round(avgResolutionTime[0].avgTime / (1000 * 60 * 60 * 24))
+        : 0,
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

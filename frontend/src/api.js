@@ -2,10 +2,16 @@
 const BASE = "http://localhost:5000/api";
 
 const getToken = () => localStorage.getItem("token");
+const getAdminToken = () => localStorage.getItem("adminToken");
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${getToken()}`,
+});
+
+const adminHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${getAdminToken()}`,
 });
 
 const handle = async (res) => {
@@ -297,11 +303,52 @@ export const reclamationApi = {
 };
 
 // ════════════════════════════════════════════
+//  ADMIN AUTH
+// ════════════════════════════════════════════
+export const adminAuthApi = {
+  login: (email, password) =>
+    fetch(`${BASE}/admin-auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then(handle),
+};
+
+// ════════════════════════════════════════════
 //  ADMIN
 // ════════════════════════════════════════════
 export const adminApi = {
   getReclamations: () =>
     fetch(`${BASE}/admin/reclamations`, {
-      headers: authHeaders(),
+      headers: adminHeaders(),
+    }).then(handle),
+
+  updateReclamationStatus: (reclamationId, data) =>
+    fetch(`${BASE}/reclamations/${reclamationId}`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  deleteReclamation: (reclamationId) =>
+    fetch(`${BASE}/reclamations/${reclamationId}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    }).then(handle),
+
+  getUsers: () =>
+    fetch(`${BASE}/admin/users`, {
+      headers: adminHeaders(),
+    }).then(handle),
+
+  getStats: () =>
+    fetch(`${BASE}/admin/stats`, {
+      headers: adminHeaders(),
+    }).then(handle),
+
+  deleteUser: (userId) =>
+    fetch(`${BASE}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
     }).then(handle),
 };

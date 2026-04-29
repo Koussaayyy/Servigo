@@ -160,7 +160,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
 `;
 
 /* ─── HomePage ───────────────────────────────────────────────────────────── */
-export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout, onNavigate }) {
+export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout, onNavigate, onAdminAccess }) {
   const [hovered, setHovered] = useState(null);
   const [navOpen,       setNavOpen]       = useState(false);
   const [profileOpen,   setProfileOpen]   = useState(false);
@@ -287,6 +287,7 @@ export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout,
                 <>
                   <button onClick={onLogin}  style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:24,padding:"9px 20px",fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .2s" }}>Se connecter</button>
                   <button onClick={onSignup} style={{ border:"none",background:"#0f172e",color:"#06b6d4",borderRadius:24,padding:"9px 20px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.1em",textTransform:"uppercase",boxShadow:"0 4px 16px rgba(6,182,212,0.15)" }}>Créer un compte</button>
+                  <button onClick={onAdminAccess} style={{ border:"1.5px solid rgba(6,182,212,0.3)",background:"rgba(6,182,212,0.05)",color:"#06b6d4",borderRadius:24,padding:"9px 16px",fontSize:11,fontWeight:600,cursor:"pointer",transition:"all .2s",letterSpacing:"0.05em" }}>Admin</button>
                 </>
               ) : (
                 <>

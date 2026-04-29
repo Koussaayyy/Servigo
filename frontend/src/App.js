@@ -15,6 +15,8 @@ import Profile              from "./pages/Profile";
 import Dashboard            from "./components/Dashboard";
 import ReservationsPage     from "./pages/ReservationsPage";
 import AuthModal            from "./components/AuthModal";
+import AdminLogin           from "./pages/AdminLogin";
+import AdminDashboard       from "./pages/AdminDashboard";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -34,6 +36,14 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen]       = useState(false);
   const [authModalMode, setAuthModalMode]       = useState("login");
 
+  // Admin state
+  const [admin, setAdmin] = useState(() => {
+    try {
+      const a = localStorage.getItem("admin");
+      return a ? JSON.parse(a) : null;
+    } catch { return null; }
+  });
+
   const [pendingReservation, setPendingReservation] = useState(() => {
     try {
       const raw = localStorage.getItem("pendingReservation");
@@ -51,6 +61,13 @@ export default function App() {
   // ── SYNC MODE FROM URL ON LOAD ──────────────────────────────────────────
   useEffect(() => {
     const path = window.location.pathname.replace("/", "");
+    
+    // If admin is in localStorage, restore admin mode
+    if (admin) {
+      setMode("admin-dashboard");
+      return;
+    }
+    
     if (path === "explore") {
       setMode("explore");
     } else if (path === "app") {
@@ -61,7 +78,7 @@ export default function App() {
     } else if (path) {
       setMode(path);
     }
-  }, []);
+  }, [admin]);
 
   // ── HANDLE BACK / FORWARD BUTTON ───────────────────────────────────────
   useEffect(() => {
@@ -173,6 +190,31 @@ export default function App() {
     );
   }
 
+  // ── ADMIN LOGIN ──────────────────────────────────────────────────────────
+  if (mode === "admin-login") {
+    return (
+      <AdminLogin
+        onSuccess={(adminData) => {
+          setAdmin(adminData);
+          setMode("admin-dashboard");
+        }}
+      />
+    );
+  }
+
+  // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────
+  if (mode === "admin-dashboard" && admin) {
+    return (
+      <AdminDashboard
+        admin={admin}
+        onLogout={() => {
+          setAdmin(null);
+          setMode("home");
+        }}
+      />
+    );
+  }
+
   // ── EXPLORE ─────────────────────────────────────────────────────────────
   if (mode === "explore") {
     return (
@@ -209,6 +251,7 @@ export default function App() {
             user={loggedUser}
             onLogout={onLogout}
             onNavigate={handleNavigate}
+            onAdminAccess={() => setMode("admin-login")}
           />
           {authModalNode}
         </>
@@ -246,6 +289,7 @@ export default function App() {
           onLogin={() => openAuthModal("login")}
           onSignup={() => openAuthModal("signup")}
           onExplore={() => switchTo("explore")}
+          onAdminAccess={() => setMode("admin-login")}
         />
         {authModalNode}
       </>
@@ -258,6 +302,12 @@ export default function App() {
       <SidePanel />
       <div className="main">
         <button onClick={() => switchTo("home")}>← Home</button>
+        <button 
+          onClick={() => setMode("admin-login")}
+          style={{ position: "fixed", bottom: 20, right: 20, padding: "10px 16px", background: "#0f172e", color: "#06b6d4", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700 }}
+        >
+          Admin Access
+        </button>
         {mode === "login"  && <LoginForm   onSuccess={onSuccess} />}
         {mode === "signup" && <SignupPicker />}
       </div>

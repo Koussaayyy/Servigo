@@ -6,11 +6,23 @@ const ReclamationSchema = new mongoose.Schema(
     email: { type: String, required: true, trim: true, lowercase: true },
     subject: { type: String, default: "", trim: true },
     message: { type: String, required: true, trim: true },
+    category: {
+      type: String,
+      enum: ["technical", "support", "complaint", "suggestion", "billing"],
+      default: "complaint",
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high", "urgent"],
+      default: "medium",
+    },
     status: {
       type: String,
       enum: ["new", "in_progress", "resolved"],
       default: "new",
     },
+    adminNotes: { type: String, default: "" },
+    resolvedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
