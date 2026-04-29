@@ -15,7 +15,7 @@ import Profile              from "./pages/Profile";
 import Dashboard            from "./components/Dashboard";
 import ReservationsPage     from "./pages/ReservationsPage";
 import AuthModal            from "./components/AuthModal";
-import AdminLogin           from "./pages/AdminLogin";
+import AdminLoginModal      from "./components/AdminLoginModal";
 import AdminDashboard       from "./pages/AdminDashboard";
 
 export default function App() {
@@ -172,6 +172,16 @@ export default function App() {
     />
   ) : null;
 
+  const adminLoginNode = mode === "admin-login" ? (
+    <AdminLoginModal
+      onClose={() => setMode("home")}
+      onSuccess={(adminData) => {
+        setAdmin(adminData);
+        setMode("admin-dashboard");
+      }}
+    />
+  ) : null;
+
   // ── RESET PASSWORD ──────────────────────────────────────────────────────
   if (resetToken) {
     return <ResetPassword token={resetToken} />;
@@ -190,18 +200,6 @@ export default function App() {
     );
   }
 
-  // ── ADMIN LOGIN ──────────────────────────────────────────────────────────
-  if (mode === "admin-login") {
-    return (
-      <AdminLogin
-        onSuccess={(adminData) => {
-          setAdmin(adminData);
-          setMode("admin-dashboard");
-        }}
-      />
-    );
-  }
-
   // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────
   if (mode === "admin-dashboard" && admin) {
     return (
@@ -213,6 +211,11 @@ export default function App() {
         }}
       />
     );
+  }
+
+  // ── ADMIN LOGIN MODAL ───────────────────────────────────────────────────
+  if (mode === "admin-login") {
+    return adminLoginNode;
   }
 
   // ── EXPLORE ─────────────────────────────────────────────────────────────
@@ -254,6 +257,7 @@ export default function App() {
             onAdminAccess={() => setMode("admin-login")}
           />
           {authModalNode}
+          {adminLoginNode}
         </>
       );
     }
@@ -292,6 +296,7 @@ export default function App() {
           onAdminAccess={() => setMode("admin-login")}
         />
         {authModalNode}
+        {adminLoginNode}
       </>
     );
   }
