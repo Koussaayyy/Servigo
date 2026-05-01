@@ -145,12 +145,14 @@ export default function AdminDashboard({ admin, onLogout }) {
   };
 
   const addActivity = (action, recId) => {
+    const now = new Date();
     const entry = {
       id: Date.now(),
       action,
       recId,
-      admin: admin?.firstName,
-      timestamp: new Date().toLocaleTimeString("fr-FR"),
+      admin: admin?.firstName || admin?.email || "Admin",
+      // include date + time for clearer logs
+      timestamp: now.toLocaleString("fr-FR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
     };
     setActivityLog((prev) => [entry, ...prev.slice(0, 9)]);
   };
@@ -186,6 +188,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     try {
       await adminApi.deleteReclamation(reclamationId);
       setReclamations((prev) => prev.filter((r) => r._id !== reclamationId));
+      addActivity("Réclamation supprimée", reclamationId);
     } catch (err) {
       setError(err.message || "Erreur lors de la suppression");
     }
@@ -196,6 +199,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     try {
       await adminApi.deleteUser(userId);
       setUsers((prev) => prev.filter((u) => u._id !== userId));
+      addActivity("Utilisateur supprimé", userId);
     } catch (err) {
       setError(err.message || "Erreur lors de la suppression");
     }
