@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import SidePanel            from "./components/SidePanel";
 import LoginForm            from "./pages/LoginForm";
 import SignupPicker         from "./pages/SignupPicker";
-import ClientSignup         from "./pages/ClientSignup";
-import WorkerSignup         from "./pages/WorkerSignup";
 import ResetPassword        from "./pages/ResetPassword";
 import Explore              from "./pages/Explore";
 import HomePage             from "./pages/HomePage";
 import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 import Onboarding           from "./pages/Onboarding/Onboarding";
-import AppLayout            from "./components/AppLayout";
 import Profile              from "./pages/Profile";
-import Dashboard            from "./components/Dashboard";
 import ReservationsPage     from "./pages/ReservationsPage";
 import AuthModal            from "./components/AuthModal";
 import AdminLoginModal      from "./components/AdminLoginModal";
@@ -23,20 +18,14 @@ export default function App() {
   const [signupType, setSignupType] = useState(null);
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
-
-  // Always start on dashboard — never restore "profile" from storage on refresh
-  const [activePage, setActivePage] = useState("dashboard");
-
-  // The user whose profile to display (null = own profile)
+  const [activePage, setActivePage] = useState("explore");
   const [profileTarget, setProfileTarget] = useState(null);
-
   const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
   const [authModalOpen, setAuthModalOpen]       = useState(false);
   const [authModalMode, setAuthModalMode]       = useState("login");
 
-  // Admin state
   const [admin, setAdmin] = useState(() => {
     try {
       const a = localStorage.getItem("admin");
@@ -59,24 +48,50 @@ export default function App() {
   });
 
   // ── SYNC MODE FROM URL ON LOAD ──────────────────────────────────────────
+  // Each in-app page has its own URL so refresh restores the correct page.
   useEffect(() => {
-    const path = window.location.pathname.replace("/", "");
-    
-    // If admin is in localStorage, restore admin mode
+    const path = window.location.pathname.replace(/^\//, "");
+
     if (admin) {
       setMode("admin-dashboard");
       return;
     }
-    
-    if (path === "explore") {
-      setMode("explore");
-    } else if (path === "app") {
-      setMode("app");
-      // On a hard refresh of /app, always land on dashboard — never profile
-      setActivePage("dashboard");
-      setProfileTarget(null);
-    } else if (path) {
-      setMode(path);
+
+    switch (path) {
+      case "explore":
+        setMode("explore");
+        break;
+
+      // ── FIX: each page URL restores activePage correctly on refresh ──────
+      case "profile":
+        setMode("app");
+        setActivePage("profile");
+        break;
+
+      case "reservations":
+        setMode("app");
+        setActivePage("reservations");
+        break;
+
+      case "dashboard":
+        setMode("app");
+        setActivePage("dashboard");
+        break;
+
+      // legacy /app — redirect to explore
+      case "app":
+        setMode("explore");
+        window.history.replaceState({ mode: "explore" }, "", "/explore");
+        break;
+
+      case "":
+      case "home":
+        setMode("home");
+        break;
+
+      default:
+        setMode(path);
+        break;
     }
   }, [admin]);
 
@@ -90,7 +105,7 @@ export default function App() {
         if (state?.profileTarget) setProfileTarget(state.profileTarget);
         else                      setProfileTarget(null);
       } else {
-        const path = window.location.pathname.replace("/", "");
+        const path = window.location.pathname.replace(/^\//, "");
         setMode(path || "home");
       }
     };
@@ -120,13 +135,26 @@ export default function App() {
 
   /**
    * Navigate to an in-app page.
-   *
-   * onNavigate("profile")                          → own profile (no sidebar)
-   * onNavigate("profile", { profileUser: worker }) → another user's profile
-   * onNavigate("dashboard")                        → dashboard (with sidebar)
-   * onNavigate("reservations")                     → reservations (with sidebar)
+   * Each page gets its own URL so browser refresh restores correctly:
+   *   explore      → /explore
+   *   profile      → /profile
+   *   reservations → /reservations
+   *   dashboard    → /dashboard
    */
   const handleNavigate = (page, state = {}) => {
+    if (page === "explore") {
+      switchTo("explore");
+      return;
+    }
+
+    // ── FIX: push a distinct URL per page, not always "/app" ─────────────
+    const pageUrlMap = {
+      profile:      "/profile",
+      reservations: "/reservations",
+      dashboard:    "/dashboard",
+    };
+    const url = pageUrlMap[page] || `/${page}`;
+
     setMode("app");
     setActivePage(page);
 
@@ -139,7 +167,7 @@ export default function App() {
     window.history.pushState(
       { mode: "app", activePage: page, profileTarget: state?.profileUser || null },
       "",
-      "/app"
+      url,
     );
   };
 
@@ -149,7 +177,7 @@ export default function App() {
       return;
     }
     setLoggedUser(user);
-    setActivePage("dashboard");
+    switchTo("explore");
   };
 
   const onLogout = () => {
@@ -195,19 +223,20 @@ export default function App() {
         onComplete={(u) => {
           setLoggedUser(u);
           setOnboardingUser(null);
+          switchTo("explore");
         }}
       />
     );
   }
 
-  // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────
+  // ── ADMIN DASHBOARD ─────────────────────────────────────────────────────
   if (mode === "admin-dashboard" && admin) {
     return (
       <AdminDashboard
         admin={admin}
         onLogout={() => {
           setAdmin(null);
-          setMode("home");
+          switchTo("home");
         }}
       />
     );
@@ -226,8 +255,11 @@ export default function App() {
           onHome={() => switchTo("home")}
           onExplore={() => switchTo("explore")}
           onReserveWorker={() => {
-            setActivePage("reservations");
-            setMode("app");
+            if (loggedUser) {
+              handleNavigate("reservations");
+            } else {
+              openAuthModal("login");
+            }
           }}
           user={loggedUser}
           onLogout={onLogout}
@@ -240,10 +272,9 @@ export default function App() {
     );
   }
 
-  // ── LOGGED-IN USER ───────────────────────────────────────────────────────
+  // ── LOGGED-IN ROUTES ────────────────────────────────────────────────────
   if (loggedUser) {
 
-    // Home page (logged in)
     if (mode === "home") {
       return (
         <>
@@ -262,27 +293,64 @@ export default function App() {
       );
     }
 
-    // ── PROFILE — standalone, NO AppLayout sidebar ───────────────────────
-    if (activePage === "profile") {
+    // ── Profile ────────────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "profile") {
       return (
-        <Profile
-          profileUser={profileTarget || loggedUser}
-          currentUser={loggedUser}
-          onBack={() => setActivePage("dashboard")}
-          onHome={() => switchTo("home")}
-          onNavigate={handleNavigate}
-          onLogout={onLogout}
-        />
+        <>
+          <Profile
+            profileUser={profileTarget || loggedUser}
+            currentUser={loggedUser}
+            onBack={() => switchTo("explore")}
+            onHome={() => switchTo("home")}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+          />
+          {authModalNode}
+        </>
       );
     }
 
-    // ── ALL OTHER PAGES — wrapped in AppLayout (sidebar visible) ─────────
-    return (
-      <AppLayout user={loggedUser} onLogout={onLogout}>
-        {activePage === "reservations" && <ReservationsPage user={loggedUser} />}
-        {activePage === "dashboard"    && <Dashboard        user={loggedUser} />}
-      </AppLayout>
-    );
+    // ── Reservations ───────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "reservations") {
+      return (
+        <>
+          <ReservationsPage
+            user={loggedUser}
+            onHome={() => switchTo("home")}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+          />
+          {authModalNode}
+        </>
+      );
+    }
+
+    // ── Dashboard ──────────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "dashboard") {
+      return (
+        <>
+          <ReservationsPage
+            user={loggedUser}
+            onHome={() => switchTo("home")}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+          />
+          {authModalNode}
+        </>
+      );
+    }
+
+    // stray /app — redirect to explore
+    if (mode === "app") {
+      switchTo("explore");
+      return null;
+    }
+  }
+
+  // ── UNAUTHENTICATED user hits a protected route — redirect to explore ───
+  if (mode === "app") {
+    switchTo("explore");
+    return null;
   }
 
   // ── PUBLIC HOME ─────────────────────────────────────────────────────────
@@ -304,16 +372,20 @@ export default function App() {
   // ── AUTH SCREENS ────────────────────────────────────────────────────────
   return (
     <>
-      <SidePanel />
       <div className="main">
         <button onClick={() => switchTo("home")}>← Home</button>
-        <button 
+        <button
           onClick={() => setMode("admin-login")}
-          style={{ position: "fixed", bottom: 20, right: 20, padding: "10px 16px", background: "#0f172e", color: "#06b6d4", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700 }}
+          style={{
+            position: "fixed", bottom: 20, right: 20,
+            padding: "10px 16px", background: "#0f172e", color: "#06b6d4",
+            border: "none", borderRadius: 8, cursor: "pointer",
+            fontSize: 12, fontWeight: 700,
+          }}
         >
           Admin Access
         </button>
-        {mode === "login"  && <LoginForm   onSuccess={onSuccess} />}
+        {mode === "login"  && <LoginForm onSuccess={onSuccess} />}
         {mode === "signup" && <SignupPicker />}
       </div>
       {authModalNode}
