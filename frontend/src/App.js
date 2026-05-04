@@ -20,6 +20,7 @@ export default function App() {
   const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("explore");
   const [profileTarget, setProfileTarget] = useState(null);
+  const [profileTab, setProfileTab] = useState("overview");
   const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
   const [onboardingUser, setOnboardingUser]     = useState(null);
@@ -104,6 +105,7 @@ export default function App() {
         if (state?.activePage)    setActivePage(state.activePage);
         if (state?.profileTarget) setProfileTarget(state.profileTarget);
         else                      setProfileTarget(null);
+        setProfileTab(state?.profileTab || "overview");
       } else {
         const path = window.location.pathname.replace(/^\//, "");
         setMode(path || "home");
@@ -160,12 +162,19 @@ export default function App() {
 
     if (page === "profile") {
       setProfileTarget(state?.profileUser || null);
+      setProfileTab(state?.profileTab || "overview");
     } else {
       setProfileTarget(null);
+      setProfileTab("overview");
     }
 
     window.history.pushState(
-      { mode: "app", activePage: page, profileTarget: state?.profileUser || null },
+      {
+        mode: "app",
+        activePage: page,
+        profileTarget: state?.profileUser || null,
+        profileTab: state?.profileTab || "overview",
+      },
       "",
       url,
     );
@@ -185,6 +194,11 @@ export default function App() {
     setLoggedUser(null);
     setProfileTarget(null);
     switchTo("home");
+  };
+
+  const Redirect = ({ to }) => {
+    useEffect(() => { switchTo(to); }, [to]);
+    return null;
   };
 
   const openAuthModal = (m = "login") => {
@@ -254,9 +268,12 @@ export default function App() {
         <Explore
           onHome={() => switchTo("home")}
           onExplore={() => switchTo("explore")}
-          onReserveWorker={() => {
+          onReserveWorker={(worker) => {
             if (loggedUser) {
-              handleNavigate("reservations");
+              handleNavigate("profile", {
+                profileUser: worker,
+                profileTab: "schedule",
+              });
             } else {
               openAuthModal("login");
             }
@@ -300,6 +317,7 @@ export default function App() {
           <Profile
             profileUser={profileTarget || loggedUser}
             currentUser={loggedUser}
+            initialTab={profileTab}
             onBack={() => switchTo("explore")}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
@@ -342,15 +360,13 @@ export default function App() {
 
     // stray /app — redirect to explore
     if (mode === "app") {
-      switchTo("explore");
-      return null;
+      return <Redirect to="explore" />;
     }
   }
 
   // ── UNAUTHENTICATED user hits a protected route — redirect to explore ───
   if (mode === "app") {
-    switchTo("explore");
-    return null;
+    return <Redirect to="explore" />;
   }
 
   // ── PUBLIC HOME ─────────────────────────────────────────────────────────

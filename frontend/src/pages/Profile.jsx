@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapPin, Star, Briefcase, Edit3, Check, X,
-  Wrench, Zap, Paintbrush, Hammer, Snowflake, ShieldCheck,
-  Camera, Mail, Calendar, Award, DollarSign,
+  ShieldCheck, Camera, Mail, Calendar, Award,
 } from "lucide-react";
-import { avatarUrl, workerApi, userApi } from "../api";
+import { avatarUrl, reservationApi } from "../api";
 import Navbar from "../components/Navbar";
 
 const css = `
@@ -68,6 +67,7 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-tabs {
   display:flex; gap:0; border-bottom:1.5px solid rgba(255,255,255,0.08);
   margin-top:20px; max-width:1280px; margin-left:auto; margin-right:auto;
+  position: relative; z-index: 2;
 }
 .pr-tab {
   padding:14px 22px; font-size:12px; font-weight:700;
@@ -167,22 +167,42 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 @media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; } .pr-tabs{ overflow-x:auto; } }
 `;
 
-const DAYS       = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
-const DAY_LABELS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
-const HOURS      = [8,9,10,11,12,13,14,15,16,17,18];
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
+const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
+const fmtDate = (dateValue) => {
+  if (!dateValue) return "-";
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return String(dateValue).slice(0, 10);
+  return d.toLocaleDateString("fr-FR");
+};
+const next30Days = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+};
 
-export default function Profile({ profileUser: initialProfile, currentUser, onBack, onHome, onNavigate, onLogout }) {
+export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onBack, onHome, onNavigate, onLogout }) {
   const [profile, setProfile] = useState(initialProfile || currentUser || null);
   const [loading, setLoading] = useState(!profile);
-  const [tab, setTab]         = useState("overview");
+  const [tab, setTab]         = useState(initialTab || "overview");
   const [editingInfo,   setEditingInfo]   = useState(false);
   const [editingWorker, setEditingWorker] = useState(false);
-  const [editingAvail,  setEditingAvail]  = useState(false);
   const [draftInfo,   setDraftInfo]   = useState({});
   const [draftWorker, setDraftWorker] = useState({});
-  const [draftAvail,  setDraftAvail]  = useState({});
   const [saving, setSaving] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [selectedService, setSelectedService] = useState("");
+  const [datePage, setDatePage] = useState(0);
+  const [monthAvailability, setMonthAvailability] = useState([]);
+  const [slots, setSlots] = useState([]);
+  const [bookingForm, setBookingForm] = useState({ bookingDate: "", bookingHour: "", address: "", notes: "" });
 
   const isOwner = currentUser && profile && (
     currentUser._id === profile._id || currentUser.id === profile._id
@@ -198,8 +218,16 @@ export default function Profile({ profileUser: initialProfile, currentUser, onBa
   const rating    = Number(wp.rating       || 0);
   const reviews   = Number(wp.totalReviews || 0);
   const avail     = wp.isAvailable !== false;
-  const schedule  = wp.availabilitySchedule || {};
-  const portfolio = wp.portfolio || [];
+  const canReserve = role === "worker" && currentUser?.role === "client" && !isOwner;
+  const workerId = profile?._id ? String(profile._id) : "";
+
+  const datePages = useMemo(() => {
+    const pages = [];
+    for (let i = 0; i < monthAvailability.length; i += 7) pages.push(monthAvailability.slice(i, i + 7));
+    return pages;
+  }, [monthAvailability]);
+
+  const visibleDates = datePages[datePage] || [];
 
   const startEditInfo = () => {
     setDraftInfo({
@@ -218,20 +246,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, onBa
       professions: [...profs], isAvailable: avail,
     });
     setEditingWorker(true);
-  };
-
-  const startEditAvail = () => {
-    const copy = {};
-    DAYS.forEach(d => { copy[d] = [...(schedule[d] || [])]; });
-    setDraftAvail(copy);
-    setEditingAvail(true);
-  };
-
-  const toggleHour = (day, hour) => {
-    setDraftAvail(prev => {
-      const arr = prev[day] || [];
-      return { ...prev, [day]: arr.includes(hour) ? arr.filter(h => h !== hour) : [...arr, hour] };
-    });
   };
 
   const saveInfo = async () => {
@@ -263,23 +277,141 @@ export default function Profile({ profileUser: initialProfile, currentUser, onBa
     } finally { setSaving(false); }
   };
 
-  const saveAvail = async () => {
-    setSaving(true);
-    try {
-      setProfile(prev => ({
-        ...prev,
-        workerProfile: { ...prev.workerProfile, availabilitySchedule: draftAvail },
-      }));
-      setEditingAvail(false);
-    } finally { setSaving(false); }
-  };
-
   const removeProfession = (p) => setDraftWorker(prev => ({ ...prev, professions: prev.professions.filter(x => x !== p) }));
   const addProfession = (e) => {
     if (e.key === "Enter" && e.target.value.trim()) {
       const val = e.target.value.trim();
       setDraftWorker(prev => ({ ...prev, professions: [...new Set([...prev.professions, val])] }));
       e.target.value = "";
+    }
+  };
+
+  useEffect(() => {
+    const want = initialTab || "overview";
+    if (tab !== want) setTab(want);
+  }, [initialTab, profile?._id]);
+
+  useEffect(() => {
+    if (!canReserve) return;
+    if (selectedService) return;
+    setSelectedService(profs[0] || "");
+  }, [canReserve, profs, selectedService]);
+
+  useEffect(() => {
+    setDatePage(0);
+    setBookingForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
+    setSlots([]);
+  }, [selectedService]);
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!canReserve || tab !== "schedule" || !workerId || !selectedService) {
+        setMonthAvailability([]);
+        setSlots([]);
+        setBookingForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
+        return;
+      }
+
+      setSlotsLoading(true);
+      setBookingError("");
+      try {
+        let days = [];
+        try {
+          const data = await reservationApi.getWorkerMonthAvailability(workerId, selectedService);
+          const raw = Array.isArray(data?.days) ? data.days : [];
+          days = raw.map((day) => {
+            if (Array.isArray(day?.slots)) return { date: day.date, slots: day.slots };
+            const hours = Array.isArray(day?.availableHours) ? day.availableHours : [];
+            return {
+              date: day.date,
+              slots: [8, 9, 10, 11, 12, 14, 15, 16, 17].map((h) => ({ hour: h, status: hours.includes(h) ? "available" : "accepted" })),
+            };
+          });
+        } catch {
+          const dates = next30Days();
+          days = await Promise.all(
+            dates.map(async (date) => {
+              try {
+                const d = await reservationApi.getWorkerAvailableSlots(workerId, date, selectedService);
+                return { date, slots: Array.isArray(d?.slots) ? d.slots : [] };
+              } catch {
+                return { date, slots: [] };
+              }
+            })
+          );
+        }
+
+        setMonthAvailability(days);
+        const first = days.find((d) => Array.isArray(d.slots) && d.slots.some((s) => s.status === "available"));
+        const nextDate = first?.date || days[0]?.date || "";
+        const nextSlots = days.find((d) => d.date === nextDate)?.slots || [];
+        setSlots(nextSlots);
+        if (nextDate) {
+          const idx = days.findIndex((d) => d.date === nextDate);
+          setDatePage(Math.max(0, Math.floor(idx / 7)));
+        }
+        setBookingForm((prev) => ({ ...prev, bookingDate: nextDate, bookingHour: "" }));
+      } catch (err) {
+        setMonthAvailability([]);
+        setSlots([]);
+        setBookingError(err.message || "Impossible de charger la disponibilité");
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [canReserve, tab, workerId, selectedService]);
+
+  useEffect(() => {
+    if (!bookingForm.bookingDate) {
+      setSlots([]);
+      return;
+    }
+    const day = monthAvailability.find((d) => d.date === bookingForm.bookingDate);
+    const daySlots = Array.isArray(day?.slots) ? day.slots : [];
+    setSlots(daySlots);
+    const valid = daySlots.find((s) => s.status === "available" && String(s.hour) === String(bookingForm.bookingHour));
+    if (!valid) {
+      setBookingForm((prev) => ({ ...prev, bookingHour: "" }));
+    }
+  }, [bookingForm.bookingDate, bookingForm.bookingHour, monthAvailability]);
+
+  const updateBookingForm = (key) => (e) => setBookingForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const createReservation = async () => {
+    setBookingError("");
+    setBookingMessage("");
+    if (!canReserve) return setBookingError("Réservation disponible uniquement pour les clients.");
+    if (!selectedService || !workerId || !bookingForm.bookingDate || bookingForm.bookingHour === "") {
+      return setBookingError("Sélectionnez service, date et heure.");
+    }
+
+    setActionLoading(true);
+    try {
+      await reservationApi.create({
+        workerId,
+        bookingDate: bookingForm.bookingDate,
+        bookingHour: Number(bookingForm.bookingHour),
+        serviceType: selectedService,
+        address: bookingForm.address,
+        notes: bookingForm.notes,
+      });
+
+      setBookingMessage("Réservation créée ✅");
+      setBookingForm((prev) => ({ ...prev, bookingHour: "", notes: "" }));
+
+      try {
+        const upd = await reservationApi.getWorkerAvailableSlots(workerId, bookingForm.bookingDate, selectedService);
+        const ns = Array.isArray(upd?.slots) ? upd.slots : [];
+        setMonthAvailability((prev) => prev.map((d) => (d.date === bookingForm.bookingDate ? { ...d, slots: ns } : d)));
+        setSlots(ns);
+      } catch {
+      }
+    } catch (err) {
+      setBookingError(err.message || "Réservation impossible");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -446,58 +578,158 @@ export default function Profile({ profileUser: initialProfile, currentUser, onBa
     <div className="pr-grid-full pr-anim-2">
       <div className="pr-card">
         <div className="pr-card-title">
-          <span className="pr-card-title-icon"><Calendar size={12} />Disponibilités hebdomadaires</span>
-          {isOwner && !editingAvail && <button className="pr-edit-btn" onClick={startEditAvail}><Edit3 size={11} />Modifier</button>}
+          <span className="pr-card-title-icon"><Calendar size={12} />Nouvelle réservation</span>
         </div>
-        <div style={{ marginBottom:8 }}>
-          <div className="pr-avail-grid">
-            {DAYS.map((d, i) => (
-              <div key={d} style={{ textAlign:"center" }}>
-                <div className="pr-avail-day-label">{DAY_LABELS[i]}</div>
-                {HOURS.map(h => {
-                  const active = editingAvail ? (draftAvail[d] || []).includes(h) : (schedule[d] || []).includes(h);
-                  return (
-                    <div key={h} className={`pr-avail-slot ${active ? "on" : ""}`} onClick={() => editingAvail && toggleHour(d, h)} style={{ cursor: editingAvail ? "pointer" : "default" }}>
-                      {h}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize:10,color:"#94a3b8",marginTop:10,letterSpacing:"0.06em" }}>
-            Chiffres = heure (format 24h) · Cyan = disponible{editingAvail && " · Cliquez pour basculer"}
-          </p>
-        </div>
-        {editingAvail && (
-          <div className="pr-btn-row">
-            <button className="pr-cancel-btn" onClick={() => setEditingAvail(false)}><X size={11} />Annuler</button>
-            <button className="pr-save-btn" onClick={saveAvail} disabled={saving}><Check size={11} />{saving ? "Enregistrement…" : "Enregistrer"}</button>
-          </div>
-        )}
-      </div>
 
-      <div className="pr-card">
-        <div className="pr-card-title"><span className="pr-card-title-icon"><Camera size={12} />Portfolio</span></div>
-        {portfolio.length > 0 ? (
-          <div className="pr-portfolio-grid">
-            {portfolio.map((p, i) => (
-              <div key={i} className="pr-portfolio-card">
-                <div className="pr-portfolio-img">
-                  {p.imageUrl ? <img src={p.imageUrl} alt={p.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} /> : "Pas d'image"}
-                </div>
-                <div className="pr-portfolio-body">
-                  <div className="pr-portfolio-title">{p.title}</div>
-                  <div className="pr-portfolio-city">{p.city}</div>
-                  {p.description && <div style={{ fontSize:10,color:"#94a3b8",marginTop:4,lineHeight:1.5 }}>{p.description}</div>}
-                </div>
-              </div>
-            ))}
+        {!canReserve ? (
+          <div style={{ color:"#64748b", fontSize:13, padding:4 }}>
+            Cette section est visible lors de la consultation d'un profil prestataire en tant que client.
           </div>
         ) : (
-          <div style={{ textAlign:"center",padding:"32px 20px",color:"#94a3b8",fontSize:13 }}>
-            Aucun projet dans le portfolio.
-            {isOwner && <div style={{ marginTop:8,fontSize:12 }}>Ajoutez vos réalisations via les paramètres.</div>}
+          <div style={{ display:"grid", gap:12 }}>
+            {bookingError && <div style={{ color:"#c0392b", fontSize:13 }}>{bookingError}</div>}
+            {bookingMessage && <div style={{ color:"#0f172e", fontSize:13 }}>{bookingMessage}</div>}
+
+            <div style={{ marginBottom:4 }}>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:8 }}>1. Prestataire sélectionné</div>
+              <div style={{ borderRadius:12, border:"1.5px solid #06b6d4", background:"rgba(232,98,10,0.08)", padding:14 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:4 }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#0f172e" }}>{fn} {ln}</div>
+                  <span style={{ fontSize:11, color:"#06b6d4", border:"1px solid rgba(6,182,212,0.25)", borderRadius:100, padding:"3px 8px", fontWeight:700 }}>Sélectionné</span>
+                </div>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:8 }}>{wp.city || "Ville non précisée"}</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {profs.slice(0, 3).map((service) => (
+                    <span key={service} style={{ fontSize:11, padding:"4px 8px", borderRadius:100, background:"#e2e8f0", color:"#0f172e" }}>
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
+                2. Choisissez la date (30 prochains jours)
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                  <button type="button" onClick={() => setDatePage((p) => Math.max(0, p - 1))} disabled={datePage === 0} className="pr-edit-btn">← Semaine précédente</button>
+                  <span style={{ fontSize:12, color:"#64748b", fontWeight:600 }}>Semaine {datePage + 1}/{Math.max(1, datePages.length)}</span>
+                  <button type="button" onClick={() => setDatePage((p) => Math.min(Math.max(0, datePages.length - 1), p + 1))} disabled={datePage >= datePages.length - 1} className="pr-edit-btn">Semaine suivante →</button>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:8 }}>
+                  {visibleDates.map((day) => {
+                    const daySlots = Array.isArray(day.slots) ? day.slots : [];
+                    const free = daySlots.filter((s) => s.status === "available").length;
+                    const active = bookingForm.bookingDate === day.date;
+                    return (
+                      <button
+                        key={day.date}
+                        type="button"
+                        onClick={() => setBookingForm((prev) => ({ ...prev, bookingDate: day.date, bookingHour: "" }))}
+                        disabled={slotsLoading || free === 0}
+                        style={{
+                          padding:"9px 8px",
+                          borderRadius:8,
+                          border:active ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
+                          background:active ? "rgba(6,182,212,0.1)" : "#fff",
+                          color:active ? "#06b6d4" : "#64748b",
+                          opacity:free === 0 ? 0.45 : 1,
+                          cursor:(slotsLoading || free === 0) ? "not-allowed" : "pointer",
+                          fontSize:12,
+                          textAlign:"left",
+                        }}
+                      >
+                        <div style={{ fontWeight:700, fontSize:12 }}>{fmtDate(day.date)}</div>
+                        <div style={{ fontSize:11 }}>{free} h libre(s)</div>
+                      </button>
+                    );
+                  })}
+                  {!slotsLoading && visibleDates.length === 0 && (
+                    <div style={{ gridColumn:"1 / -1", fontSize:12, color:"#64748b", paddingTop:8 }}>Aucune disponibilité trouvée ce mois</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
+                3. Choisissez l'heure libre
+                <div style={{ display:"flex", gap:12, fontSize:11, color:"#64748b", marginBottom:4, flexWrap:"wrap" }}>
+                  {[["#ecfdf5", "#10b981", "Libre"], ["#fffbeb", "#f59e0b", "En attente"], ["#fee2e2", "#ef4444", "Réservé"], ["#f1f5f9", "#94a3b8", "Passé"]].map(([bg, border, label]) => (
+                    <div key={label} style={{ display:"flex", gap:6, alignItems:"center" }}>
+                      <div style={{ width:16, height:16, borderRadius:4, background:bg, border:`1px solid ${border}` }} />
+                      <span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:8 }}>
+                  {slots.map((slot) => {
+                    const active = String(bookingForm.bookingHour) === String(slot.hour);
+                    const availSlot = slot.status === "available";
+                    const pending = slot.status === "pending";
+                    const taken = slot.status === "accepted" || slot.status === "completed";
+                    const past = slot.status === "passed";
+                    let bg = "#fff";
+                    let bc = "#e2e8f0";
+                    let tc = "#0f172e";
+                    let op = 1;
+                    let cur = "pointer";
+
+                    if (availSlot && active) { bg = "#10b981"; bc = "#10b981"; tc = "#fff"; }
+                    else if (availSlot) { bg = "#ecfdf5"; bc = "#10b981"; tc = "#059669"; }
+                    else if (pending && active) { bg = "#f59e0b"; bc = "#f59e0b"; tc = "#fff"; }
+                    else if (pending) { bg = "#fffbeb"; bc = "#f59e0b"; tc = "#b45309"; }
+                    else if (taken) { bg = "#fee2e2"; bc = "#ef4444"; tc = "#991b1b"; cur = "not-allowed"; op = 0.7; }
+                    else if (past) { bg = "#f1f5f9"; bc = "#94a3b8"; tc = "#64748b"; cur = "not-allowed"; op = 0.75; }
+
+                    return (
+                      <button
+                        key={slot.hour}
+                        type="button"
+                        onClick={() => availSlot && setBookingForm((prev) => ({ ...prev, bookingHour: String(slot.hour) }))}
+                        disabled={!availSlot || !bookingForm.bookingDate || slotsLoading}
+                        style={{
+                          padding:"10px 8px",
+                          borderRadius:8,
+                          border:`1.5px solid ${bc}`,
+                          background:bg,
+                          color:tc,
+                          cursor:(!bookingForm.bookingDate || slotsLoading) ? "not-allowed" : cur,
+                          opacity:(!bookingForm.bookingDate || slotsLoading) ? 0.6 : op,
+                          fontWeight:600,
+                          fontSize:13,
+                          transition:"all .2s",
+                        }}
+                      >
+                        {fmtHour(slot.hour)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {slots.length === 0 && <div style={{ color:"#94a3b8", fontSize:12 }}>Aucune disponibilité trouvée</div>}
+              </div>
+            </div>
+
+            <label style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
+              Adresse
+              <input
+                value={bookingForm.address}
+                onChange={updateBookingForm("address")}
+                style={{ width:"100%", background:"#e2e8f0", border:"1.5px solid transparent", borderRadius:8, padding:"10px 12px", fontSize:13, color:"#0f172e", outline:"none" }}
+                placeholder="Adresse d'intervention"
+              />
+            </label>
+            <label style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
+              Notes
+              <textarea
+                value={bookingForm.notes}
+                onChange={updateBookingForm("notes")}
+                style={{ width:"100%", background:"#e2e8f0", border:"1.5px solid transparent", borderRadius:8, padding:"10px 12px", fontSize:13, color:"#0f172e", outline:"none", minHeight:74, resize:"vertical" }}
+                placeholder="Détails utiles"
+              />
+            </label>
+
+            <button className="pr-save-btn" disabled={actionLoading || slotsLoading} onClick={createReservation} style={{ marginTop:8, maxWidth:260, justifyContent:"center", padding:"11px 14px" }}>
+              {actionLoading ? "Envoi..." : "Réserver ce créneau"}
+            </button>
           </div>
         )}
       </div>
@@ -506,7 +738,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, onBa
 
   const tabs = [
     { id:"overview", label:"Aperçu" },
-    ...(role === "worker" ? [{ id:"schedule", label:"Disponibilités & Portfolio" }] : []),
+    ...(role === "worker" ? [{ id:"schedule", label:"Réservation" }] : []),
   ];
 
   return (
