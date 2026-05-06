@@ -1,5 +1,6 @@
 const User = require("../models/User.model");
 const Reclamation = require("../models/Reclamation.model");
+const Reservation = require("../models/Reservation.model");
 
 // ── @GET /api/admin/users ──────────────────────────────────
 exports.getAllUsers = async (req, res) => {
@@ -90,6 +91,44 @@ exports.getStats = async (req, res) => {
         ? Math.round(avgResolutionTime[0].avgTime / (1000 * 60 * 60 * 24))
         : 0,
     });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/reservations ─────────────────────────
+exports.getAllReservations = async (_req, res) => {
+  try {
+    const reservations = await Reservation.find()
+      .populate("client", "firstName lastName avatar phone")
+      .populate("worker", "firstName lastName avatar workerProfile.city workerProfile.professions")
+      .sort({ createdAt: -1 });
+    res.json(reservations);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/notifications ────────────────────────
+exports.getAdminNotifications = async (req, res) => {
+  try {
+    const admin = await User.findById(req.user.id).select("notifications");
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    const sorted = [...(admin.notifications || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(sorted);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/admin/notifications/read-all ───────────────
+exports.markAdminNotificationsRead = async (req, res) => {
+  try {
+    await User.updateOne(
+      { _id: req.user.id },
+      { $set: { "notifications.$[].read": true } }
+    );
+    res.json({ message: "All notifications marked as read" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

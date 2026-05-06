@@ -3,7 +3,7 @@ import {
   Search, MapPin, Wrench, Zap, Paintbrush, Hammer, Snowflake,
   ShieldCheck, Star, Bookmark, SlidersHorizontal, X, Filter,
 } from "lucide-react";
-import { avatarUrl, workerApi } from "../api";
+import { avatarUrl, workerApi, clientApi } from "../api";
 import Navbar from "../components/Navbar";
 
 const CATEGORIES = [
@@ -30,9 +30,8 @@ const professionMatches = (profs = [], cat = "") => {
 
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 
-function WorkerCard({ worker, onReserve, onNavigate }) {
-  const [saved, setSaved] = useState(false);
-  const [hov,   setHov]   = useState(false);
+function WorkerCard({ worker, onReserve, onNavigate, isSaved, onToggleSave }) {
+  const [hov, setHov] = useState(false);
 
   const fn      = worker?.firstName || "Pro";
   const ln      = worker?.lastName  || "";
@@ -78,12 +77,14 @@ function WorkerCard({ worker, onReserve, onNavigate }) {
             <div style={{ fontSize:11,fontWeight:600,color:"#06b6d4",marginTop:2,letterSpacing:"0.06em" }}>{profs[0] || "Service"}</div>
           </div>
         </div>
-        <button
-          onClick={() => setSaved(s => !s)}
-          style={{ background:saved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${saved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:7,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.2s",color:saved?"#06b6d4":"#94a3b8" }}
-        >
-          <Bookmark size={12} fill={saved?"#06b6d4":"none"} />
-        </button>
+        {onToggleSave && (
+          <button
+            onClick={() => onToggleSave(worker._id, isSaved)}
+            style={{ background:isSaved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${isSaved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:7,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.2s",color:isSaved?"#06b6d4":"#94a3b8" }}
+          >
+            <Bookmark size={12} fill={isSaved?"#06b6d4":"none"} />
+          </button>
+        )}
       </div>
 
       <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:14 }}>
@@ -312,20 +313,48 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 `;
 
 export default function Explore({ onLogin, onSignup, onHome, onExplore, onReserveWorker, user, onLogout, onNavigate }) {
-  const [workers,    setWorkers]    = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState("");
-  const [search,     setSearch]     = useState("");
-  const [city,       setCity]       = useState("");
-  const [profession, setProfession] = useState("");
-  const [minRating,  setMinRating]  = useState(0);
-  const [priceMin,   setPriceMin]   = useState(0);
-  const [priceMax,   setPriceMax]   = useState(500);
-  const [availOnly,  setAvailOnly]  = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [workers,      setWorkers]      = useState([]);
+  const [savedIds,     setSavedIds]     = useState(new Set());
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState("");
+  const [search,       setSearch]       = useState("");
+  const [city,         setCity]         = useState("");
+  const [profession,   setProfession]   = useState("");
+  const [minRating,    setMinRating]    = useState(0);
+  const [priceMin,     setPriceMin]     = useState(0);
+  const [priceMax,     setPriceMax]     = useState(500);
+  const [availOnly,    setAvailOnly]    = useState(false);
+  const [drawerOpen,   setDrawerOpen]   = useState(false);
 
   const safeNavigate = (page, state = {}) => {
     if (typeof onNavigate === "function") onNavigate(page, state);
+  };
+
+  // Load saved workers for any logged-in user
+  useEffect(() => {
+    if (!user) { setSavedIds(new Set()); return; }
+    clientApi.getSavedWorkers().then((list) => {
+      setSavedIds(new Set((list || []).map((w) => String(w._id || w))));
+    }).catch(() => {});
+  }, [user]);
+
+  const handleToggleSave = async (workerId, currently) => {
+    if (!user) { safeNavigate("login"); return; }
+    const id = String(workerId);
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      currently ? next.delete(id) : next.add(id);
+      return next;
+    });
+    try {
+      currently ? await clientApi.unsaveWorker(id) : await clientApi.saveWorker(id);
+    } catch {
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        currently ? next.add(id) : next.delete(id);
+        return next;
+      });
+    }
   };
 
   useEffect(() => {
@@ -516,7 +545,7 @@ export default function Explore({ onLogin, onSignup, onHome, onExplore, onReserv
                 </div>
               )}
               {!loading && !error && visible.map(w => (
-                <WorkerCard key={w._id} worker={w} onReserve={onReserveWorker} onNavigate={safeNavigate} />
+                <WorkerCard key={w._id} worker={w} onReserve={onReserveWorker} onNavigate={safeNavigate} isSaved={savedIds.has(String(w._id))} onToggleSave={user ? handleToggleSave : null} />
               ))}
             </div>
           </div>

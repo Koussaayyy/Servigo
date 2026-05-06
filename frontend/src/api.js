@@ -119,6 +119,36 @@ export const clientApi = {
       method: "DELETE",
       headers: authHeaders(),
     }).then(handle),
+
+  getNotifications: () =>
+    fetch(`${BASE}/client/notifications`, { headers: authHeaders() }).then(handle),
+
+  markAllNotificationsAsRead: () =>
+    fetch(`${BASE}/client/notifications/read-all`, {
+      method: "PUT",
+      headers: authHeaders(),
+    }).then(handle),
+
+  markNotificationAsRead: (notificationId) =>
+    fetch(`${BASE}/client/notifications/${notificationId}/read`, {
+      method: "PUT",
+      headers: authHeaders(),
+    }).then(handle),
+
+  getSavedWorkers: () =>
+    fetch(`${BASE}/client/saved-workers`, { headers: authHeaders() }).then(handle),
+
+  saveWorker: (workerId) =>
+    fetch(`${BASE}/client/saved-workers/${workerId}`, {
+      method: "POST",
+      headers: authHeaders(),
+    }).then(handle),
+
+  unsaveWorker: (workerId) =>
+    fetch(`${BASE}/client/saved-workers/${workerId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).then(handle),
 };
 
 // ════════════════════════════════════════════
@@ -318,6 +348,15 @@ export const adminAuthApi = {
 //  ADMIN
 // ════════════════════════════════════════════
 export const adminApi = {
+  getNotifications: () =>
+    fetch(`${BASE}/admin/notifications`, { headers: adminHeaders() }).then(handle),
+
+  markAllNotificationsRead: () =>
+    fetch(`${BASE}/admin/notifications/read-all`, { method: "PUT", headers: adminHeaders() }).then(handle),
+
+  getAllReservations: () =>
+    fetch(`${BASE}/admin/reservations`, { headers: adminHeaders() }).then(handle),
+
   getReclamations: () =>
     fetch(`${BASE}/admin/reclamations`, {
       headers: adminHeaders(),

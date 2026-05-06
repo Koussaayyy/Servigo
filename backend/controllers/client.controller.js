@@ -136,3 +136,86 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// ── @GET /api/client/notifications ────────────────────────
+exports.getNotifications = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("notifications");
+    const notifications = (user?.notifications || []).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const unreadCount = notifications.filter((n) => !n.read).length;
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/client/notifications/:notificationId/read ───
+exports.markNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { "notifications.$[elem].read": true } },
+      { arrayFilters: [{ "elem._id": notificationId }], new: true }
+    ).select("notifications");
+    res.json({ notifications: user?.notifications || [] });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/client/notifications/read-all ───────────────
+exports.markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("notifications");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.notifications = (user.notifications || []).map((n) => ({ ...n.toObject(), read: true }));
+    await user.save();
+    res.json({ notifications: user.notifications });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/client/saved-workers ────────────────────────
+exports.getSavedWorkers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("savedWorkers", "firstName lastName avatar role workerProfile")
+      .select("savedWorkers");
+    res.json(user.savedWorkers || []);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @POST /api/client/saved-workers/:workerId ─────────────
+exports.saveWorker = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const worker = await User.findById(workerId).select("role isActive");
+    if (!worker || worker.role !== "worker") {
+      return res.status(404).json({ message: "Worker not found" });
+    }
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { savedWorkers: workerId },
+    });
+    res.json({ message: "Worker saved" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @DELETE /api/client/saved-workers/:workerId ───────────
+exports.unsaveWorker = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, {
+      $pull: { savedWorkers: req.params.workerId },
+    });
+    res.json({ message: "Worker removed from saved" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

@@ -1,8 +1,16 @@
 export const PROFESSIONS = [
-  "⚡ Electrician", "🔧 Plumber",   "🏗️ Mason",
-  "🪟 Glazier",     "🪚 Carpenter", "🎨 Painter",
-  "❄️ HVAC",        "🔑 Locksmith", "🌿 Gardener",
-  "🛁 Tiler",       "📦 Mover",     "🔩 Mechanic",
+  "Électricien",
+  "Plombier",
+  "Maçon",
+  "Vitrier",
+  "Menuisier",
+  "Peintre",
+  "Climatisation",
+  "Serrurier",
+  "Jardinier",
+  "Carreleur",
+  "Déménagement",
+  "Mécanicien",
 ];
 
 export const CITIES = [

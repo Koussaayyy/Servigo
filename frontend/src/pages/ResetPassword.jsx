@@ -33,7 +33,7 @@ export default function ResetPassword({ token, onSuccess }) {
       </div>
 
       {error   && <div className="error-msg">{error}</div>}
-      {success && <div className="success-msg">✅ {success} Redirecting to login…</div>}
+      {success && <div className="success-msg">{success} Redirecting to login…</div>}
 
       <div className="field">
         <label>New Password</label>

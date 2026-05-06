@@ -12,5 +12,8 @@ router.get("/stats",            authMiddleware.protect, authMiddleware.authorize
 router.get("/reclamations",     authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getReclamations);
 router.put("/users/:id/toggle", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.toggleUserStatus);
 router.delete("/users/:id",     authMiddleware.protect, authMiddleware.authorize("admin"), adminController.deleteUser);
+router.get("/reservations",     authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getAllReservations);
+router.get("/notifications",    authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getAdminNotifications);
+router.put("/notifications/read-all", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.markAdminNotificationsRead);
 
 module.exports = router;

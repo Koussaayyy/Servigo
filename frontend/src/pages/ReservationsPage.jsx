@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Zap, Waves, HardHat, AppWindow, Axe, Palette, Snowflake, Lock, Sprout, LayoutGrid, PackageOpen, Cog } from "lucide-react";
 import { reservationApi, workerApi } from "../api";
 import { PROFESSIONS } from "../constants/data";
 import Navbar from "../components/Navbar";
@@ -12,6 +13,29 @@ const fmtDate = (dateValue) => {
 };
 const normalizeProfession = (value) =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const stripAccents = (s) => {
+  const lower = String(s || "").toLowerCase();
+  const nfd = lower.normalize("NFD");
+  return nfd.replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "");
+};
+
+const PROFESSION_ICONS = {
+  "electricien": Zap,
+  "plombier": Waves,
+  "macon": HardHat,
+  "vitrier": AppWindow,
+  "menuisier": Axe,
+  "peintre": Palette,
+  "climatisation": Snowflake,
+  "serrurier": Lock,
+  "jardinier": Sprout,
+  "carreleur": LayoutGrid,
+  "demenagement": PackageOpen,
+  "mecanicien": Cog,
+};
+const getProfessionIcon = (p) => PROFESSION_ICONS[stripAccents(p)] || Cog;
+
 const next30Days = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -183,7 +207,7 @@ export default function ReservationsPage({
     setActionLoading(true);
     try {
       await reservationApi.create({ workerId: form.workerId, bookingDate: form.bookingDate, bookingHour: Number(form.bookingHour), serviceType: selectedService, address: form.address, notes: form.notes });
-      setMessage("Reservation created ✅");
+      setMessage("Réservation créée avec succès");
       setForm((p) => ({ ...p, bookingHour: "", notes: "" }));
       try {
         const upd = await reservationApi.getWorkerAvailableSlots(form.workerId, form.bookingDate, selectedService);
@@ -224,7 +248,7 @@ export default function ReservationsPage({
     setReviewLoadingId(id); setError(""); setMessage("");
     try {
       await reservationApi.submitClientReview(id, { rating, comment: String(cur.comment || "").trim() });
-      setMessage("Avis envoyé ✅");
+      setMessage("Avis envoyé avec succès");
       setReviewForms((p) => ({ ...p, [id]: { rating:"", comment:"", open:false } }));
       await loadData();
     } catch (err) { setError(err.message || "Envoi de l'avis impossible"); }
@@ -263,13 +287,20 @@ export default function ReservationsPage({
                 {/* 1. Service */}
                 <div style={{ marginBottom:16 }}>
                   <div style={{ fontSize:12,color:"#64748b",marginBottom:8 }}>1. Choisissez le service</div>
-                  <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:10 }}>
-                    {professions.map((p) => (
-                      <button key={p} type="button"
-                        onClick={() => { setSelectedService(p); setForm((prev) => ({ ...prev, serviceType:p, workerId:"", bookingHour:"" })); }}
-                        style={{ padding:"12px 10px",borderRadius:10,border:selectedService===p?"1.5px solid #06b6d4":"1.5px solid #e2e8f0",background:selectedService===p?"rgba(6,182,212,0.08)":"#f8fafc",color:"#0f172e",fontSize:13,fontWeight:600,textAlign:"left",cursor:"pointer" }}
-                      >{p}</button>
-                    ))}
+                  <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(120px, 1fr))",gap:10 }}>
+                    {professions.map((p) => {
+                      const Icon = getProfessionIcon(p);
+                      const active = selectedService === p;
+                      return (
+                        <button key={p} type="button"
+                          onClick={() => { setSelectedService(p); setForm((prev) => ({ ...prev, serviceType:p, workerId:"", bookingHour:"" })); }}
+                          style={{ padding:"14px 10px",borderRadius:12,border:active?"1.5px solid #06b6d4":"1.5px solid #e2e8f0",background:active?"rgba(6,182,212,0.10)":"#f8fafc",color:active?"#06b6d4":"#0f172e",fontSize:12,fontWeight:600,textAlign:"center",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:8,transition:"all .15s",boxShadow:active?"0 0 0 3px rgba(6,182,212,0.12)":"none" }}
+                        >
+                          <Icon size={22} strokeWidth={1.8} color={active?"#06b6d4":"#64748b"} />
+                          {p}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -306,9 +337,9 @@ export default function ReservationsPage({
                   <div style={{ display:"flex",flexDirection:"column",gap:6,fontSize:12,color:"#64748b" }}>
                     3. Choisissez la date (30 prochains jours)
                     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
-                      <button type="button" className="mode-tab" onClick={() => setDatePage((p) => Math.max(0,p-1))} disabled={datePage===0} style={{ marginRight:8 }}>← Semaine précédente</button>
+                      <button type="button" className="mode-tab" onClick={() => setDatePage((p) => Math.max(0,p-1))} disabled={datePage===0} style={{ marginRight:8, display:"flex", alignItems:"center", gap:4 }}><ChevronLeft size={13}/>Semaine précédente</button>
                       <span style={{ fontSize:12,color:"#64748b",fontWeight:600 }}>Semaine {datePage+1}/{Math.max(1,datePages.length)}</span>
-                      <button type="button" className="mode-tab" onClick={() => setDatePage((p) => Math.min(Math.max(0,datePages.length-1),p+1))} disabled={datePage>=datePages.length-1} style={{ marginLeft:8 }}>Semaine suivante →</button>
+                      <button type="button" className="mode-tab" onClick={() => setDatePage((p) => Math.min(Math.max(0,datePages.length-1),p+1))} disabled={datePage>=datePages.length-1} style={{ marginLeft:8, display:"flex", alignItems:"center", gap:4 }}>Semaine suivante<ChevronRight size={13}/></button>
                     </div>
                     <div style={{ display:"grid",gridTemplateColumns:"repeat(4, minmax(0,1fr))",gap:8 }}>
                       {visibleDates.map((day) => {

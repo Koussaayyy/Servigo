@@ -12,4 +12,12 @@ router.delete("/account", protect, authorize("client"), clientController.deleteA
 router.put("/avatar",    protect, authorize("client"), uploadAvatar, clientController.updateAvatar);
 router.delete("/avatar", protect, authorize("client"), clientController.deleteAvatar);
 
+router.get("/notifications",                    protect, clientController.getNotifications);
+router.put("/notifications/read-all",           protect, clientController.markAllNotificationsAsRead);
+router.put("/notifications/:notificationId/read", protect, clientController.markNotificationAsRead);
+
+router.get("/saved-workers",              protect, clientController.getSavedWorkers);
+router.post("/saved-workers/:workerId",   protect, clientController.saveWorker);
+router.delete("/saved-workers/:workerId", protect, clientController.unsaveWorker);
+
 module.exports = router;

@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import LoginForm            from "./pages/LoginForm";
-import SignupPicker         from "./pages/SignupPicker";
-import ResetPassword        from "./pages/ResetPassword";
-import Explore              from "./pages/Explore";
-import HomePage             from "./pages/HomePage";
-import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
-import Onboarding           from "./pages/Onboarding/Onboarding";
-import Profile              from "./pages/Profile";
-import ReservationsPage     from "./pages/ReservationsPage";
-import AuthModal            from "./components/AuthModal";
-import AdminLoginModal      from "./components/AdminLoginModal";
-import AdminDashboard       from "./pages/AdminDashboard";
+import LoginForm              from "./pages/LoginForm";
+import SignupPicker           from "./pages/SignupPicker";
+import ResetPassword          from "./pages/ResetPassword";
+import Explore                from "./pages/Explore";
+import HomePage               from "./pages/HomePage";
+import GoogleCompleteSignup   from "./pages/GoogleCompleteSignup";
+import Onboarding             from "./pages/Onboarding/Onboarding";
+import Profile                from "./pages/Profile";
+import ReservationsManagePage from "./pages/ReservationsManagePage";
+import AuthModal              from "./components/AuthModal";
+import AdminLoginModal        from "./components/AdminLoginModal";
+import AdminDashboard         from "./pages/AdminDashboard";
+import SavedWorkers           from "./pages/SavedWorkers";
+import ReservationDialog      from "./components/ReservationDialog";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -19,13 +21,14 @@ export default function App() {
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("explore");
-  const [profileTarget, setProfileTarget] = useState(null);
-  const [profileTab, setProfileTab] = useState("overview");
-  const [resetToken, setResetToken]             = useState(null);
-  const [googleCredential, setGoogleCredential] = useState(null);
-  const [onboardingUser, setOnboardingUser]     = useState(null);
-  const [authModalOpen, setAuthModalOpen]       = useState(false);
-  const [authModalMode, setAuthModalMode]       = useState("login");
+  const [profileTarget, setProfileTarget]         = useState(null);
+  const [profileInitialTab, setProfileInitialTab] = useState("overview");
+  const [resetToken, setResetToken]               = useState(null);
+  const [googleCredential, setGoogleCredential]   = useState(null);
+  const [onboardingUser, setOnboardingUser]       = useState(null);
+  const [authModalOpen, setAuthModalOpen]         = useState(false);
+  const [authModalMode, setAuthModalMode]         = useState("login");
+  const [reservDialog, setReservDialog]           = useState(null);
 
   const [admin, setAdmin] = useState(() => {
     try {
@@ -49,7 +52,6 @@ export default function App() {
   });
 
   // ── SYNC MODE FROM URL ON LOAD ──────────────────────────────────────────
-  // Each in-app page has its own URL so refresh restores the correct page.
   useEffect(() => {
     const path = window.location.pathname.replace(/^\//, "");
 
@@ -62,34 +64,26 @@ export default function App() {
       case "explore":
         setMode("explore");
         break;
-
-      // ── FIX: each page URL restores activePage correctly on refresh ──────
       case "profile":
         setMode("app");
         setActivePage("profile");
         break;
-
       case "reservations":
         setMode("app");
         setActivePage("reservations");
         break;
-
       case "dashboard":
         setMode("app");
         setActivePage("dashboard");
         break;
-
-      // legacy /app — redirect to explore
       case "app":
         setMode("explore");
         window.history.replaceState({ mode: "explore" }, "", "/explore");
         break;
-
       case "":
       case "home":
         setMode("home");
         break;
-
       default:
         setMode(path);
         break;
@@ -105,7 +99,7 @@ export default function App() {
         if (state?.activePage)    setActivePage(state.activePage);
         if (state?.profileTarget) setProfileTarget(state.profileTarget);
         else                      setProfileTarget(null);
-        setProfileTab(state?.profileTab || "overview");
+        setProfileInitialTab(state?.profileInitialTab || "overview");
       } else {
         const path = window.location.pathname.replace(/^\//, "");
         setMode(path || "home");
@@ -135,25 +129,26 @@ export default function App() {
     }, 150);
   };
 
-  /**
-   * Navigate to an in-app page.
-   * Each page gets its own URL so browser refresh restores correctly:
-   *   explore      → /explore
-   *   profile      → /profile
-   *   reservations → /reservations
-   *   dashboard    → /dashboard
-   */
   const handleNavigate = (page, state = {}) => {
     if (page === "explore") {
       switchTo("explore");
       return;
     }
 
-    // ── FIX: push a distinct URL per page, not always "/app" ─────────────
+    if (page === "portfolio") {
+      setMode("app");
+      setActivePage("profile");
+      setProfileTarget(null);
+      setProfileInitialTab("portfolio");
+      window.history.pushState({ mode: "app", activePage: "profile", profileInitialTab: "portfolio" }, "", "/profile");
+      return;
+    }
+
     const pageUrlMap = {
       profile:      "/profile",
       reservations: "/reservations",
       dashboard:    "/dashboard",
+      saved:        "/saved",
     };
     const url = pageUrlMap[page] || `/${page}`;
 
@@ -162,19 +157,14 @@ export default function App() {
 
     if (page === "profile") {
       setProfileTarget(state?.profileUser || null);
-      setProfileTab(state?.profileTab || "overview");
+      setProfileInitialTab(state?.tab || "overview");
     } else {
       setProfileTarget(null);
-      setProfileTab("overview");
+      setProfileInitialTab("overview");
     }
 
     window.history.pushState(
-      {
-        mode: "app",
-        activePage: page,
-        profileTarget: state?.profileUser || null,
-        profileTab: state?.profileTab || "overview",
-      },
+      { mode: "app", activePage: page, profileTarget: state?.profileUser || null, profileInitialTab: state?.tab || "overview" },
       "",
       url,
     );
@@ -194,11 +184,6 @@ export default function App() {
     setLoggedUser(null);
     setProfileTarget(null);
     switchTo("home");
-  };
-
-  const Redirect = ({ to }) => {
-    useEffect(() => { switchTo(to); }, [to]);
-    return null;
   };
 
   const openAuthModal = (m = "login") => {
@@ -261,6 +246,21 @@ export default function App() {
     return adminLoginNode;
   }
 
+  // ── DIALOG & HELPERS ────────────────────────────────────────────────────
+  const handleReserveWorker = (worker) => {
+    if (!loggedUser) { openAuthModal("login"); return; }
+    setReservDialog({ worker });
+  };
+
+  const reservDialogNode = reservDialog && loggedUser ? (
+    <ReservationDialog
+      worker={reservDialog.worker}
+      user={loggedUser}
+      onClose={() => setReservDialog(null)}
+      onSuccess={() => { setReservDialog(null); handleNavigate("reservations"); }}
+    />
+  ) : null;
+
   // ── EXPLORE ─────────────────────────────────────────────────────────────
   if (mode === "explore") {
     return (
@@ -268,16 +268,7 @@ export default function App() {
         <Explore
           onHome={() => switchTo("home")}
           onExplore={() => switchTo("explore")}
-          onReserveWorker={(worker) => {
-            if (loggedUser) {
-              handleNavigate("profile", {
-                profileUser: worker,
-                profileTab: "schedule",
-              });
-            } else {
-              openAuthModal("login");
-            }
-          }}
+          onReserveWorker={handleReserveWorker}
           user={loggedUser}
           onLogout={onLogout}
           onLogin={() => openAuthModal("login")}
@@ -285,6 +276,7 @@ export default function App() {
           onNavigate={handleNavigate}
         />
         {authModalNode}
+        {reservDialogNode}
       </>
     );
   }
@@ -310,29 +302,33 @@ export default function App() {
       );
     }
 
-    // ── Profile ────────────────────────────────────────────────────────────
     if (mode === "app" && activePage === "profile") {
       return (
         <>
           <Profile
             profileUser={profileTarget || loggedUser}
             currentUser={loggedUser}
-            initialTab={profileTab}
+            initialTab={profileInitialTab}
             onBack={() => switchTo("explore")}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
             onLogout={onLogout}
+            onReserveWorker={handleReserveWorker}
+            onProfileUpdate={(updatedUser) => {
+              setLoggedUser(updatedUser);
+              localStorage.setItem("user", JSON.stringify(updatedUser));
+            }}
           />
           {authModalNode}
+          {reservDialogNode}
         </>
       );
     }
 
-    // ── Reservations ───────────────────────────────────────────────────────
     if (mode === "app" && activePage === "reservations") {
       return (
         <>
-          <ReservationsPage
+          <ReservationsManagePage
             user={loggedUser}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
@@ -343,11 +339,26 @@ export default function App() {
       );
     }
 
-    // ── Dashboard ──────────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "saved") {
+      return (
+        <>
+          <SavedWorkers
+            user={loggedUser}
+            onHome={() => switchTo("home")}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+            onReserveWorker={handleReserveWorker}
+          />
+          {authModalNode}
+          {reservDialogNode}
+        </>
+      );
+    }
+
     if (mode === "app" && activePage === "dashboard") {
       return (
         <>
-          <ReservationsPage
+          <ReservationsManagePage
             user={loggedUser}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
@@ -358,15 +369,17 @@ export default function App() {
       );
     }
 
-    // stray /app — redirect to explore
     if (mode === "app") {
-      return <Redirect to="explore" />;
+      setActivePage("explore");
+      setMode("explore");
+      return null;
     }
   }
 
-  // ── UNAUTHENTICATED user hits a protected route — redirect to explore ───
+  // ── UNAUTHENTICATED user hits a protected route ─────────────────────────
   if (mode === "app") {
-    return <Redirect to="explore" />;
+    setMode("explore");
+    return null;
   }
 
   // ── PUBLIC HOME ─────────────────────────────────────────────────────────

@@ -171,25 +171,37 @@ exports.createReservation = async (req, res) => {
       notes: notes || "",
     });
 
-    // ── Create notification for worker ─────────────────────
+    // ── Notify the worker ──────────────────────────────────
     const clientName = req.user.firstName || "Un client";
-    await User.findByIdAndUpdate(
-      workerId,
+    await User.findByIdAndUpdate(workerId, {
+      $push: {
+        notifications: {
+          type: "reservation",
+          title: `Nouvelle réservation de ${clientName}`,
+          message: `${clientName} a réservé votre service pour le ${bookingDate} à ${bookingHour}h`,
+          reservationId: reservation._id,
+          read: false,
+          createdAt: new Date(),
+        },
+      },
+    });
+
+    // ── Notify all admins ──────────────────────────────────
+    await User.updateMany(
+      { role: "admin" },
       {
         $push: {
           notifications: {
             type: "reservation",
-            title: `Nouvelle réservation de ${clientName}`,
-            message: `${clientName} a réservé votre service pour le ${bookingDate} à ${bookingHour}h`,
+            title: `Nouvelle réservation`,
+            message: `${clientName} a réservé ${worker.workerProfile?.professions?.[0] || "un service"} pour le ${bookingDate} à ${bookingHour}h`,
             reservationId: reservation._id,
             read: false,
             createdAt: new Date(),
           },
         },
-      },
-      { new: true }
+      }
     );
-    console.log("📢 Notification créée pour le prestataire:", workerId);
 
     const populated = await Reservation.findById(reservation._id)
       .populate("worker", "firstName lastName avatar workerProfile.city workerProfile.professions")
@@ -259,6 +271,23 @@ exports.cancelClientReservation = async (req, res) => {
     reservation.cancellationReason = req.body?.reason || "Cancelled by client";
     await reservation.save();
 
+    // Notify worker about cancellation
+    const client = await User.findById(req.user.id).select("firstName lastName");
+    const clientName = client ? `${client.firstName} ${client.lastName}`.trim() : "Un client";
+    const dateStr = toISODateString(new Date(reservation.bookingDate));
+    await User.findByIdAndUpdate(reservation.worker, {
+      $push: {
+        notifications: {
+          type: "reservation",
+          title: "Réservation annulée",
+          message: `${clientName} a annulé la réservation du ${dateStr} à ${reservation.bookingHour}h`,
+          reservationId: reservation._id,
+          read: false,
+          createdAt: new Date(),
+        },
+      },
+    });
+
     return res.json({ message: "Reservation cancelled", reservation });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
@@ -267,11 +296,7 @@ exports.cancelClientReservation = async (req, res) => {
 
 exports.getWorkerReservations = async (req, res) => {
   try {
-    const { status } = req.query;
-    const filter = { worker: req.user.id };
-    if (status) filter.status = status;
-
-    const reservations = await Reservation.find(filter)
+    const reservations = await Reservation.find({ worker: req.user.id })
       .populate("client", "firstName lastName avatar phone")
       .sort({ createdAt: -1, bookingDate: -1, bookingHour: -1 });
 
@@ -303,6 +328,31 @@ exports.updateWorkerReservationStatus = async (req, res) => {
 
     reservation.status = status;
     await reservation.save();
+
+    // Notify the client about the status change
+    const worker = await User.findById(req.user.id).select("firstName lastName");
+    const workerName = worker ? `${worker.firstName} ${worker.lastName}`.trim() : "Votre prestataire";
+    const dateStr = toISODateString(new Date(reservation.bookingDate));
+    const notifMessages = {
+      accepted:  { title: "Réservation acceptée", message: `${workerName} a accepté votre réservation du ${dateStr} à ${reservation.bookingHour}h` },
+      rejected:  { title: "Réservation refusée", message: `${workerName} a refusé votre réservation du ${dateStr} à ${reservation.bookingHour}h` },
+      completed: { title: "Service terminé", message: `Votre réservation avec ${workerName} du ${dateStr} est terminée. Laissez un avis !` },
+    };
+    const notif = notifMessages[status];
+    if (notif) {
+      await User.findByIdAndUpdate(reservation.client, {
+        $push: {
+          notifications: {
+            type: "reservation",
+            title: notif.title,
+            message: notif.message,
+            reservationId: reservation._id,
+            read: false,
+            createdAt: new Date(),
+          },
+        },
+      });
+    }
 
     return res.json({ message: `Reservation marked ${status}`, reservation });
   } catch (err) {

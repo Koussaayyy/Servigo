@@ -15,8 +15,9 @@ const UserSchema = new mongoose.Schema(
     avatar:     { type: String, default: "" },
     isVerified: { type: Boolean, default: false },
     isActive:   { type: Boolean, default: true },
-    onboardingComplete:  { type: Boolean, default: false },  // ← ADD THIS
-    
+    onboardingComplete: { type: Boolean, default: false },
+    savedWorkers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
     // ── Notifications ──────────────────────────────────────
     notifications: {
       type: [
