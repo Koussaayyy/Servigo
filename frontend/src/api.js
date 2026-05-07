@@ -74,6 +74,21 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
     }).then(handle),
+
+  // ── Verify Email ──────────────────────────
+  verifyEmail: (email, code) =>
+    fetch(`${BASE}/auth/verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code }),
+    }).then(handle),
+
+  resendVerificationCode: (email) =>
+    fetch(`${BASE}/auth/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).then(handle),
 };
 
 // ════════════════════════════════════════════

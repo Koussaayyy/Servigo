@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import LoginForm              from "./pages/LoginForm";
-import SignupPicker           from "./pages/SignupPicker";
-import ResetPassword          from "./pages/ResetPassword";
-import Explore                from "./pages/Explore";
-import HomePage               from "./pages/HomePage";
-import GoogleCompleteSignup   from "./pages/GoogleCompleteSignup";
-import Onboarding             from "./pages/Onboarding/Onboarding";
-import Profile                from "./pages/Profile";
-import ReservationsManagePage from "./pages/ReservationsManagePage";
-import AuthModal              from "./components/AuthModal";
-import AdminLoginModal        from "./components/AdminLoginModal";
-import AdminDashboard         from "./pages/AdminDashboard";
-import SavedWorkers           from "./pages/SavedWorkers";
-import ReservationDialog      from "./components/ReservationDialog";
+import { authApi } from "./api";
+import LoginForm            from "./pages/LoginForm";
+import SignupPicker         from "./pages/SignupPicker";
+import ResetPassword        from "./pages/ResetPassword";
+import Explore              from "./pages/Explore";
+import HomePage             from "./pages/HomePage";
+import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
+import Onboarding           from "./pages/Onboarding/Onboarding";
+import Profile              from "./pages/Profile";
+import ReservationsPage     from "./pages/ReservationsPage";
+import AuthModal            from "./components/AuthModal";
+import AdminLoginModal      from "./components/AdminLoginModal";
+import AdminDashboard       from "./pages/AdminDashboard";
+import EmailVerification    from "./pages/EmailVerification";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -21,14 +21,14 @@ export default function App() {
   const [exiting, setExiting]       = useState(false);
   const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("explore");
-  const [profileTarget, setProfileTarget]         = useState(null);
-  const [profileInitialTab, setProfileInitialTab] = useState("overview");
-  const [resetToken, setResetToken]               = useState(null);
-  const [googleCredential, setGoogleCredential]   = useState(null);
-  const [onboardingUser, setOnboardingUser]       = useState(null);
-  const [authModalOpen, setAuthModalOpen]         = useState(false);
-  const [authModalMode, setAuthModalMode]         = useState("login");
-  const [reservDialog, setReservDialog]           = useState(null);
+  const [profileTarget, setProfileTarget] = useState(null);
+  const [profileTab, setProfileTab] = useState("overview");
+  const [resetToken, setResetToken]             = useState(null);
+  const [googleCredential, setGoogleCredential] = useState(null);
+  const [onboardingUser, setOnboardingUser]     = useState(null);
+  const [authModalOpen, setAuthModalOpen]       = useState(false);
+  const [authModalMode, setAuthModalMode]       = useState("login");
+  const [pendingEmailVerification, setPendingEmailVerification] = useState(null);
 
   const [admin, setAdmin] = useState(() => {
     try {
@@ -52,6 +52,7 @@ export default function App() {
   });
 
   // ── SYNC MODE FROM URL ON LOAD ──────────────────────────────────────────
+  // Each in-app page has its own URL so refresh restores the correct page.
   useEffect(() => {
     const path = window.location.pathname.replace(/^\//, "");
 
@@ -64,26 +65,34 @@ export default function App() {
       case "explore":
         setMode("explore");
         break;
+
+      // ── FIX: each page URL restores activePage correctly on refresh ──────
       case "profile":
         setMode("app");
         setActivePage("profile");
         break;
+
       case "reservations":
         setMode("app");
         setActivePage("reservations");
         break;
+
       case "dashboard":
         setMode("app");
         setActivePage("dashboard");
         break;
+
+      // legacy /app — redirect to explore
       case "app":
         setMode("explore");
         window.history.replaceState({ mode: "explore" }, "", "/explore");
         break;
+
       case "":
       case "home":
         setMode("home");
         break;
+
       default:
         setMode(path);
         break;
@@ -99,7 +108,7 @@ export default function App() {
         if (state?.activePage)    setActivePage(state.activePage);
         if (state?.profileTarget) setProfileTarget(state.profileTarget);
         else                      setProfileTarget(null);
-        setProfileInitialTab(state?.profileInitialTab || "overview");
+        setProfileTab(state?.profileTab || "overview");
       } else {
         const path = window.location.pathname.replace(/^\//, "");
         setMode(path || "home");
@@ -129,26 +138,25 @@ export default function App() {
     }, 150);
   };
 
+  /**
+   * Navigate to an in-app page.
+   * Each page gets its own URL so browser refresh restores correctly:
+   *   explore      → /explore
+   *   profile      → /profile
+   *   reservations → /reservations
+   *   dashboard    → /dashboard
+   */
   const handleNavigate = (page, state = {}) => {
     if (page === "explore") {
       switchTo("explore");
       return;
     }
 
-    if (page === "portfolio") {
-      setMode("app");
-      setActivePage("profile");
-      setProfileTarget(null);
-      setProfileInitialTab("portfolio");
-      window.history.pushState({ mode: "app", activePage: "profile", profileInitialTab: "portfolio" }, "", "/profile");
-      return;
-    }
-
+    // ── FIX: push a distinct URL per page, not always "/app" ─────────────
     const pageUrlMap = {
       profile:      "/profile",
       reservations: "/reservations",
       dashboard:    "/dashboard",
-      saved:        "/saved",
     };
     const url = pageUrlMap[page] || `/${page}`;
 
@@ -157,25 +165,40 @@ export default function App() {
 
     if (page === "profile") {
       setProfileTarget(state?.profileUser || null);
-      setProfileInitialTab(state?.tab || "overview");
+      setProfileTab(state?.profileTab || "overview");
     } else {
       setProfileTarget(null);
-      setProfileInitialTab("overview");
+      setProfileTab("overview");
     }
 
     window.history.pushState(
-      { mode: "app", activePage: page, profileTarget: state?.profileUser || null, profileInitialTab: state?.tab || "overview" },
+      {
+        mode: "app",
+        activePage: page,
+        profileTarget: state?.profileUser || null,
+        profileTab: state?.profileTab || "overview",
+      },
       "",
       url,
     );
   };
 
   const onSuccess = (user) => {
+    // If email not verified, show verification screen
+    if (!user.isVerified) {
+      setPendingEmailVerification(user.email);
+      return;
+    }
+
+    // If onboarding not complete, show onboarding
     if (!user.onboardingComplete) {
       setOnboardingUser(user);
       return;
     }
+
+    // Otherwise, log in
     setLoggedUser(user);
+    localStorage.setItem("user", JSON.stringify(user));
     switchTo("explore");
   };
 
@@ -184,6 +207,11 @@ export default function App() {
     setLoggedUser(null);
     setProfileTarget(null);
     switchTo("home");
+  };
+
+  const Redirect = ({ to }) => {
+    useEffect(() => { switchTo(to); }, [to]);
+    return null;
   };
 
   const openAuthModal = (m = "login") => {
@@ -209,21 +237,49 @@ export default function App() {
     />
   ) : null;
 
-  // Onboarding dialog — renders as an overlay on top of the current page
-  const onboardingNode = onboardingUser ? (
-    <Onboarding
-      user={onboardingUser}
-      onComplete={(u) => {
-        setLoggedUser(u);
-        setOnboardingUser(null);
-        switchTo("explore");
-      }}
-    />
-  ) : null;
-
   // ── RESET PASSWORD ──────────────────────────────────────────────────────
   if (resetToken) {
     return <ResetPassword token={resetToken} />;
+  }
+
+  // ── EMAIL VERIFICATION ──────────────────────────────────────────────────
+  if (pendingEmailVerification) {
+    return (
+      <EmailVerification
+        email={pendingEmailVerification}
+        onSuccess={(result) => {
+          const user = result?.user;
+          const token = result?.token;
+          if (!user) return;
+          setPendingEmailVerification(null);
+          if (token) {
+            localStorage.setItem("token", token);
+          }
+          if (!user.onboardingComplete) {
+            setOnboardingUser(user);
+          } else {
+            setLoggedUser(user);
+            localStorage.setItem("user", JSON.stringify(user));
+            switchTo("explore");
+          }
+        }}
+        onResendCode={(email) => authApi.resendVerificationCode(email)}
+      />
+    );
+  }
+
+  // ── ONBOARDING ──────────────────────────────────────────────────────────
+  if (onboardingUser) {
+    return (
+      <Onboarding
+        user={onboardingUser}
+        onComplete={(u) => {
+          setLoggedUser(u);
+          setOnboardingUser(null);
+          switchTo("explore");
+        }}
+      />
+    );
   }
 
   // ── ADMIN DASHBOARD ─────────────────────────────────────────────────────
@@ -244,21 +300,6 @@ export default function App() {
     return adminLoginNode;
   }
 
-  // ── DIALOG & HELPERS ────────────────────────────────────────────────────
-  const handleReserveWorker = (worker) => {
-    if (!loggedUser) { openAuthModal("login"); return; }
-    setReservDialog({ worker });
-  };
-
-  const reservDialogNode = reservDialog && loggedUser ? (
-    <ReservationDialog
-      worker={reservDialog.worker}
-      user={loggedUser}
-      onClose={() => setReservDialog(null)}
-      onSuccess={() => { setReservDialog(null); handleNavigate("reservations"); }}
-    />
-  ) : null;
-
   // ── EXPLORE ─────────────────────────────────────────────────────────────
   if (mode === "explore") {
     return (
@@ -266,7 +307,16 @@ export default function App() {
         <Explore
           onHome={() => switchTo("home")}
           onExplore={() => switchTo("explore")}
-          onReserveWorker={handleReserveWorker}
+          onReserveWorker={(worker) => {
+            if (loggedUser) {
+              handleNavigate("profile", {
+                profileUser: worker,
+                profileTab: "schedule",
+              });
+            } else {
+              openAuthModal("login");
+            }
+          }}
           user={loggedUser}
           onLogout={onLogout}
           onLogin={() => openAuthModal("login")}
@@ -274,8 +324,6 @@ export default function App() {
           onNavigate={handleNavigate}
         />
         {authModalNode}
-        {reservDialogNode}
-        {onboardingNode}
       </>
     );
   }
@@ -301,33 +349,29 @@ export default function App() {
       );
     }
 
+    // ── Profile ────────────────────────────────────────────────────────────
     if (mode === "app" && activePage === "profile") {
       return (
         <>
           <Profile
             profileUser={profileTarget || loggedUser}
             currentUser={loggedUser}
-            initialTab={profileInitialTab}
+            initialTab={profileTab}
             onBack={() => switchTo("explore")}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
             onLogout={onLogout}
-            onReserveWorker={handleReserveWorker}
-            onProfileUpdate={(updatedUser) => {
-              setLoggedUser(updatedUser);
-              localStorage.setItem("user", JSON.stringify(updatedUser));
-            }}
           />
           {authModalNode}
-          {reservDialogNode}
         </>
       );
     }
 
+    // ── Reservations ───────────────────────────────────────────────────────
     if (mode === "app" && activePage === "reservations") {
       return (
         <>
-          <ReservationsManagePage
+          <ReservationsPage
             user={loggedUser}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
@@ -338,26 +382,11 @@ export default function App() {
       );
     }
 
-    if (mode === "app" && activePage === "saved") {
-      return (
-        <>
-          <SavedWorkers
-            user={loggedUser}
-            onHome={() => switchTo("home")}
-            onNavigate={handleNavigate}
-            onLogout={onLogout}
-            onReserveWorker={handleReserveWorker}
-          />
-          {authModalNode}
-          {reservDialogNode}
-        </>
-      );
-    }
-
+    // ── Dashboard ──────────────────────────────────────────────────────────
     if (mode === "app" && activePage === "dashboard") {
       return (
         <>
-          <ReservationsManagePage
+          <ReservationsPage
             user={loggedUser}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
@@ -368,17 +397,15 @@ export default function App() {
       );
     }
 
+    // stray /app — redirect to explore
     if (mode === "app") {
-      setActivePage("explore");
-      setMode("explore");
-      return null;
+      return <Redirect to="explore" />;
     }
   }
 
-  // ── UNAUTHENTICATED user hits a protected route ─────────────────────────
+  // ── UNAUTHENTICATED user hits a protected route — redirect to explore ───
   if (mode === "app") {
-    setMode("explore");
-    return null;
+    return <Redirect to="explore" />;
   }
 
   // ── PUBLIC HOME ─────────────────────────────────────────────────────────
@@ -393,7 +420,6 @@ export default function App() {
         />
         {authModalNode}
         {adminLoginNode}
-        {onboardingNode}
       </>
     );
   }

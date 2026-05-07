@@ -38,6 +38,10 @@ const UserSchema = new mongoose.Schema(
     resetPasswordToken:  { type: String },
     resetPasswordExpire: { type: Date },
 
+    // ── Email verification ────────────────────────────────
+    verificationCode:    { type: String },
+    verificationCodeExpire: { type: Date },
+
     // ── Client profile ─────────────────────────────────────
     clientProfile: {
       address:  { type: String, default: "" },

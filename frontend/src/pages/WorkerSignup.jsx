@@ -21,8 +21,7 @@ export default function WorkerSignup({ onBack, onSuccess }) {
     setLoading(true);
     try {
       const res = await authApi.register({ ...form, role: "worker" });
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("user", JSON.stringify(res.user));
+      // Don't store token yet - email verification required first
       onSuccess(res.user);
     } catch (err) {
       setError(err.message || "Registration failed. Try again.");
