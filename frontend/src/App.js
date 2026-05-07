@@ -209,23 +209,21 @@ export default function App() {
     />
   ) : null;
 
+  // Onboarding dialog — renders as an overlay on top of the current page
+  const onboardingNode = onboardingUser ? (
+    <Onboarding
+      user={onboardingUser}
+      onComplete={(u) => {
+        setLoggedUser(u);
+        setOnboardingUser(null);
+        switchTo("explore");
+      }}
+    />
+  ) : null;
+
   // ── RESET PASSWORD ──────────────────────────────────────────────────────
   if (resetToken) {
     return <ResetPassword token={resetToken} />;
-  }
-
-  // ── ONBOARDING ──────────────────────────────────────────────────────────
-  if (onboardingUser) {
-    return (
-      <Onboarding
-        user={onboardingUser}
-        onComplete={(u) => {
-          setLoggedUser(u);
-          setOnboardingUser(null);
-          switchTo("explore");
-        }}
-      />
-    );
   }
 
   // ── ADMIN DASHBOARD ─────────────────────────────────────────────────────
@@ -277,6 +275,7 @@ export default function App() {
         />
         {authModalNode}
         {reservDialogNode}
+        {onboardingNode}
       </>
     );
   }
@@ -394,6 +393,7 @@ export default function App() {
         />
         {authModalNode}
         {adminLoginNode}
+        {onboardingNode}
       </>
     );
   }
