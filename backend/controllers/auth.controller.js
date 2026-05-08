@@ -84,6 +84,7 @@ const fullUser = (user) => ({
   gender:               user.gender,
   birthDate:            user.birthDate,
   onboardingComplete:   user.onboardingComplete,
+  workerVerification:   user.workerVerification,
   clientProfile:        user.clientProfile,
   workerProfile:        user.workerProfile,
 });

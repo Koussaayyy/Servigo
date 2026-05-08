@@ -145,7 +145,11 @@ exports.deleteAccount = async (req, res) => {
 exports.getAllWorkers = async (req, res) => {
   try {
     const { profession, city, includeUnavailable } = req.query;
-    const filter = { role: "worker", isActive: true };
+    const filter = {
+      role: "worker",
+      isActive: true,
+      "workerVerification.status": "approved",
+    };
     
     if (includeUnavailable !== "1") {
       filter["workerProfile.isAvailable"] = true;

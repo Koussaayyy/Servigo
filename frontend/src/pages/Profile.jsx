@@ -162,6 +162,7 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-toggle.off::after { left:3px; }
 .pr-pill-verified   { background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.25); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
 .pr-pill-unverified { background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.2); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
+.pr-pill-pending    { background:rgba(245,158,11,0.12); color:#b45309; border:1px solid rgba(245,158,11,0.3); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
 @media(max-width:1024px){ .pr-grid{ grid-template-columns:1fr; } }
 @media(max-width:768px){ .pr-hero{ padding:76px 16px 0; } .pr-content{ padding:24px 16px 64px; } .pr-hero-name{ font-size:20px; } .pr-field-grid{ grid-template-columns:1fr; } .pr-stats{ grid-template-columns:repeat(3,1fr); } }
 @media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; } .pr-tabs{ overflow-x:auto; } }
@@ -213,12 +214,13 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const role      = profile?.role      || "client";
   const wp        = profile?.workerProfile  || {};
   const cp        = profile?.clientProfile  || {};
+  const workerVerificationStatus = profile?.workerVerification?.status || "not_submitted";
   const avatar    = typeof avatarUrl === "function" ? avatarUrl(profile?.avatar) : null;
   const profs     = wp.professions || [];
   const rating    = Number(wp.rating       || 0);
   const reviews   = Number(wp.totalReviews || 0);
   const avail     = wp.isAvailable !== false;
-  const canReserve = role === "worker" && currentUser?.role === "client" && !isOwner;
+  const canReserve = role === "worker" && (currentUser?.role === "client" || currentUser?.role === "worker") && !isOwner;
   const workerId = profile?._id ? String(profile._id) : "";
 
   const datePages = useMemo(() => {
@@ -559,6 +561,16 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
           <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
             {[
               ["Email vérifié", profile.isVerified ? <span className="pr-pill-verified">✓ Vérifié</span> : <span className="pr-pill-unverified">✗ Non vérifié</span>],
+              ...(role === "worker" ? [[
+                "Validation artisan",
+                workerVerificationStatus === "approved"
+                  ? <span className="pr-pill-verified">✓ Approuvé</span>
+                  : workerVerificationStatus === "pending"
+                    ? <span className="pr-pill-pending">En attente</span>
+                    : workerVerificationStatus === "rejected"
+                      ? <span className="pr-pill-unverified">Refusé</span>
+                      : <span className="pr-pill-pending">Non soumis</span>
+              ]] : []),
               ["Statut",        profile.isActive  ? <span className="pr-pill-verified">Actif</span>    : <span className="pr-pill-unverified">Inactif</span>],
               ["Rôle",          <span className={`pr-role-badge pr-role-${role}`}>{role}</span>],
               ["Membre depuis", <span style={{ fontSize:12,fontWeight:600,color:"#0f172e" }}>{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("fr-FR",{month:"short",year:"numeric"}) : "—"}</span>],

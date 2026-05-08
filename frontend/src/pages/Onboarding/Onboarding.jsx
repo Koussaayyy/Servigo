@@ -28,7 +28,7 @@ const GOVERNORATES = [
   "Gabès","Medenine","Tataouine","Gafsa","Tozeur","Kébili",
 ];
 
-function AlertOverlay({ type, message, onClose }) {
+function AlertOverlay({ type, message, onClose, isWorker }) {
   const ok = type === "success";
   return (
     <div className="ob-alert-backdrop">
@@ -39,11 +39,13 @@ function AlertOverlay({ type, message, onClose }) {
             : <XCircle    size={40} color="#ef4444" />}
         </div>
         <h3 className="ob-alert-title">
-          {ok ? "Compte créé !" : "Création du compte échouée"}
+          {ok ? (isWorker ? "Dossier envoyé !" : "Compte créé !") : "Création du compte échouée"}
         </h3>
         <p className="ob-alert-sub">
           {ok
-            ? "Votre profil est prêt. Bienvenue sur Servigo !"
+            ? (isWorker
+                ? "Vos documents ont été envoyés. Un administrateur doit valider votre profil prestataire avant publication."
+                : "Votre profil est prêt. Bienvenue sur Servigo !")
             : message || "Une erreur s'est produite. Veuillez vérifier vos informations et réessayer."}
         </p>
         <button className={`ob-alert-btn ${ok ? "success" : "error"}`} onClick={onClose}>
@@ -59,15 +61,19 @@ export default function Onboarding({ user, onComplete }) {
   const isWorker = user?.role === "worker";
 
   const STEPS = isWorker
-    ? ["Identité", "Localisation", "Services", "Profil"]
+    ? ["Identité", "Localisation", "Services", "Profil", "Vérification"]
     : ["Identité", "Localisation", "Profil"];
   const TOTAL = STEPS.length;
+  const profileStep = isWorker ? 3 : 2;
+  const verificationStep = isWorker ? 4 : -1;
 
   const [step,       setStep]       = useState(0);
   const [error,      setError]      = useState("");
   const [loading,    setLoading]    = useState(false);
   const [preview,    setPreview]    = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [cinFile, setCinFile] = useState(null);
+  const [certificationFile, setCertificationFile] = useState(null);
   const [alert,      setAlert]      = useState(null);   // null | "success" | "error"
   const [alertMsg,   setAlertMsg]   = useState("");
   const [savedUser,  setSavedUser]  = useState(null);
@@ -94,6 +100,18 @@ export default function Onboarding({ user, onComplete }) {
     setPreview(URL.createObjectURL(file));
   };
 
+  const pickCin = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCinFile(file);
+  };
+
+  const pickCertification = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCertificationFile(file);
+  };
+
   const validate = () => {
     if (step === 0) {
       if (!form.gender)          return "Veuillez sélectionner votre genre.";
@@ -106,8 +124,12 @@ export default function Onboarding({ user, onComplete }) {
     if (isWorker && step === 2) {
       if (!form.services.length) return "Veuillez sélectionner au moins un service.";
     }
-    if (step === TOTAL - 1) {
+    if (step === profileStep) {
       if (!form.bio.trim())      return "Veuillez renseigner votre bio.";
+    }
+    if (isWorker && step === verificationStep) {
+      if (!cinFile) return "Veuillez ajouter l'image de votre CIN.";
+      if (!certificationFile) return "Veuillez ajouter un justificatif professionnel.";
     }
     return null;
   };
@@ -137,6 +159,8 @@ export default function Onboarding({ user, onComplete }) {
       data.append("bio",         form.bio);
       if (form.services.length) data.append("services", JSON.stringify(form.services));
       if (avatarFile)           data.append("avatar",   avatarFile);
+      if (cinFile)              data.append("cinDocument", cinFile);
+      if (certificationFile)    data.append("certificationDocument", certificationFile);
 
       const res  = await fetch("http://localhost:5000/api/onboarding/complete", {
         method:  "PUT",
@@ -269,7 +293,7 @@ export default function Onboarding({ user, onComplete }) {
           )}
 
           {/* ── LAST STEP — Photo + bio ── */}
-          {step === TOTAL - 1 && (
+          {step === profileStep && (
             <>
               <div className="form-head">
                 <h2 className="form-title">Complétez votre profil.</h2>
@@ -299,6 +323,33 @@ export default function Onboarding({ user, onComplete }) {
             </>
           )}
 
+          {isWorker && step === verificationStep && (
+            <>
+              <div className="form-head">
+                <h2 className="form-title">Vérification prestataire</h2>
+                <p className="form-sub">
+                  Pour éviter le spam, vous devez envoyer vos justificatifs. Votre profil sera validé par un administrateur.
+                </p>
+              </div>
+
+              <div className="field">
+                <label>Photo CIN <span className="ob-required">*</span></label>
+                <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={pickCin} />
+                <div className="ob-char-count">
+                  {cinFile ? `Fichier: ${cinFile.name}` : "Formats: JPG, PNG, WEBP ou PDF"}
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Certification / Preuve de métier <span className="ob-required">*</span></label>
+                <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={pickCertification} />
+                <div className="ob-char-count">
+                  {certificationFile ? `Fichier: ${certificationFile.name}` : "Ex: certificat plombier, attestation, diplôme"}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* ── Nav buttons (no skip) ── */}
           <div className="ob-btn-row">
             {step > 0 && (
@@ -321,6 +372,7 @@ export default function Onboarding({ user, onComplete }) {
         <AlertOverlay
           type={alert}
           message={alertMsg}
+          isWorker={isWorker}
           onClose={() => {
             if (alert === "success") {
               onComplete(savedUser);

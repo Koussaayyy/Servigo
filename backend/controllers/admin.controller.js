@@ -5,7 +5,9 @@ const Reservation = require("../models/Reservation.model");
 // ── @GET /api/admin/users ──────────────────────────────────
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 });
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -139,6 +141,94 @@ exports.getReclamations = async (_req, res) => {
   try {
     const reclamations = await Reclamation.find().sort({ createdAt: -1 });
     res.json(reclamations);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/worker-verifications ──────────────────
+exports.getWorkerVerifications = async (req, res) => {
+  try {
+    const { status = "pending" } = req.query;
+    const filter = { role: "worker" };
+    if (status && status !== "all") {
+      filter["workerVerification.status"] = status;
+    }
+
+    const workers = await User.find(filter)
+      .select("firstName lastName email phone workerProfile.professions workerProfile.city workerVerification createdAt")
+      .sort({ "workerVerification.submittedAt": -1, createdAt: -1 });
+
+    res.json(workers);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PATCH /api/admin/worker-verifications/:id/review ─────
+exports.reviewWorkerVerification = async (req, res) => {
+  try {
+    const { status, rejectionReason = "" } = req.body;
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Status must be approved or rejected" });
+    }
+
+    const worker = await User.findById(req.params.id);
+    if (!worker || worker.role !== "worker") {
+      return res.status(404).json({ message: "Worker not found" });
+    }
+
+    worker.workerVerification.status = status;
+    worker.workerVerification.reviewedAt = new Date();
+    worker.workerVerification.reviewedBy = req.user?.email || "admin";
+    worker.workerVerification.rejectionReason = status === "rejected" ? String(rejectionReason || "").trim() : "";
+
+    await worker.save();
+
+    res.json({
+      message: `Worker verification ${status}`,
+      worker: {
+        id: worker._id,
+        workerVerification: worker.workerVerification,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @POST /api/admin/migrate-legacy-workers ────────────────
+// Auto-verify all old worker accounts that don't have workerVerification field
+exports.migrateOldWorkers = async (req, res) => {
+  try {
+    const result = await User.updateMany(
+      {
+        role: "worker",
+        $or: [
+          { workerVerification: { $exists: false } },
+          { "workerVerification.status": { $exists: false } }
+        ]
+      },
+      {
+        $set: {
+          workerVerification: {
+            status: "approved",
+            submittedAt: new Date(),
+            reviewedAt: new Date(),
+            reviewedBy: "system-migration",
+            cinDocumentUrl: "",
+            certificationDocumentUrl: "",
+            rejectionReason: ""
+          }
+        }
+      }
+    );
+
+    res.json({
+      message: "Migration completed",
+      modifiedCount: result.modifiedCount,
+      details: `${result.modifiedCount} old worker account(s) have been verified`
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

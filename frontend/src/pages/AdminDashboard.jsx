@@ -205,6 +205,44 @@ export default function AdminDashboard({ admin, onLogout }) {
     }
   };
 
+  const getVerificationBadge = (status) => {
+    const map = {
+      not_submitted: { label: "Non soumis", bg: "#f1f5f9", text: "#64748b" },
+      pending: { label: "En attente", bg: "rgba(245,158,11,0.12)", text: "#b45309" },
+      approved: { label: "Approuvé", bg: "rgba(34,197,94,0.12)", text: "#15803d" },
+      rejected: { label: "Refusé", bg: "rgba(239,68,68,0.12)", text: "#b91c1c" },
+    };
+    return map[status] || map.not_submitted;
+  };
+
+  const reviewWorkerVerification = async (workerId, status) => {
+    try {
+      let rejectionReason = "";
+      if (status === "rejected") {
+        rejectionReason = window.prompt("Motif du refus (optionnel):", "") || "";
+      }
+
+      await adminApi.reviewWorkerVerification(workerId, { status, rejectionReason });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === workerId
+            ? {
+                ...u,
+                workerVerification: {
+                  ...u.workerVerification,
+                  status,
+                  rejectionReason,
+                },
+              }
+            : u
+        )
+      );
+      addActivity(`Vérification artisan ${status === "approved" ? "approuvée" : "refusée"}`, workerId);
+    } catch (err) {
+      setError(err.message || "Erreur lors de la revue du dossier artisan");
+    }
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       new: {
@@ -226,7 +264,15 @@ export default function AdminDashboard({ admin, onLogout }) {
     return styles[status] || styles.new;
   };
 
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (role, workerVerificationStatus = "") => {
+    if (role === "worker" && workerVerificationStatus !== "approved") {
+      return {
+        bg: "rgba(59, 130, 246, 0.1)",
+        text: "#3b82f6",
+        label: "Client (candidat)",
+      };
+    }
+
     const styles = {
       client: {
         bg: "rgba(59, 130, 246, 0.1)",
@@ -1173,7 +1219,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                 borderBottom: "1.5px solid #e2e8f0",
                 padding: "16px 20px",
                 display: "grid",
-                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 0.6fr",
+                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.5fr",
                 gap: 16,
                 fontWeight: 700,
                 fontSize: 11,
@@ -1186,6 +1232,7 @@ export default function AdminDashboard({ admin, onLogout }) {
               <div>Email</div>
               <div>Rôle</div>
               <div>Statut</div>
+              <div>Vérification artisan</div>
               <div>Actions</div>
             </div>
 
@@ -1202,13 +1249,13 @@ export default function AdminDashboard({ admin, onLogout }) {
               users
                 .filter((user) => filterUserRole === "all" || user.role === filterUserRole)
                 .map((user) => {
-                  const roleStyle = getRoleBadge(user.role);
+                  const roleStyle = getRoleBadge(user.role, user.workerVerification?.status || "not_submitted");
                   return (
                     <div
                       key={user._id}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 0.6fr",
+                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.5fr",
                         gap: 16,
                         padding: "16px 20px",
                         borderBottom: "1.5px solid #f1f5f9",
@@ -1254,6 +1301,91 @@ export default function AdminDashboard({ admin, onLogout }) {
                           <>
                             <EyeOff size={14} /> Inactif
                           </>
+                        )}
+                      </div>
+                      <div>
+                        {user.role !== "worker" ? (
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>
+                        ) : (
+                          (() => {
+                            const verification = user.workerVerification || {};
+                            const badge = getVerificationBadge(verification.status || "not_submitted");
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <span
+                                  style={{
+                                    background: badge.bg,
+                                    color: badge.text,
+                                    padding: "6px 10px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    width: "fit-content",
+                                  }}
+                                >
+                                  {badge.label}
+                                </span>
+
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                  {verification.cinDocumentUrl && (
+                                    <a
+                                      href={`http://localhost:5000${verification.cinDocumentUrl}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ fontSize: 11, color: "#06b6d4", textDecoration: "none", fontWeight: 600 }}
+                                    >
+                                      Voir CIN
+                                    </a>
+                                  )}
+                                  {verification.certificationDocumentUrl && (
+                                    <a
+                                      href={`http://localhost:5000${verification.certificationDocumentUrl}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ fontSize: 11, color: "#06b6d4", textDecoration: "none", fontWeight: 600 }}
+                                    >
+                                      Voir certificat
+                                    </a>
+                                  )}
+                                </div>
+
+                                {verification.status !== "approved" && verification.cinDocumentUrl && verification.certificationDocumentUrl && (
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <button
+                                      onClick={() => reviewWorkerVerification(user._id, "approved")}
+                                      style={{
+                                        border: "1px solid rgba(34,197,94,0.35)",
+                                        background: "rgba(34,197,94,0.1)",
+                                        color: "#15803d",
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        padding: "6px 8px",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Approuver
+                                    </button>
+                                    <button
+                                      onClick={() => reviewWorkerVerification(user._id, "rejected")}
+                                      style={{
+                                        border: "1px solid rgba(239,68,68,0.35)",
+                                        background: "rgba(239,68,68,0.1)",
+                                        color: "#b91c1c",
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        padding: "6px 8px",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Refuser
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                       <button

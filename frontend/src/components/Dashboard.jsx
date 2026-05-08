@@ -14,6 +14,8 @@ export default function Dashboard({ user, onLogout }) {
   const hourlyRate = user?.workerProfile?.hourlyRate || 0;
   const isAvailable = user?.workerProfile?.isAvailable !== false;
   const city = user?.workerProfile?.city || "Non spécifiée";
+  const verificationStatus = user?.workerVerification?.status || "not_submitted";
+  const rejectionReason = user?.workerVerification?.rejectionReason || "";
 
   return (
     <div className="anim" style={{ padding: "40px 20px" }}>
@@ -34,6 +36,33 @@ export default function Dashboard({ user, onLogout }) {
 
       {isWorker && (
         <>
+          {verificationStatus !== "approved" && (
+            <div
+              style={{
+                background: verificationStatus === "rejected" ? "rgba(239,68,68,0.08)" : "rgba(245,158,11,0.1)",
+                border: verificationStatus === "rejected" ? "1.5px solid rgba(239,68,68,0.25)" : "1.5px solid rgba(245,158,11,0.25)",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20,
+                color: "#0f172e",
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}
+            >
+              <strong>
+                {verificationStatus === "pending" ? "Vérification en attente" : "Vérification refusée"}
+              </strong>
+              <div>
+                {verificationStatus === "pending"
+                  ? "Votre dossier est en cours d'analyse par un administrateur. Votre profil n'est pas encore visible aux clients."
+                  : "Votre dossier prestataire a été refusé. Mettez à jour vos justificatifs puis renvoyez votre demande."}
+              </div>
+              {verificationStatus === "rejected" && rejectionReason && (
+                <div style={{ marginTop: 8 }}><strong>Motif:</strong> {rejectionReason}</div>
+              )}
+            </div>
+          )}
+
           {/* Stats Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
             <div style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: 20 }}>

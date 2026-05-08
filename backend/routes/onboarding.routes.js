@@ -2,9 +2,9 @@ const express   = require("express");
 const router    = express.Router();
 const mongoose  = require("mongoose");
 const { protect } = require("../middleware/auth.middleware");
-const { uploadAvatar } = require("../middleware/Upload.middleware");
+const { uploadOnboarding } = require("../middleware/Upload.middleware");
 
-router.put("/complete", protect, uploadAvatar, async (req, res) => {
+router.put("/complete", protect, uploadOnboarding, async (req, res) => {
   try {
     const User = mongoose.model("User");
     const user = await User.findById(req.user._id);
@@ -31,10 +31,31 @@ router.put("/complete", protect, uploadAvatar, async (req, res) => {
         const parsed = typeof services === "string" ? JSON.parse(services) : services;
         user.workerProfile.professions = parsed;
       }
+
+      const cinFile = req.files?.cinDocument?.[0];
+      const certFile = req.files?.certificationDocument?.[0];
+
+      if (!cinFile || !certFile) {
+        return res.status(400).json({
+          message: "CIN image and certification document are required for worker verification",
+        });
+      }
+
+      user.workerVerification = {
+        ...user.workerVerification,
+        status: "pending",
+        cinDocumentUrl: "/" + cinFile.path.replace(/\\/g, "/").replace(/^.*uploads\//, "uploads/"),
+        certificationDocumentUrl: "/" + certFile.path.replace(/\\/g, "/").replace(/^.*uploads\//, "uploads/"),
+        submittedAt: new Date(),
+        reviewedAt: undefined,
+        reviewedBy: "",
+        rejectionReason: "",
+      };
     }
 
-    if (req.file) {
-      user.avatar = "/" + req.file.path.replace(/\\/g, "/").replace(/^.*uploads\//, "uploads/");
+    const avatarFile = req.files?.avatar?.[0];
+    if (avatarFile) {
+      user.avatar = "/" + avatarFile.path.replace(/\\/g, "/").replace(/^.*uploads\//, "uploads/");
     }
 
     // Mark onboarding as complete
@@ -49,7 +70,8 @@ router.put("/complete", protect, uploadAvatar, async (req, res) => {
       userId: user._id, 
       gender: user.gender, 
       birthDate: user.birthDate,
-      onboardingComplete: user.onboardingComplete 
+      onboardingComplete: user.onboardingComplete,
+      workerVerificationStatus: user.workerVerification?.status,
     });
 
     res.json({ user: updated });

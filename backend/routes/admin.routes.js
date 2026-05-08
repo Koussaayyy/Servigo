@@ -15,5 +15,8 @@ router.delete("/users/:id",     authMiddleware.protect, authMiddleware.authorize
 router.get("/reservations",     authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getAllReservations);
 router.get("/notifications",    authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getAdminNotifications);
 router.put("/notifications/read-all", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.markAdminNotificationsRead);
+router.get("/worker-verifications", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getWorkerVerifications);
+router.patch("/worker-verifications/:id/review", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.reviewWorkerVerification);
+router.post("/migrate-legacy-workers", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.migrateOldWorkers);
 
 module.exports = router;

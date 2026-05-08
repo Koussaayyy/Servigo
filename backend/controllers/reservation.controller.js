@@ -105,13 +105,19 @@ exports.createReservation = async (req, res) => {
       return res.status(400).json({ message: "workerId, bookingDate (YYYY-MM-DD), bookingHour are required" });
     }
 
-    const worker = await User.findById(workerId).select("role isActive workerProfile");
+    const worker = await User.findById(workerId).select("role isActive workerProfile workerVerification");
     if (!worker || worker.role !== "worker") {
       return res.status(404).json({ message: "Worker not found" });
     }
 
     if (!worker.isActive) {
       return res.status(403).json({ message: "Worker account is not active" });
+    }
+
+    // Legacy support: old workers without verification are auto-approved, new workers must be explicitly approved
+    const isApproved = !worker.workerVerification || worker.workerVerification.status === "approved";
+    if (!isApproved) {
+      return res.status(403).json({ message: "Worker is pending admin verification" });
     }
 
     if (!worker.workerProfile?.isAvailable) {
@@ -424,12 +430,14 @@ exports.getWorkerAvailableSlots = async (req, res) => {
       return res.status(400).json({ message: "date query is required in YYYY-MM-DD format" });
     }
 
-    const worker = await User.findById(workerId).select("role isActive workerProfile");
+    const worker = await User.findById(workerId).select("role isActive workerProfile workerVerification");
     if (!worker || worker.role !== "worker") {
       return res.status(404).json({ message: "Worker not found" });
     }
 
-    if (!worker.isActive || !worker.workerProfile?.isAvailable) {
+    // Legacy support: old workers without verification are auto-approved
+    const isApproved = !worker.workerVerification || worker.workerVerification.status === "approved";
+    if (!worker.isActive || !worker.workerProfile?.isAvailable || !isApproved) {
       return res.json({ workerId, date, slots: [] });
     }
 
@@ -477,12 +485,14 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
     const { workerId } = req.params;
     const { serviceType } = req.query;
 
-    const worker = await User.findById(workerId).select("role isActive workerProfile");
+    const worker = await User.findById(workerId).select("role isActive workerProfile workerVerification");
     if (!worker || worker.role !== "worker") {
       return res.status(404).json({ message: "Worker not found" });
     }
 
-    if (!worker.isActive || !worker.workerProfile?.isAvailable) {
+    // Legacy support: old workers without verification are auto-approved
+    const isApproved = !worker.workerVerification || worker.workerVerification.status === "approved";
+    if (!worker.isActive || !worker.workerProfile?.isAvailable || !isApproved) {
       return res.json({ workerId, days: [] });
     }
 

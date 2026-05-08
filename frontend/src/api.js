@@ -400,6 +400,18 @@ export const adminApi = {
       headers: adminHeaders(),
     }).then(handle),
 
+  getWorkerVerifications: (status = "pending") =>
+    fetch(`${BASE}/admin/worker-verifications?status=${encodeURIComponent(status)}`, {
+      headers: adminHeaders(),
+    }).then(handle),
+
+  reviewWorkerVerification: (workerId, data) =>
+    fetch(`${BASE}/admin/worker-verifications/${workerId}/review`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
   deleteUser: (userId) =>
     fetch(`${BASE}/admin/users/${userId}`, {
       method: "DELETE",

@@ -49,6 +49,21 @@ const UserSchema = new mongoose.Schema(
       bio:      { type: String, default: "" },
     },
 
+    // ── Worker verification (admin reviewed) ───────────────
+    workerVerification: {
+      status: {
+        type: String,
+        enum: ["not_submitted", "pending", "approved", "rejected"],
+        default: "not_submitted",
+      },
+      cinDocumentUrl:           { type: String, default: "" },
+      certificationDocumentUrl: { type: String, default: "" },
+      submittedAt:              { type: Date },
+      reviewedAt:               { type: Date },
+      reviewedBy:               { type: String, default: "" },
+      rejectionReason:          { type: String, default: "" },
+    },
+
     // ── Worker (Prestataire) profile ───────────────────────
     workerProfile: {
       professions:  { type: [String], default: [] },
