@@ -1,9 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapPin, Star, Briefcase, Edit3, Check, X,
   ShieldCheck, Camera, Mail, Calendar, Award,
 } from "lucide-react";
-import { avatarUrl, reservationApi } from "../api";
+import { avatarUrl, clientApi, workerApi, reservationApi } from "../api";
 import Navbar from "../components/Navbar";
 
 const css = `
@@ -186,7 +186,7 @@ const next30Days = () => {
   });
 };
 
-export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onBack, onHome, onNavigate, onLogout }) {
+export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onBack, onHome, onNavigate, onLogout, onUpdateUser }) {
   const [profile, setProfile] = useState(initialProfile || currentUser || null);
   const [loading, setLoading] = useState(!profile);
   const [tab, setTab]         = useState(initialTab || "overview");
@@ -204,6 +204,8 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const [monthAvailability, setMonthAvailability] = useState([]);
   const [slots, setSlots] = useState([]);
   const [bookingForm, setBookingForm] = useState({ bookingDate: "", bookingHour: "", address: "", notes: "" });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
 
   const isOwner = currentUser && profile && (
     currentUser._id === profile._id || currentUser.id === profile._id
@@ -248,6 +250,24 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
       professions: [...profs], isAvailable: avail,
     });
     setEditingWorker(true);
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const api = role === "worker" ? workerApi : clientApi;
+      const data = await api.uploadAvatar(file);
+      const updatedProfile = { ...profile, avatar: data.avatar };
+      setProfile(updatedProfile);
+      if (isOwner) onUpdateUser?.(updatedProfile);
+    } catch (err) {
+      alert(err.message || "Erreur lors du téléchargement de la photo");
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = "";
+    }
   };
 
   const saveInfo = async () => {
@@ -774,9 +794,24 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                   {avatar ? <img src={avatar} alt={fn} /> : avatarInitials(fn)}
                 </div>
                 {isOwner && (
-                  <button className="pr-avatar-edit-btn" title="Changer la photo">
-                    <Camera size={12} color="#fff" />
-                  </button>
+                  <>
+                    <button
+                      className="pr-avatar-edit-btn"
+                      title="Changer la photo"
+                      disabled={avatarUploading}
+                      onClick={() => avatarInputRef.current?.click()}
+                      style={{ opacity: avatarUploading ? 0.6 : 1 }}
+                    >
+                      <Camera size={12} color="#fff" />
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleAvatarChange}
+                    />
+                  </>
                 )}
               </div>
               <div className="pr-hero-info">

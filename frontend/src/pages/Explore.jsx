@@ -459,6 +459,7 @@ export default function Explore({ onLogin, onSignup, onHome, onExplore, onReserv
           onLogout={onLogout}
           onLogin={onLogin}
           onSignup={onSignup}
+          savedCount={savedIds.size}
         />
 
         <section className="ex-hero">

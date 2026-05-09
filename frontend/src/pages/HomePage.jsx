@@ -11,7 +11,7 @@ import {
   CheckCircle2, Send, Shield, Award, Users, TrendingUp,
   Facebook, Instagram, Twitter,
 } from "lucide-react";
-import { reclamationApi } from "../api";
+import { reclamationApi, avatarUrl } from "../api";
 
 const MOCK_WORKERS = [
   { _id:"1",  firstName:"Ahmed",   lastName:"Ben Ali",   workerProfile:{ professions:["Plombier"],       city:"Tunis",    hourlyRate:45, rating:4.8, totalReviews:127, isAvailable:true  }},
@@ -303,9 +303,13 @@ export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout,
                       fontWeight:700,
                       fontSize:14,
                       cursor:"pointer",
+                      overflow:"hidden",
+                      padding:0,
                     }}
                   >
-                    {userInitial}
+                    {user?.avatar
+                      ? <img src={avatarUrl(user.avatar)} alt="" style={{ width:36,height:36,borderRadius:"50%",objectFit:"cover" }} />
+                      : userInitial}
                   </button>
                   {profileOpen && (
                     <div

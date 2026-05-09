@@ -162,6 +162,7 @@ export default function Navbar({
   onLogout,
   onLogin,
   onSignup,
+  savedCount,
 }) {
   const [open, setOpen]               = useState(false);
   const [notifOpen, setNotifOpen]     = useState(false);
@@ -184,13 +185,18 @@ export default function Navbar({
   useEffect(() => {
     if (!user) return;
     const api = user.role === "worker" ? workerApi : clientApi;
-    api.getNotifications().then(data => {
-      setNotifs(data.notifications || []);
-      setUnread(data.unreadCount || 0);
-    }).catch(() => {});
+    const fetchNotifs = () => {
+      api.getNotifications().then(data => {
+        setNotifs(data.notifications || []);
+        setUnread(data.unreadCount || 0);
+      }).catch(() => {});
+    };
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
     clientApi.getSavedWorkers().then(list => {
       setSavedCnt((list || []).length);
     }).catch(() => {});
+    return () => clearInterval(interval);
   }, [user]);
 
   const openNotifs = () => {
@@ -266,7 +272,7 @@ export default function Navbar({
                 {/* Saved workers icon */}
                 <button className="nb-icon-btn" title="Prestataires sauvegardés" onClick={() => go("saved")}>
                   <Bookmark size={16} color="#64748b" />
-                  {savedCnt > 0 && <span className="nb-count">{savedCnt > 9 ? "9+" : savedCnt}</span>}
+                  {(savedCount ?? savedCnt) > 0 && <span className="nb-count">{(savedCount ?? savedCnt) > 9 ? "9+" : (savedCount ?? savedCnt)}</span>}
                 </button>
 
                 {/* Notifications icon */}

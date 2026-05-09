@@ -14,6 +14,7 @@ import AuthModal            from "./components/AuthModal";
 import AdminLoginModal      from "./components/AdminLoginModal";
 import AdminDashboard       from "./pages/AdminDashboard";
 import EmailVerification    from "./pages/EmailVerification";
+import ReservationDialog    from "./components/ReservationDialog";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -199,6 +200,10 @@ export default function App() {
     // Otherwise, log in
     setLoggedUser(user);
     localStorage.setItem("user", JSON.stringify(user));
+    const pending = localStorage.getItem("pendingReservation");
+    if (pending) {
+      try { setPendingReservation(JSON.parse(pending)); } catch { /* ignore */ }
+    }
     switchTo("explore");
   };
 
@@ -309,11 +314,9 @@ export default function App() {
           onExplore={() => switchTo("explore")}
           onReserveWorker={(worker) => {
             if (loggedUser) {
-              handleNavigate("profile", {
-                profileUser: worker,
-                profileTab: "schedule",
-              });
+              setPendingReservation(worker);
             } else {
+              localStorage.setItem("pendingReservation", JSON.stringify(worker));
               openAuthModal("login");
             }
           }}
@@ -324,6 +327,20 @@ export default function App() {
           onNavigate={handleNavigate}
         />
         {authModalNode}
+        {pendingReservation && loggedUser && (
+          <ReservationDialog
+            worker={pendingReservation}
+            user={loggedUser}
+            onClose={() => {
+              setPendingReservation(null);
+              localStorage.removeItem("pendingReservation");
+            }}
+            onSuccess={() => {
+              setPendingReservation(null);
+              localStorage.removeItem("pendingReservation");
+            }}
+          />
+        )}
       </>
     );
   }
@@ -361,6 +378,10 @@ export default function App() {
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
             onLogout={onLogout}
+            onUpdateUser={(updated) => {
+              setLoggedUser(updated);
+              localStorage.setItem("user", JSON.stringify(updated));
+            }}
           />
           {authModalNode}
         </>
