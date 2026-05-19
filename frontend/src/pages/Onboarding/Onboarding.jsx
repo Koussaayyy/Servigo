@@ -1,10 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Zap, Droplets, HardHat, AppWindow, Axe, Palette,
   Snowflake, Lock, Sprout, LayoutGrid, PackageOpen, Cog,
-  CheckCircle, XCircle,
+  CheckCircle, XCircle, Upload,
 } from "lucide-react";
+import { GOUVERNORATS, DELEGATIONS } from "../../constants/tunisia";
 import "./Onboarding.css";
+
+const SS_KEY = "ob_progress";
 
 const SERVICES = [
   { label: "Électricien",   Icon: Zap },
@@ -19,13 +22,6 @@ const SERVICES = [
   { label: "Carreleur",     Icon: LayoutGrid },
   { label: "Déménagement",  Icon: PackageOpen },
   { label: "Mécanicien",    Icon: Cog },
-];
-
-const GOVERNORATES = [
-  "Tunis","Ariana","Ben Arous","Manouba","Nabeul","Zaghouan",
-  "Bizerte","Béja","Jendouba","Le Kef","Siliana","Sousse",
-  "Monastir","Mahdia","Sfax","Kairouan","Kasserine","Sidi Bouzid",
-  "Gabès","Medenine","Tataouine","Gafsa","Tozeur","Kébili",
 ];
 
 function AlertOverlay({ type, message, onClose, isWorker }) {
@@ -56,6 +52,27 @@ function AlertOverlay({ type, message, onClose, isWorker }) {
   );
 }
 
+function UploadZone({ file, onPickFile, accept, placeholder, hint }) {
+  const ref = useRef();
+  return (
+    <div className="ob-upload-zone" onClick={() => ref.current.click()}>
+      <input ref={ref} type="file" accept={accept} style={{ display: "none" }} onChange={onPickFile} />
+      {file ? (
+        <div className="ob-upload-selected">
+          <CheckCircle size={16} />
+          <span>{file.name}</span>
+        </div>
+      ) : (
+        <div className="ob-upload-empty">
+          <Upload size={18} />
+          <span>{placeholder}</span>
+        </div>
+      )}
+      {hint && !file && <div className="ob-upload-hint">{hint}</div>}
+    </div>
+  );
+}
+
 export default function Onboarding({ user, onComplete }) {
   const fileRef  = useRef();
   const isWorker = user?.role === "worker";
@@ -64,26 +81,57 @@ export default function Onboarding({ user, onComplete }) {
     ? ["Identité", "Localisation", "Services", "Profil", "Vérification"]
     : ["Identité", "Localisation", "Profil"];
   const TOTAL = STEPS.length;
-  const profileStep = isWorker ? 3 : 2;
+  const profileStep      = isWorker ? 3 : 2;
   const verificationStep = isWorker ? 4 : -1;
 
-  const [step,       setStep]       = useState(0);
+  const [step, setStep] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(SS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const s = parsed.step || 0;
+        return s < TOTAL ? s : 0;
+      }
+    } catch {}
+    return 0;
+  });
+
+  const [form, setForm] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(SS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.form || { gender: "", birthDate: "", governorate: "", city: "", address: "", services: [], bio: "" };
+      }
+    } catch {}
+    return { gender: "", birthDate: "", governorate: "", city: "", address: "", services: [], bio: "" };
+  });
+
   const [error,      setError]      = useState("");
   const [loading,    setLoading]    = useState(false);
   const [preview,    setPreview]    = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
-  const [cinFile, setCinFile] = useState(null);
+  const [cinFile,    setCinFile]    = useState(null);
   const [certificationFile, setCertificationFile] = useState(null);
-  const [alert,      setAlert]      = useState(null);   // null | "success" | "error"
-  const [alertMsg,   setAlertMsg]   = useState("");
-  const [savedUser,  setSavedUser]  = useState(null);
+  const [alert,    setAlert]    = useState(null);
+  const [alertMsg, setAlertMsg] = useState("");
+  const [savedUser, setSavedUser] = useState(null);
 
-  const [form, setForm] = useState({
-    gender: "", birthDate: "", governorate: "",
-    city: "", address: "", services: [], bio: "",
-  });
+  // Persist step + form on every change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SS_KEY, JSON.stringify({ step, form }));
+    } catch {}
+  }, [step, form]);
 
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handle = (e) => {
+    const { name, value } = e.target;
+    if (name === "governorate") {
+      setForm(prev => ({ ...prev, governorate: value, city: "" }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
   const toggleService = (svc) =>
     setForm((f) => ({
@@ -100,36 +148,33 @@ export default function Onboarding({ user, onComplete }) {
     setPreview(URL.createObjectURL(file));
   };
 
-  const pickCin = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setCinFile(file);
-  };
-
-  const pickCertification = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setCertificationFile(file);
-  };
+  const pickCin = (e) => { const file = e.target.files[0]; if (file) setCinFile(file); };
+  const pickCertification = (e) => { const file = e.target.files[0]; if (file) setCertificationFile(file); };
 
   const validate = () => {
     if (step === 0) {
-      if (!form.gender)          return "Veuillez sélectionner votre genre.";
-      if (!form.birthDate)       return "Veuillez entrer votre date de naissance.";
+      if (!form.gender)    return "Veuillez sélectionner votre genre.";
+      if (!form.birthDate) return "Veuillez entrer votre date de naissance.";
+      const birth = new Date(form.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      if (age < 18) return "Vous devez avoir au moins 18 ans pour vous inscrire.";
     }
     if (step === 1) {
-      if (!form.governorate)     return "Veuillez sélectionner votre gouvernorat.";
-      if (!form.city.trim())     return "Veuillez entrer votre ville / délégation.";
+      if (!form.governorate)  return "Veuillez sélectionner votre gouvernorat.";
+      if (!form.city.trim())  return "Veuillez sélectionner votre délégation.";
     }
     if (isWorker && step === 2) {
       if (!form.services.length) return "Veuillez sélectionner au moins un service.";
     }
     if (step === profileStep) {
-      if (!form.bio.trim())      return "Veuillez renseigner votre bio.";
+      if (!form.bio.trim()) return "Veuillez renseigner votre bio.";
     }
     if (isWorker && step === verificationStep) {
-      if (!cinFile) return "Veuillez ajouter l'image de votre CIN.";
-      if (!certificationFile) return "Veuillez ajouter un justificatif professionnel.";
+      if (!cinFile)              return "Veuillez ajouter l'image de votre CIN.";
+      if (!certificationFile)    return "Veuillez ajouter un justificatif professionnel.";
     }
     return null;
   };
@@ -155,10 +200,10 @@ export default function Onboarding({ user, onComplete }) {
       data.append("birthDate",   form.birthDate);
       data.append("governorate", form.governorate);
       data.append("city",        form.city);
-      if (form.address)         data.append("address",  form.address);
+      if (form.address)         data.append("address",   form.address);
       data.append("bio",         form.bio);
-      if (form.services.length) data.append("services", JSON.stringify(form.services));
-      if (avatarFile)           data.append("avatar",   avatarFile);
+      if (form.services.length) data.append("services",  JSON.stringify(form.services));
+      if (avatarFile)           data.append("avatar",    avatarFile);
       if (cinFile)              data.append("cinDocument", cinFile);
       if (certificationFile)    data.append("certificationDocument", certificationFile);
 
@@ -170,6 +215,7 @@ export default function Onboarding({ user, onComplete }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Erreur serveur");
 
+      sessionStorage.removeItem(SS_KEY);
       localStorage.setItem("user", JSON.stringify(json.user));
       setSavedUser(json.user);
       setAlert("success");
@@ -232,7 +278,9 @@ export default function Onboarding({ user, onComplete }) {
               </div>
               <div className="field">
                 <label>Date de naissance <span className="ob-required">*</span></label>
-                <input name="birthDate" type="date" value={form.birthDate} onChange={handle} />
+                <input name="birthDate" type="date" value={form.birthDate} onChange={handle}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().slice(0, 10)} />
+                <div className="ob-char-count">Vous devez avoir au moins 18 ans</div>
               </div>
             </>
           )}
@@ -250,12 +298,19 @@ export default function Onboarding({ user, onComplete }) {
                 <label>Gouvernorat <span className="ob-required">*</span></label>
                 <select name="governorate" value={form.governorate} onChange={handle}>
                   <option value="">Sélectionnez votre gouvernorat</option>
-                  {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  {GOUVERNORATS.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Ville / Délégation <span className="ob-required">*</span></label>
-                <input name="city" type="text" placeholder="Ex : La Marsa, Sfax-Ville…" value={form.city} onChange={handle} />
+                <label>Délégation <span className="ob-required">*</span></label>
+                <select name="city" value={form.city} onChange={handle} disabled={!form.governorate}>
+                  <option value="">
+                    {form.governorate ? "Sélectionnez votre délégation" : "Choisissez d'abord un gouvernorat"}
+                  </option>
+                  {(DELEGATIONS[form.governorate] || []).map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
               <div className="field">
                 <label>Adresse <span className="ob-optional">(optionnel)</span></label>
@@ -313,16 +368,17 @@ export default function Onboarding({ user, onComplete }) {
               </div>
               <div className="field">
                 <label>Bio <span className="ob-required">*</span></label>
-                <textarea name="bio" rows={4} maxLength={150}
+                <textarea name="bio" rows={4} maxLength={300}
                   placeholder={isWorker
                     ? "Décrivez votre expertise, vos années d'expérience et pourquoi choisir vos services…"
                     : "Parlez de vous et de vos besoins…"}
                   value={form.bio} onChange={handle} />
-                <div className="ob-char-count">{form.bio.length} / 150</div>
+                <div className="ob-char-count">{form.bio.length} / 300</div>
               </div>
             </>
           )}
 
+          {/* ── STEP — Vérification (workers only) ── */}
           {isWorker && step === verificationStep && (
             <>
               <div className="form-head">
@@ -334,23 +390,29 @@ export default function Onboarding({ user, onComplete }) {
 
               <div className="field">
                 <label>Photo CIN <span className="ob-required">*</span></label>
-                <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={pickCin} />
-                <div className="ob-char-count">
-                  {cinFile ? `Fichier: ${cinFile.name}` : "Formats: JPG, PNG, WEBP ou PDF"}
-                </div>
+                <UploadZone
+                  file={cinFile}
+                  onPickFile={pickCin}
+                  accept="image/png,image/jpeg,image/webp,application/pdf"
+                  placeholder="Cliquez pour ajouter votre CIN"
+                  hint="JPG, PNG, WEBP ou PDF"
+                />
               </div>
 
               <div className="field">
                 <label>Certification / Preuve de métier <span className="ob-required">*</span></label>
-                <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={pickCertification} />
-                <div className="ob-char-count">
-                  {certificationFile ? `Fichier: ${certificationFile.name}` : "Ex: certificat plombier, attestation, diplôme"}
-                </div>
+                <UploadZone
+                  file={certificationFile}
+                  onPickFile={pickCertification}
+                  accept="image/png,image/jpeg,image/webp,application/pdf"
+                  placeholder="Certificat, attestation, diplôme…"
+                  hint="JPG, PNG, WEBP ou PDF"
+                />
               </div>
             </>
           )}
 
-          {/* ── Nav buttons (no skip) ── */}
+          {/* ── Nav buttons ── */}
           <div className="ob-btn-row">
             {step > 0 && (
               <button className="ob-back-btn" onClick={prev}>← Retour</button>
@@ -367,7 +429,7 @@ export default function Onboarding({ user, onComplete }) {
         </div>
       </div>
 
-      {/* ── Sweet-alert overlay ── */}
+      {/* ── Alert overlay ── */}
       {alert && (
         <AlertOverlay
           type={alert}

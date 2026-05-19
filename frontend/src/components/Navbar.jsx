@@ -193,9 +193,11 @@ export default function Navbar({
     };
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 30000);
-    clientApi.getSavedWorkers().then(list => {
-      setSavedCnt((list || []).length);
-    }).catch(() => {});
+    if (user.role !== "worker") {
+      clientApi.getSavedWorkers().then(list => {
+        setSavedCnt((list || []).length);
+      }).catch(() => {});
+    }
     return () => clearInterval(interval);
   }, [user]);
 

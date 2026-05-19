@@ -95,11 +95,26 @@ const UserSchema = new mongoose.Schema(
       portfolio: {
         type: [
           {
-            title:        { type: String, default: "" },
-            city:         { type: String, default: "" },
-            description:  { type: String, default: "" },
-            imageUrl:     { type: String, default: "" },
-            featured:     { type: Boolean, default: false },
+            title:         { type: String, default: "" },
+            city:          { type: String, default: "" },
+            governorate:   { type: String, default: "" },
+            exactLocation: { type: String, default: "" },
+            description:   { type: String, default: "" },
+            imageUrl:      { type: String, default: "" },
+            images:        { type: [String], default: [] },
+            featured:      { type: Boolean, default: false },
+            reviews: {
+              type: [
+                {
+                  clientId:   { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+                  clientName: { type: String, default: "" },
+                  rating:     { type: Number, min: 1, max: 5 },
+                  comment:    { type: String, default: "" },
+                  createdAt:  { type: Date, default: Date.now },
+                },
+              ],
+              default: [],
+            },
           },
         ],
         default: [],

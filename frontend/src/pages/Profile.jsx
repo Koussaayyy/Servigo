@@ -1,9 +1,10 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  MapPin, Star, Briefcase, Edit3, Check, X,
-  ShieldCheck, Camera, Mail, Calendar, Award,
+  MapPin, Star, Briefcase, Edit3, Check, X, Trash2,
+  ShieldCheck, Camera, Mail, Calendar, Award, Image,
 } from "lucide-react";
-import { avatarUrl, clientApi, workerApi, reservationApi } from "../api";
+import { avatarUrl, clientApi, workerApi, reservationApi, portfolioApi } from "../api";
+import { GOUVERNORATS, DELEGATIONS } from "../constants/tunisia";
 import Navbar from "../components/Navbar";
 
 const css = `
@@ -146,13 +147,6 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-avail-slot { aspect-ratio:1; border-radius:4px; border:1.5px solid #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:8px; color:#94a3b8; cursor:pointer; transition:all .15s; font-weight:600; }
 .pr-avail-slot.on { background:rgba(6,182,212,0.1); border-color:rgba(6,182,212,0.35); color:#06b6d4; }
 .pr-avail-slot:hover { border-color:rgba(6,182,212,0.35); }
-.pr-portfolio-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
-.pr-portfolio-card { border:1.5px solid #e2e8f0; border-radius:10px; overflow:hidden; transition:border-color .2s, transform .2s; }
-.pr-portfolio-card:hover { border-color:rgba(6,182,212,0.35); transform:translateY(-2px); }
-.pr-portfolio-img { width:100%; height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:11px; color:#94a3b8; }
-.pr-portfolio-body { padding:10px; }
-.pr-portfolio-title { font-size:12px; font-weight:700; color:#0f172e; margin-bottom:2px; }
-.pr-portfolio-city  { font-size:11px; color:#94a3b8; }
 .pr-avail-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:4px 0; }
 .pr-toggle { width:40px; height:22px; border-radius:999px; border:none; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0; }
 .pr-toggle::after { content:''; position:absolute; top:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .2s; }
@@ -163,10 +157,51 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-pill-verified   { background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.25); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
 .pr-pill-unverified { background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.2); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
 .pr-pill-pending    { background:rgba(245,158,11,0.12); color:#b45309; border:1px solid rgba(245,158,11,0.3); border-radius:999px; padding:3px 10px; font-size:10px; font-weight:700; }
+
+/* ── Portfolio ── */
+.pr-pf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
+.pr-pf-cell { aspect-ratio:1/1; overflow:hidden; cursor:pointer; position:relative; background:#e2e8f0; }
+.pr-pf-cell img { width:100%; height:100%; object-fit:cover; transition:transform .35s ease; display:block; }
+.pr-pf-cell:hover img { transform:scale(1.07); }
+.pr-pf-overlay { position:absolute; inset:0; background:rgba(15,23,46,0); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; transition:background .22s; padding:10px; }
+.pr-pf-cell:hover .pr-pf-overlay { background:rgba(15,23,46,0.58); }
+.pr-pf-ov-text { color:#fff; font-weight:700; opacity:0; transition:opacity .22s; text-align:center; text-shadow:0 1px 4px rgba(0,0,0,0.5); }
+.pr-pf-cell:hover .pr-pf-ov-text { opacity:1; }
+.pr-pf-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#94a3b8; background:#f1f5f9; }
+
+/* ── Lightbox ── */
+.pr-lb { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; }
+.pr-lb-card { display:flex; background:#fff; border-radius:14px; overflow:hidden; max-width:920px; width:100%; max-height:92vh; box-shadow:0 40px 100px rgba(0,0,0,0.5); }
+.pr-lb-left { flex:0 0 56%; background:#000; display:flex; align-items:center; justify-content:center; min-height:300px; }
+.pr-lb-left img { width:100%; height:100%; object-fit:contain; max-height:92vh; display:block; }
+.pr-lb-right { flex:1; overflow-y:auto; display:flex; flex-direction:column; min-width:0; }
+.pr-lb-right::-webkit-scrollbar { width:4px; }
+.pr-lb-right::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:9px; }
+
+/* ── Star rating ── */
+.pr-star { font-size:28px; cursor:pointer; line-height:1; transition:transform .1s; user-select:none; display:inline-block; }
+.pr-star:hover { transform:scale(1.18); }
+
 @media(max-width:1024px){ .pr-grid{ grid-template-columns:1fr; } }
 @media(max-width:768px){ .pr-hero{ padding:76px 16px 0; } .pr-content{ padding:24px 16px 64px; } .pr-hero-name{ font-size:20px; } .pr-field-grid{ grid-template-columns:1fr; } .pr-stats{ grid-template-columns:repeat(3,1fr); } }
-@media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; } .pr-tabs{ overflow-x:auto; } }
+@media(max-width:680px){
+  .pr-lb-card{ flex-direction:column; border-radius:10px; max-height:96vh; }
+  .pr-lb-left{ flex:0 0 auto; min-height:auto; max-height:46vw; }
+  .pr-lb-left img{ max-height:46vw; }
+}
+@media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; } .pr-tabs{ overflow-x:auto; } .pr-pf-grid{ gap:2px; } }
 `;
+
+const DAYS = [
+  { key:"monday",    label:"Lun" },
+  { key:"tuesday",   label:"Mar" },
+  { key:"wednesday", label:"Mer" },
+  { key:"thursday",  label:"Jeu" },
+  { key:"friday",    label:"Ven" },
+  { key:"saturday",  label:"Sam" },
+  { key:"sunday",    label:"Dim" },
+];
+const BOOKABLE_HOURS = [8,9,10,11,12,14,15,16,17];
 
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
@@ -184,6 +219,28 @@ const next30Days = () => {
     d.setDate(today.getDate() + i);
     return d.toISOString().slice(0, 10);
   });
+};
+
+const StarRow = ({ value, hover, onHover, onLeave, onClick, size = 28 }) => (
+  <div style={{ display:"flex", gap:2 }}>
+    {[1,2,3,4,5].map((s) => (
+      <span key={s} className="pr-star"
+        style={{ fontSize:size, color: s <= (hover || value) ? "#f59e0b" : "#d1d5db" }}
+        onMouseEnter={() => onHover(s)}
+        onMouseLeave={onLeave}
+        onClick={() => onClick(s)}
+      >★</span>
+    ))}
+  </div>
+);
+
+const StarsDisplay = ({ rating, size = 13 }) => {
+  const full = Math.round(rating);
+  return (
+    <span style={{ color:"#f59e0b", fontSize:size, letterSpacing:1 }}>
+      {"★".repeat(full)}{"☆".repeat(Math.max(0, 5 - full))}
+    </span>
+  );
 };
 
 export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onBack, onHome, onNavigate, onLogout, onUpdateUser }) {
@@ -205,11 +262,46 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const [slots, setSlots] = useState([]);
   const [bookingForm, setBookingForm] = useState({ bookingDate: "", bookingHour: "", address: "", notes: "" });
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [draftGovernorate, setDraftGovernorate] = useState("");
+  const [saveError, setSaveError]     = useState("");
+  const [saveSuccess, setSaveSuccess] = useState("");
+  // Portfolio form
+  const [pfOpen, setPfOpen]                   = useState(false);
+  const [pfEditId, setPfEditId]               = useState(null);
+  const [pfDraft, setPfDraft]                 = useState({ title:"", governorate:"", city:"", exactLocation:"", description:"" });
+  const [pfExistingImages, setPfExistingImages] = useState([]); // server paths already saved
+  const [pfNewFiles, setPfNewFiles]           = useState([]);   // { file, preview }
+  const [pfSaving, setPfSaving]               = useState(false);
+  // Lightbox image index
+  const [lbImageIdx, setLbImageIdx]           = useState(0);
+  const [pfMsg, setPfMsg]         = useState("");
+  // Schedule
+  const [scheduleEditing, setScheduleEditing] = useState(false);
+  const [scheduleDraft, setScheduleDraft]     = useState({});
+  const [scheduleSaving, setScheduleSaving]   = useState(false);
+  const [scheduleMsg, setScheduleMsg]         = useState("");
   const avatarInputRef = useRef(null);
+  const pfFileRef      = useRef(null);
+
+  // ── Portfolio state ───────────────────────────────────────
+  const [portfolioOpenId, setPortfolioOpenId]         = useState(null);
+  const [reviewRating, setReviewRating]               = useState(0);
+  const [reviewHover, setReviewHover]                 = useState(0);
+  const [reviewComment, setReviewComment]             = useState("");
+  const [portfolioSubmitting, setPortfolioSubmitting] = useState(false);
+  const [portfolioMsg, setPortfolioMsg]               = useState("");
 
   const isOwner = currentUser && profile && (
     currentUser._id === profile._id || currentUser.id === profile._id
   );
+
+  const findGovernoratForCity = (city) => {
+    if (!city) return "";
+    for (const [gov, delegations] of Object.entries(DELEGATIONS)) {
+      if (delegations.includes(city)) return gov;
+    }
+    return "";
+  };
 
   const fn        = profile?.firstName || "Utilisateur";
   const ln        = profile?.lastName  || "";
@@ -224,6 +316,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const avail     = wp.isAvailable !== false;
   const canReserve = role === "worker" && (currentUser?.role === "client" || currentUser?.role === "worker") && !isOwner;
   const workerId = profile?._id ? String(profile._id) : "";
+  const myUserId = String(currentUser?._id || currentUser?.id || "");
 
   const datePages = useMemo(() => {
     const pages = [];
@@ -234,20 +327,30 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const visibleDates = datePages[datePage] || [];
 
   const startEditInfo = () => {
+    setSaveError("");
     setDraftInfo({
-      firstName: profile.firstName || "", lastName:  profile.lastName  || "",
-      phone:     profile.phone     || "", gender:    profile.gender    || "",
-      birthDate: profile.birthDate || "", address:   cp.address || "",
-      city_client: cp.city || "",         bio_client: cp.bio   || "",
+      firstName:   profile.firstName || "",
+      lastName:    profile.lastName  || "",
+      phone:       profile.phone     || "",
+      gender:      profile.gender    || "",
+      birthDate:   profile.birthDate ? String(profile.birthDate).slice(0, 10) : "",
+      address:     cp.address || "",
+      city_client: cp.city    || "",
+      bio_client:  cp.bio     || "",
     });
     setEditingInfo(true);
   };
 
   const startEditWorker = () => {
+    setSaveError("");
+    setDraftGovernorate(findGovernoratForCity(wp.city));
     setDraftWorker({
-      city: wp.city || "", experience: wp.experience || "",
-      bio:  wp.bio  || "", hourlyRate: wp.hourlyRate || 0,
-      professions: [...profs], isAvailable: avail,
+      city:        wp.city       || "",
+      experience:  wp.experience || "",
+      bio:         wp.bio        || "",
+      hourlyRate:  wp.hourlyRate || 0,
+      professions: [...profs],
+      isAvailable: avail,
     });
     setEditingWorker(true);
   };
@@ -272,44 +375,213 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
   const saveInfo = async () => {
     setSaving(true);
+    setSaveError("");
+    setSaveSuccess("");
     try {
-      setProfile(prev => ({
-        ...prev,
-        firstName: draftInfo.firstName, lastName: draftInfo.lastName,
-        phone: draftInfo.phone, gender: draftInfo.gender, birthDate: draftInfo.birthDate,
-        clientProfile: { ...prev.clientProfile, address: draftInfo.address, city: draftInfo.city_client, bio: draftInfo.bio_client },
-      }));
+      let data;
+      if (role === "worker") {
+        data = await workerApi.updateProfile({
+          firstName: draftInfo.firstName,
+          lastName:  draftInfo.lastName,
+          phone:     draftInfo.phone,
+          gender:    draftInfo.gender,
+          birthDate: draftInfo.birthDate,
+        });
+      } else {
+        data = await clientApi.updateProfile({
+          firstName:     draftInfo.firstName,
+          lastName:      draftInfo.lastName,
+          phone:         draftInfo.phone,
+          gender:        draftInfo.gender,
+          birthDate:     draftInfo.birthDate,
+          clientProfile: {
+            address: draftInfo.address,
+            city:    draftInfo.city_client,
+            bio:     draftInfo.bio_client,
+          },
+        });
+      }
+      const updated = { ...profile, ...data.user };
+      setProfile(updated);
+      if (isOwner) onUpdateUser?.(updated);
+      setSaveSuccess("Informations enregistrées ✓");
       setEditingInfo(false);
-    } finally { setSaving(false); }
+    } catch (err) {
+      setSaveError(err.message || "Erreur lors de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveWorker = async () => {
     setSaving(true);
+    setSaveError("");
+    setSaveSuccess("");
     try {
-      setProfile(prev => ({
-        ...prev,
+      const data = await workerApi.updateProfile({
         workerProfile: {
-          ...prev.workerProfile,
-          city: draftWorker.city, experience: draftWorker.experience,
-          bio: draftWorker.bio, hourlyRate: draftWorker.hourlyRate,
-          professions: draftWorker.professions, isAvailable: draftWorker.isAvailable,
+          city:        draftWorker.city,
+          experience:  draftWorker.experience,
+          bio:         draftWorker.bio,
+          hourlyRate:  draftWorker.hourlyRate,
+          professions: draftWorker.professions,
+          isAvailable: draftWorker.isAvailable,
         },
-      }));
+      });
+      const updated = { ...profile, ...data.user };
+      setProfile(updated);
+      if (isOwner) onUpdateUser?.(updated);
+      setSaveSuccess("Profil prestataire enregistré ✓");
       setEditingWorker(false);
-    } finally { setSaving(false); }
+    } catch (err) {
+      setSaveError(err.message || "Erreur lors de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const removeProfession = (p) => setDraftWorker(prev => ({ ...prev, professions: prev.professions.filter(x => x !== p) }));
-  const addProfession = (e) => {
-    if (e.key === "Enter" && e.target.value.trim()) {
-      const val = e.target.value.trim();
-      setDraftWorker(prev => ({ ...prev, professions: [...new Set([...prev.professions, val])] }));
-      e.target.value = "";
+
+  // ── Portfolio review ──────────────────────────────────────
+  const openLightbox = (itemId) => {
+    const item = (wp.portfolio || []).find((p) => String(p._id) === String(itemId));
+    if (!item) return;
+    const myRev = (item.reviews || []).find((r) => String(r.clientId) === myUserId);
+    setReviewRating(myRev?.rating || 0);
+    setReviewComment(myRev?.comment || "");
+    setReviewHover(0);
+    setPortfolioMsg("");
+    setLbImageIdx(0);
+    setPortfolioOpenId(String(itemId));
+  };
+
+  const closeLightbox = () => {
+    setPortfolioOpenId(null);
+    setReviewRating(0);
+    setReviewComment("");
+    setReviewHover(0);
+    setPortfolioMsg("");
+  };
+
+  const openPfForm = (item = null) => {
+    setPfEditId(item ? String(item._id) : null);
+    const gov = findGovernoratForCity(item?.city) || item?.governorate || "";
+    setPfDraft({
+      title:         item?.title         || "",
+      governorate:   gov,
+      city:          item?.city          || "",
+      exactLocation: item?.exactLocation || "",
+      description:   item?.description   || "",
+    });
+    const imgs = item?.images?.length
+      ? item.images
+      : item?.imageUrl ? [item.imageUrl] : [];
+    setPfExistingImages(imgs);
+    setPfNewFiles([]);
+    setPfMsg("");
+    setPfOpen(true);
+  };
+
+  const addPfFiles = (files) => {
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => setPfNewFiles(prev => [...prev, { file, preview: ev.target.result }]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const savePfItem = async () => {
+    setPfSaving(true);
+    setPfMsg("");
+    try {
+      const form = new FormData();
+      form.append("title",         pfDraft.title);
+      form.append("governorate",   pfDraft.governorate);
+      form.append("city",          pfDraft.city);
+      form.append("exactLocation", pfDraft.exactLocation);
+      form.append("description",   pfDraft.description);
+      pfExistingImages.forEach(p => form.append("existingImages", p));
+      pfNewFiles.forEach(nf => form.append("images", nf.file));
+      const data = pfEditId
+        ? await workerApi.updatePortfolioItem(pfEditId, form)
+        : await workerApi.addPortfolioItem(form);
+      setProfile(prev => ({ ...prev, workerProfile: { ...prev.workerProfile, portfolio: data.portfolio } }));
+      setPfOpen(false);
+    } catch (err) {
+      setPfMsg(err.message || "Erreur");
+    } finally {
+      setPfSaving(false);
+    }
+  };
+
+  const deletePfItem = async (itemId) => {
+    if (!window.confirm("Supprimer cette réalisation ?")) return;
+    try {
+      const data = await workerApi.deletePortfolioItem(itemId);
+      setProfile(prev => ({ ...prev, workerProfile: { ...prev.workerProfile, portfolio: data.portfolio } }));
+      if (portfolioOpenId === itemId) closeLightbox();
+    } catch (err) {
+      alert(err.message || "Erreur");
+    }
+  };
+
+  const deletePfReview = async (itemId, reviewId) => {
+    try {
+      const data = await workerApi.deletePortfolioReview(itemId, reviewId);
+      setProfile(prev => ({ ...prev, workerProfile: { ...prev.workerProfile, portfolio: data.portfolio } }));
+    } catch (err) {
+      alert(err.message || "Erreur");
+    }
+  };
+
+  const submitPortfolioReview = async (itemId) => {
+    if (!reviewRating) return;
+    setPortfolioSubmitting(true);
+    setPortfolioMsg("");
+    try {
+      const data = await portfolioApi.submitReview(workerId, itemId, { rating: reviewRating, comment: reviewComment });
+      setProfile((prev) => ({
+        ...prev,
+        workerProfile: { ...prev.workerProfile, portfolio: data.portfolio },
+      }));
+      setPortfolioMsg("Avis envoyé !");
+    } catch (err) {
+      setPortfolioMsg(err.message || "Erreur lors de l'envoi");
+    } finally {
+      setPortfolioSubmitting(false);
+    }
+  };
+
+  const startScheduleEdit = () => {
+    const base = {};
+    DAYS.forEach(d => { base[d.key] = [...(wp.availabilitySchedule?.[d.key] || [])]; });
+    setScheduleDraft(base);
+    setScheduleEditing(true);
+    setScheduleMsg("");
+  };
+
+  const saveSchedule = async () => {
+    setScheduleSaving(true);
+    setScheduleMsg("");
+    try {
+      await workerApi.updateSchedule(scheduleDraft);
+      setProfile(prev => ({ ...prev, workerProfile: { ...prev.workerProfile, availabilitySchedule: scheduleDraft } }));
+      setScheduleEditing(false);
+      setScheduleMsg("Planning enregistré ✓");
+    } catch (err) {
+      setScheduleMsg(err.message || "Erreur");
+    } finally {
+      setScheduleSaving(false);
     }
   };
 
   useEffect(() => {
+    if (!profile?._id) return;
+    const sessionKey = `profile_tab_${profile._id}`;
     const want = initialTab || "overview";
+    if (!initialTab || initialTab === "overview") {
+      const saved = sessionStorage.getItem(sessionKey);
+      if (saved) { setTab(saved); return; }
+    }
     if (tab !== want) setTab(want);
   }, [initialTab, profile?._id]);
 
@@ -333,7 +605,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         setBookingForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
         return;
       }
-
       setSlotsLoading(true);
       setBookingError("");
       try {
@@ -362,7 +633,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
             })
           );
         }
-
         setMonthAvailability(days);
         const first = days.find((d) => Array.isArray(d.slots) && d.slots.some((s) => s.status === "available"));
         const nextDate = first?.date || days[0]?.date || "";
@@ -381,7 +651,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         setSlotsLoading(false);
       }
     };
-
     fetchAvailability();
   }, [canReserve, tab, workerId, selectedService]);
 
@@ -408,7 +677,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     if (!selectedService || !workerId || !bookingForm.bookingDate || bookingForm.bookingHour === "") {
       return setBookingError("Sélectionnez service, date et heure.");
     }
-
     setActionLoading(true);
     try {
       await reservationApi.create({
@@ -419,17 +687,14 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         address: bookingForm.address,
         notes: bookingForm.notes,
       });
-
       setBookingMessage("Réservation créée ✅");
       setBookingForm((prev) => ({ ...prev, bookingHour: "", notes: "" }));
-
       try {
         const upd = await reservationApi.getWorkerAvailableSlots(workerId, bookingForm.bookingDate, selectedService);
         const ns = Array.isArray(upd?.slots) ? upd.slots : [];
         setMonthAvailability((prev) => prev.map((d) => (d.date === bookingForm.bookingDate ? { ...d, slots: ns } : d)));
         setSlots(ns);
-      } catch {
-      }
+      } catch {}
     } catch (err) {
       setBookingError(err.message || "Réservation impossible");
     } finally {
@@ -448,15 +713,19 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     );
   }
 
+  // ── Tab: Overview ─────────────────────────────────────────
   const TabOverview = () => (
     <div className="pr-grid pr-anim-1">
       <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-
-        {/* Personal info */}
         <div className="pr-card">
           <div className="pr-card-title">
             <span className="pr-card-title-icon"><Mail size={12} />Informations personnelles</span>
-            {isOwner && !editingInfo && <button className="pr-edit-btn" onClick={startEditInfo}><Edit3 size={11} />Modifier</button>}
+            {isOwner && !editingInfo && (
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                {saveSuccess && !editingWorker && <span style={{ fontSize:11, color:"#10b981", fontWeight:700 }}>{saveSuccess}</span>}
+                <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditInfo(); }}><Edit3 size={11} />Modifier</button>
+              </div>
+            )}
           </div>
           {editingInfo ? (
             <>
@@ -481,9 +750,14 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                     <div className="pr-field"><div className="pr-field-label">Adresse</div><input className="pr-input" value={draftInfo.address} onChange={e => setDraftInfo(p => ({...p, address: e.target.value}))} /></div>
                     <div className="pr-field"><div className="pr-field-label">Ville</div><input className="pr-input" value={draftInfo.city_client} onChange={e => setDraftInfo(p => ({...p, city_client: e.target.value}))} /></div>
                   </div>
-                  <div className="pr-field"><div className="pr-field-label">Bio</div><textarea className="pr-textarea" value={draftInfo.bio_client} onChange={e => setDraftInfo(p => ({...p, bio_client: e.target.value}))} placeholder="Parlez de vous…" /></div>
+                  <div className="pr-field">
+                    <div className="pr-field-label">Bio</div>
+                    <textarea className="pr-textarea" value={draftInfo.bio_client} onChange={e => setDraftInfo(p => ({...p, bio_client: e.target.value}))} placeholder="Parlez de vous…" maxLength={300} />
+                    <div style={{ fontSize:10,color:"#94a3b8",textAlign:"right",marginTop:3 }}>{(draftInfo.bio_client||"").length} / 300</div>
+                  </div>
                 </>
               )}
+              {saveError && <div style={{ fontSize:12,color:"#ef4444",padding:"8px 12px",background:"#fff0f0",borderRadius:8,marginTop:8,border:"1px solid #fecaca" }}>{saveError}</div>}
               <div className="pr-btn-row">
                 <button className="pr-cancel-btn" onClick={() => setEditingInfo(false)}><X size={11} />Annuler</button>
                 <button className="pr-save-btn" onClick={saveInfo} disabled={saving}><Check size={11} />{saving ? "Enregistrement…" : "Enregistrer"}</button>
@@ -516,30 +790,77 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
           )}
         </div>
 
-        {/* Worker profile */}
         {role === "worker" && (
           <div className="pr-card">
             <div className="pr-card-title">
               <span className="pr-card-title-icon"><Briefcase size={12} />Profil prestataire</span>
-              {isOwner && !editingWorker && <button className="pr-edit-btn" onClick={startEditWorker}><Edit3 size={11} />Modifier</button>}
+              {isOwner && !editingWorker && (
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  {saveSuccess && !editingInfo && <span style={{ fontSize:11, color:"#10b981", fontWeight:700 }}>{saveSuccess}</span>}
+                  <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditWorker(); }}><Edit3 size={11} />Modifier</button>
+                </div>
+              )}
             </div>
             {editingWorker ? (
               <>
                 <div className="pr-field-grid" style={{ marginBottom:16 }}>
-                  <div className="pr-field"><div className="pr-field-label">Ville</div><input className="pr-input" value={draftWorker.city} onChange={e => setDraftWorker(p => ({...p, city: e.target.value}))} /></div>
+                  <div className="pr-field">
+                    <div className="pr-field-label">Gouvernorat</div>
+                    <select className="pr-select" value={draftGovernorate}
+                      onChange={e => { setDraftGovernorate(e.target.value); setDraftWorker(p => ({...p, city: ""})); }}>
+                      <option value="">Sélectionnez un gouvernorat</option>
+                      {GOUVERNORATS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div className="pr-field">
+                    <div className="pr-field-label">Délégation</div>
+                    <select className="pr-select" value={draftWorker.city} disabled={!draftGovernorate}
+                      onChange={e => setDraftWorker(p => ({...p, city: e.target.value}))}>
+                      <option value="">{draftGovernorate ? "Sélectionnez une délégation" : "Choisissez d'abord un gouvernorat"}</option>
+                      {(DELEGATIONS[draftGovernorate] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
                   <div className="pr-field"><div className="pr-field-label">Expérience</div><input className="pr-input" value={draftWorker.experience} onChange={e => setDraftWorker(p => ({...p, experience: e.target.value}))} placeholder="Ex: 5 ans" /></div>
                   <div className="pr-field"><div className="pr-field-label">Tarif horaire (TND/h)</div><input className="pr-input" type="number" min="0" value={draftWorker.hourlyRate} onChange={e => setDraftWorker(p => ({...p, hourlyRate: Number(e.target.value)}))} /></div>
                 </div>
-                <div className="pr-field" style={{ marginBottom:16 }}><div className="pr-field-label">Bio</div><textarea className="pr-textarea" value={draftWorker.bio} onChange={e => setDraftWorker(p => ({...p, bio: e.target.value}))} placeholder="Décrivez votre expertise…" /></div>
                 <div className="pr-field" style={{ marginBottom:16 }}>
-                  <div className="pr-field-label">Métiers (Entrée pour ajouter)</div>
-                  <div className="pr-tags" style={{ marginBottom:8 }}>{draftWorker.professions.map(p => <span key={p} className="pr-tag-remove" onClick={() => removeProfession(p)}>{p} ×</span>)}</div>
-                  <input className="pr-input" placeholder="Ajouter un métier puis Entrée…" onKeyDown={addProfession} />
+                  <div className="pr-field-label">Bio</div>
+                  <textarea className="pr-textarea" value={draftWorker.bio} onChange={e => setDraftWorker(p => ({...p, bio: e.target.value}))} placeholder="Décrivez votre expertise…" maxLength={500} />
+                  <div style={{ fontSize:10,color:"#94a3b8",textAlign:"right",marginTop:3 }}>{(draftWorker.bio||"").length} / 500</div>
+                </div>
+                <div className="pr-field" style={{ marginBottom:16 }}>
+                  <div className="pr-field-label">Métiers</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginTop:6 }}>
+                    {["Électricien","Plombier","Maçon","Vitrier","Menuisier","Peintre","Climatisation","Serrurier","Jardinier","Carreleur","Déménagement","Mécanicien"].map(svc => {
+                      const sel = draftWorker.professions.includes(svc);
+                      return (
+                        <button key={svc} type="button"
+                          onClick={() => setDraftWorker(p => ({
+                            ...p,
+                            professions: sel ? p.professions.filter(x => x !== svc) : [...p.professions, svc]
+                          }))}
+                          style={{
+                            padding:"9px 4px", borderRadius:8,
+                            border: sel ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
+                            background: sel ? "rgba(6,182,212,0.08)" : "#f8fafc",
+                            color: sel ? "#0284c7" : "#64748b",
+                            fontSize:11, fontWeight: sel ? 700 : 600, cursor:"pointer",
+                            transition:"all .15s", fontFamily:"'Sora',sans-serif",
+                          }}>
+                          {svc}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize:10, color:"#94a3b8", marginTop:5 }}>
+                    {draftWorker.professions.length} sélectionné{draftWorker.professions.length > 1 ? "s" : ""}
+                  </div>
                 </div>
                 <div className="pr-avail-toggle-row" style={{ marginBottom:16 }}>
                   <span style={{ fontSize:13,fontWeight:600,color:"#0f172e" }}>Disponible actuellement</span>
                   <button className={`pr-toggle ${draftWorker.isAvailable ? "on" : "off"}`} onClick={() => setDraftWorker(p => ({...p, isAvailable: !p.isAvailable}))} />
                 </div>
+                {saveError && <div style={{ fontSize:12,color:"#ef4444",padding:"8px 12px",background:"#fff0f0",borderRadius:8,marginBottom:12,border:"1px solid #fecaca" }}>{saveError}</div>}
                 <div className="pr-btn-row">
                   <button className="pr-cancel-btn" onClick={() => setEditingWorker(false)}><X size={11} />Annuler</button>
                   <button className="pr-save-btn" onClick={saveWorker} disabled={saving}><Check size={11} />{saving ? "Enregistrement…" : "Enregistrer"}</button>
@@ -561,7 +882,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         )}
       </div>
 
-      {/* Right column */}
       <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
         {role === "worker" && (
           <div className="pr-card">
@@ -606,171 +926,359 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     </div>
   );
 
-  const TabSchedule = () => (
-    <div className="pr-grid-full pr-anim-2">
-      <div className="pr-card">
-        <div className="pr-card-title">
-          <span className="pr-card-title-icon"><Calendar size={12} />Nouvelle réservation</span>
-        </div>
+  // ── Tab: Portfolio ────────────────────────────────────────
+  const TabPortfolio = () => {
+    const portfolio   = wp.portfolio || [];
+    const openItem    = portfolioOpenId ? portfolio.find((p) => String(p._id) === portfolioOpenId) : null;
+    const itemReviews = openItem?.reviews || [];
+    const myReview    = itemReviews.find((r) => String(r.clientId) === myUserId);
+    const avgRating   = itemReviews.length
+      ? itemReviews.reduce((s, r) => s + r.rating, 0) / itemReviews.length : 0;
+    const canReview = currentUser?.role === "client" && !isOwner;
 
-        {!canReserve ? (
-          <div style={{ color:"#64748b", fontSize:13, padding:4 }}>
-            Cette section est visible lors de la consultation d'un profil prestataire en tant que client.
-          </div>
-        ) : (
-          <div style={{ display:"grid", gap:12 }}>
-            {bookingError && <div style={{ color:"#c0392b", fontSize:13 }}>{bookingError}</div>}
-            {bookingMessage && <div style={{ color:"#0f172e", fontSize:13 }}>{bookingMessage}</div>}
-
-            <div style={{ marginBottom:4 }}>
-              <div style={{ fontSize:12, color:"#64748b", marginBottom:8 }}>1. Prestataire sélectionné</div>
-              <div style={{ borderRadius:12, border:"1.5px solid #06b6d4", background:"rgba(232,98,10,0.08)", padding:14 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:4 }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#0f172e" }}>{fn} {ln}</div>
-                  <span style={{ fontSize:11, color:"#06b6d4", border:"1px solid rgba(6,182,212,0.25)", borderRadius:100, padding:"3px 8px", fontWeight:700 }}>Sélectionné</span>
-                </div>
-                <div style={{ fontSize:12, color:"#64748b", marginBottom:8 }}>{wp.city || "Ville non précisée"}</div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                  {profs.slice(0, 3).map((service) => (
-                    <span key={service} style={{ fontSize:11, padding:"4px 8px", borderRadius:100, background:"#e2e8f0", color:"#0f172e" }}>
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12 }}>
-              <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
-                2. Choisissez la date (30 prochains jours)
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                  <button type="button" onClick={() => setDatePage((p) => Math.max(0, p - 1))} disabled={datePage === 0} className="pr-edit-btn">← Semaine précédente</button>
-                  <span style={{ fontSize:12, color:"#64748b", fontWeight:600 }}>Semaine {datePage + 1}/{Math.max(1, datePages.length)}</span>
-                  <button type="button" onClick={() => setDatePage((p) => Math.min(Math.max(0, datePages.length - 1), p + 1))} disabled={datePage >= datePages.length - 1} className="pr-edit-btn">Semaine suivante →</button>
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:8 }}>
-                  {visibleDates.map((day) => {
-                    const daySlots = Array.isArray(day.slots) ? day.slots : [];
-                    const free = daySlots.filter((s) => s.status === "available").length;
-                    const active = bookingForm.bookingDate === day.date;
-                    return (
-                      <button
-                        key={day.date}
-                        type="button"
-                        onClick={() => setBookingForm((prev) => ({ ...prev, bookingDate: day.date, bookingHour: "" }))}
-                        disabled={slotsLoading || free === 0}
-                        style={{
-                          padding:"9px 8px",
-                          borderRadius:8,
-                          border:active ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
-                          background:active ? "rgba(6,182,212,0.1)" : "#fff",
-                          color:active ? "#06b6d4" : "#64748b",
-                          opacity:free === 0 ? 0.45 : 1,
-                          cursor:(slotsLoading || free === 0) ? "not-allowed" : "pointer",
-                          fontSize:12,
-                          textAlign:"left",
-                        }}
-                      >
-                        <div style={{ fontWeight:700, fontSize:12 }}>{fmtDate(day.date)}</div>
-                        <div style={{ fontSize:11 }}>{free} h libre(s)</div>
-                      </button>
-                    );
-                  })}
-                  {!slotsLoading && visibleDates.length === 0 && (
-                    <div style={{ gridColumn:"1 / -1", fontSize:12, color:"#64748b", paddingTop:8 }}>Aucune disponibilité trouvée ce mois</div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
-                3. Choisissez l'heure libre
-                <div style={{ display:"flex", gap:12, fontSize:11, color:"#64748b", marginBottom:4, flexWrap:"wrap" }}>
-                  {[["#ecfdf5", "#10b981", "Libre"], ["#fffbeb", "#f59e0b", "En attente"], ["#fee2e2", "#ef4444", "Réservé"], ["#f1f5f9", "#94a3b8", "Passé"]].map(([bg, border, label]) => (
-                    <div key={label} style={{ display:"flex", gap:6, alignItems:"center" }}>
-                      <div style={{ width:16, height:16, borderRadius:4, background:bg, border:`1px solid ${border}` }} />
-                      <span>{label}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:8 }}>
-                  {slots.map((slot) => {
-                    const active = String(bookingForm.bookingHour) === String(slot.hour);
-                    const availSlot = slot.status === "available";
-                    const pending = slot.status === "pending";
-                    const taken = slot.status === "accepted" || slot.status === "completed";
-                    const past = slot.status === "passed";
-                    let bg = "#fff";
-                    let bc = "#e2e8f0";
-                    let tc = "#0f172e";
-                    let op = 1;
-                    let cur = "pointer";
-
-                    if (availSlot && active) { bg = "#10b981"; bc = "#10b981"; tc = "#fff"; }
-                    else if (availSlot) { bg = "#ecfdf5"; bc = "#10b981"; tc = "#059669"; }
-                    else if (pending && active) { bg = "#f59e0b"; bc = "#f59e0b"; tc = "#fff"; }
-                    else if (pending) { bg = "#fffbeb"; bc = "#f59e0b"; tc = "#b45309"; }
-                    else if (taken) { bg = "#fee2e2"; bc = "#ef4444"; tc = "#991b1b"; cur = "not-allowed"; op = 0.7; }
-                    else if (past) { bg = "#f1f5f9"; bc = "#94a3b8"; tc = "#64748b"; cur = "not-allowed"; op = 0.75; }
-
-                    return (
-                      <button
-                        key={slot.hour}
-                        type="button"
-                        onClick={() => availSlot && setBookingForm((prev) => ({ ...prev, bookingHour: String(slot.hour) }))}
-                        disabled={!availSlot || !bookingForm.bookingDate || slotsLoading}
-                        style={{
-                          padding:"10px 8px",
-                          borderRadius:8,
-                          border:`1.5px solid ${bc}`,
-                          background:bg,
-                          color:tc,
-                          cursor:(!bookingForm.bookingDate || slotsLoading) ? "not-allowed" : cur,
-                          opacity:(!bookingForm.bookingDate || slotsLoading) ? 0.6 : op,
-                          fontWeight:600,
-                          fontSize:13,
-                          transition:"all .2s",
-                        }}
-                      >
-                        {fmtHour(slot.hour)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {slots.length === 0 && <div style={{ color:"#94a3b8", fontSize:12 }}>Aucune disponibilité trouvée</div>}
-              </div>
-            </div>
-
-            <label style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
-              Adresse
-              <input
-                value={bookingForm.address}
-                onChange={updateBookingForm("address")}
-                style={{ width:"100%", background:"#e2e8f0", border:"1.5px solid transparent", borderRadius:8, padding:"10px 12px", fontSize:13, color:"#0f172e", outline:"none" }}
-                placeholder="Adresse d'intervention"
-              />
-            </label>
-            <label style={{ display:"flex", flexDirection:"column", gap:6, fontSize:12, color:"#64748b" }}>
-              Notes
-              <textarea
-                value={bookingForm.notes}
-                onChange={updateBookingForm("notes")}
-                style={{ width:"100%", background:"#e2e8f0", border:"1.5px solid transparent", borderRadius:8, padding:"10px 12px", fontSize:13, color:"#0f172e", outline:"none", minHeight:74, resize:"vertical" }}
-                placeholder="Détails utiles"
-              />
-            </label>
-
-            <button className="pr-save-btn" disabled={actionLoading || slotsLoading} onClick={createReservation} style={{ marginTop:8, maxWidth:260, justifyContent:"center", padding:"11px 14px" }}>
-              {actionLoading ? "Envoi..." : "Réserver ce créneau"}
+    return (
+      <>
+        {/* Owner toolbar */}
+        {isOwner && (
+          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+            <button className="pr-save-btn" onClick={() => openPfForm()} style={{ gap:7 }}>
+              <span style={{ fontSize:16, lineHeight:1 }}>+</span> Ajouter une réalisation
             </button>
           </div>
         )}
+
+        {portfolio.length === 0 && (
+          <div className="pr-card pr-anim-1" style={{ textAlign:"center", padding:"48px 24px" }}>
+            <Image size={40} color="#cbd5e1" style={{ marginBottom:14 }} />
+            <div style={{ fontSize:14, color:"#94a3b8", fontWeight:500 }}>
+              {isOwner ? "Aucune réalisation. Cliquez sur « Ajouter » pour commencer." : "Ce prestataire n'a pas encore ajouté de réalisations."}
+            </div>
+          </div>
+        )}
+
+        {/* Instagram grid */}
+        {portfolio.length > 0 && (
+          <div className="pr-pf-grid pr-anim-1">
+            {portfolio.map((item) => {
+              const imgs     = item.images?.length ? item.images : item.imageUrl ? [item.imageUrl] : [];
+              const imgSrc   = imgs[0] ? avatarUrl(imgs[0]) : null;
+              const itemRevs = item.reviews || [];
+              const avg      = itemRevs.length ? itemRevs.reduce((s, r) => s + r.rating, 0) / itemRevs.length : 0;
+              return (
+                <div key={String(item._id)} className="pr-pf-cell" onClick={() => openLightbox(String(item._id))}>
+                  {imgSrc
+                    ? <img src={imgSrc} alt={item.title || "Réalisation"} />
+                    : <div className="pr-pf-placeholder"><Image size={28} /></div>
+                  }
+                  {imgs.length > 1 && (
+                    <div style={{ position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.55)",borderRadius:20,padding:"2px 7px",fontSize:10,fontWeight:700,color:"#fff" }}>
+                      1/{imgs.length}
+                    </div>
+                  )}
+                  <div className="pr-pf-overlay">
+                    {isOwner ? (
+                      <div style={{ display:"flex", gap:8 }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => openPfForm(item)} title="Modifier"
+                          style={{ width:36,height:36,borderRadius:10,border:"1.5px solid rgba(255,255,255,0.25)",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(6px)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .18s" }}
+                          onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.28)"}
+                          onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.15)"}>
+                          <Edit3 size={14} />
+                        </button>
+                        <button onClick={() => deletePfItem(String(item._id))} title="Supprimer"
+                          style={{ width:36,height:36,borderRadius:10,border:"1.5px solid rgba(239,68,68,0.4)",background:"rgba(239,68,68,0.18)",backdropFilter:"blur(6px)",color:"#fca5a5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .18s" }}
+                          onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.38)"}
+                          onMouseLeave={e=>e.currentTarget.style.background="rgba(239,68,68,0.18)"}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {item.title && <div className="pr-pf-ov-text" style={{ fontSize:12,fontWeight:700 }}>{item.title}</div>}
+                        {itemRevs.length > 0 && <div className="pr-pf-ov-text" style={{ fontSize:11 }}>★ {avg.toFixed(1)} · {itemRevs.length} avis</div>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {openItem && (() => {
+          const lbImages = openItem.images?.length ? openItem.images : openItem.imageUrl ? [openItem.imageUrl] : [];
+          const lbSrc    = lbImages[lbImageIdx] ? avatarUrl(lbImages[lbImageIdx]) : null;
+          const lbTotal  = lbImages.length;
+          const prevImg  = () => setLbImageIdx(i => (i - 1 + lbTotal) % lbTotal);
+          const nextImg  = () => setLbImageIdx(i => (i + 1) % lbTotal);
+          return (
+          <div className="pr-lb" onClick={closeLightbox}>
+            <div className="pr-lb-card" onClick={(e) => e.stopPropagation()}>
+              {/* Left — image carousel */}
+              <div className="pr-lb-left" style={{ position:"relative" }}>
+                {lbSrc
+                  ? <img src={lbSrc} alt={openItem.title || "Réalisation"} />
+                  : <div style={{ display:"flex",alignItems:"center",justifyContent:"center",width:"100%",height:"100%",color:"#475569" }}><Image size={52} /></div>
+                }
+                {lbTotal > 1 && (
+                  <>
+                    <button onClick={e => { e.stopPropagation(); prevImg(); }}
+                      style={{ position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",width:34,height:34,borderRadius:"50%",background:"rgba(0,0,0,0.55)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2 }}>‹</button>
+                    <button onClick={e => { e.stopPropagation(); nextImg(); }}
+                      style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:34,height:34,borderRadius:"50%",background:"rgba(0,0,0,0.55)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2 }}>›</button>
+                    <div style={{ position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5,zIndex:2 }}>
+                      {lbImages.map((_, i) => (
+                        <div key={i} onClick={e => { e.stopPropagation(); setLbImageIdx(i); }}
+                          style={{ width:6,height:6,borderRadius:"50%",background:i===lbImageIdx?"#fff":"rgba(255,255,255,0.4)",cursor:"pointer",transition:"background .2s" }} />
+                      ))}
+                    </div>
+                    <div style={{ position:"absolute",top:10,right:10,background:"rgba(0,0,0,0.55)",borderRadius:20,padding:"3px 9px",fontSize:11,fontWeight:700,color:"#fff",zIndex:2 }}>
+                      {lbImageIdx+1}/{lbTotal}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Right — details + reviews */}
+              <div className="pr-lb-right">
+                {/* Header */}
+                <div style={{ padding:"14px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexShrink:0 }}>
+                  <div>
+                    <div style={{ fontSize:15,fontWeight:700,color:"#0f172e",marginBottom:2 }}>{openItem.title || "Réalisation"}</div>
+                    {(openItem.city || openItem.exactLocation) && (
+                      <div style={{ fontSize:11,color:"#94a3b8",display:"flex",alignItems:"center",gap:4,marginTop:2 }}>
+                        <MapPin size={11} color="#94a3b8" />
+                        {[openItem.city, openItem.exactLocation].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display:"flex",gap:6,flexShrink:0 }}>
+                    {isOwner && (
+                      <>
+                        <button onClick={() => { closeLightbox(); openPfForm(openItem); }} title="Modifier"
+                          style={{ width:32,height:32,borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#475569",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .18s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.borderColor="#06b6d4";e.currentTarget.style.color="#06b6d4";e.currentTarget.style.background="rgba(6,182,212,0.06)"}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.color="#475569";e.currentTarget.style.background="#f8fafc"}}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => { closeLightbox(); deletePfItem(portfolioOpenId); }} title="Supprimer"
+                          style={{ width:32,height:32,borderRadius:8,border:"1.5px solid #fecaca",background:"#fff0f0",color:"#ef4444",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .18s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";e.currentTarget.style.borderColor="#fca5a5"}}
+                          onMouseLeave={e=>{e.currentTarget.style.background="#fff0f0";e.currentTarget.style.borderColor="#fecaca"}}>
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                    <button onClick={closeLightbox} style={{ background:"#f1f5f9",border:"none",borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#64748b",fontSize:18 }}>×</button>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {openItem.description && (
+                  <div style={{ padding:"12px 16px",borderBottom:"1px solid #f1f5f9",fontSize:13,color:"#334155",lineHeight:1.65,flexShrink:0 }}>
+                    {openItem.description}
+                  </div>
+                )}
+
+                {/* Average rating */}
+                {itemReviews.length > 0 && (
+                  <div style={{ padding:"12px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
+                    <div style={{ fontSize:26,fontWeight:800,color:"#0f172e",lineHeight:1 }}>{avgRating.toFixed(1)}</div>
+                    <div>
+                      <StarsDisplay rating={avgRating} size={14} />
+                      <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{itemReviews.length} avis</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reviews list */}
+                <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }}>
+                  {itemReviews.length === 0 && (
+                    <div style={{ fontSize:12,color:"#94a3b8",fontStyle:"italic",textAlign:"center",padding:"12px 0" }}>
+                      Aucun avis pour le moment.{!isOwner && " Soyez le premier !"}
+                    </div>
+                  )}
+                  {[...itemReviews].reverse().map((rev) => (
+                    <div key={String(rev._id)} style={{ background:"#f8fafc",borderRadius:10,padding:"10px 12px",border:"1px solid #f1f5f9",position:"relative" }}>
+                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+                        <div style={{ fontSize:12,fontWeight:700,color:"#0f172e" }}>
+                          {rev.clientName || "Anonyme"}
+                          {String(rev.clientId) === myUserId && <span style={{ marginLeft:6,fontSize:10,color:"#06b6d4",fontWeight:700 }}>· Vous</span>}
+                        </div>
+                        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                          <StarsDisplay rating={rev.rating} size={12} />
+                          {isOwner && (
+                            <button onClick={() => deletePfReview(portfolioOpenId, String(rev._id))}
+                              style={{ background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px" }}
+                              title="Supprimer cet avis">✕</button>
+                          )}
+                        </div>
+                      </div>
+                      {rev.comment && <div style={{ fontSize:12,color:"#64748b",lineHeight:1.5 }}>{rev.comment}</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Review form — clients only */}
+                {canReview && (
+                  <div style={{ padding:"14px 16px",borderTop:"1.5px solid #f1f5f9",flexShrink:0 }}>
+                    <div style={{ fontSize:10,fontWeight:700,color:"#94a3b8",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10 }}>
+                      {myReview ? "Modifier votre avis" : "Laisser un avis"}
+                    </div>
+                    <StarRow value={reviewRating} hover={reviewHover} onHover={setReviewHover} onLeave={() => setReviewHover(0)} onClick={setReviewRating} />
+                    <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Votre commentaire (optionnel)…" maxLength={500} rows={2}
+                      style={{ marginTop:10,width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:12,color:"#0f172e",outline:"none",resize:"vertical",fontFamily:"'Sora',sans-serif",boxSizing:"border-box",background:"#f8fafc" }} />
+                    {portfolioMsg && (
+                      <div style={{ fontSize:11,marginTop:5,color:portfolioMsg.includes("!") ? "#10b981" : "#ef4444",fontWeight:600 }}>{portfolioMsg}</div>
+                    )}
+                    <button onClick={() => submitPortfolioReview(portfolioOpenId)} disabled={!reviewRating || portfolioSubmitting}
+                      style={{ marginTop:10,width:"100%",border:"none",borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,cursor:reviewRating&&!portfolioSubmitting?"pointer":"not-allowed",background:reviewRating&&!portfolioSubmitting?"#06b6d4":"#e2e8f0",color:reviewRating&&!portfolioSubmitting?"#fff":"#94a3b8",fontFamily:"'Sora',sans-serif",transition:"all .2s" }}>
+                      {portfolioSubmitting ? "Envoi…" : myReview ? "Mettre à jour" : "Envoyer l'avis"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          );
+        })()}
+      </>
+    );
+  };
+
+  // ── Tab: Planning ─────────────────────────────────────────
+  const TabPlanning = () => {
+    const schedule = scheduleEditing ? scheduleDraft : (wp.availabilitySchedule || {});
+    const hasAnySlot = DAYS.some(d => (schedule[d.key] || []).length > 0);
+
+    const toggleSlot = (day, hour) => {
+      if (!scheduleEditing) return;
+      setScheduleDraft(prev => {
+        const hours = prev[day] || [];
+        const next = hours.includes(hour)
+          ? hours.filter(h => h !== hour)
+          : [...hours, hour].sort((a, b) => a - b);
+        return { ...prev, [day]: next };
+      });
+    };
+
+    const toggleDay = (day) => {
+      if (!scheduleEditing) return;
+      setScheduleDraft(prev => {
+        const hours = prev[day] || [];
+        const allOn = BOOKABLE_HOURS.every(h => hours.includes(h));
+        return { ...prev, [day]: allOn ? [] : [...BOOKABLE_HOURS] };
+      });
+    };
+
+    return (
+      <div className="pr-grid-full pr-anim-2">
+        <div className="pr-card">
+          <div className="pr-card-title">
+            <span className="pr-card-title-icon"><Calendar size={12} />Planning de disponibilité</span>
+            {isOwner && !scheduleEditing && (
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                {scheduleMsg && <span style={{ fontSize:11, color:"#10b981", fontWeight:700 }}>{scheduleMsg}</span>}
+                <button className="pr-edit-btn" onClick={startScheduleEdit}><Edit3 size={11} />Modifier</button>
+              </div>
+            )}
+          </div>
+
+          {!hasAnySlot && !scheduleEditing && !isOwner && (
+            <div style={{ color:"#94a3b8", fontSize:12, fontStyle:"italic", marginBottom:12 }}>
+              Ce prestataire n'a pas encore défini son planning hebdomadaire.
+            </div>
+          )}
+
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {DAYS.map(d => {
+              const dayHours = schedule[d.key] || [];
+              const allOn    = BOOKABLE_HOURS.every(h => dayHours.includes(h));
+              const someOn   = dayHours.length > 0;
+              return (
+                <div key={d.key} style={{
+                  display:"flex", alignItems:"center", gap:12, flexWrap:"wrap",
+                  padding:"12px 14px", borderRadius:10,
+                  background: someOn ? "rgba(6,182,212,0.04)" : "#f8fafc",
+                  border: someOn ? "1.5px solid rgba(6,182,212,0.18)" : "1.5px solid #f1f5f9",
+                  transition:"background .2s, border-color .2s",
+                }}>
+                  {/* Day label — click to toggle whole day in edit mode */}
+                  <div
+                    onClick={() => toggleDay(d.key)}
+                    title={scheduleEditing ? (allOn ? "Tout désactiver" : "Tout activer") : ""}
+                    style={{
+                      width:38, flexShrink:0, fontSize:12, fontWeight:800,
+                      color: someOn ? "#0f172e" : "#94a3b8",
+                      cursor: scheduleEditing ? "pointer" : "default",
+                      userSelect:"none",
+                      textDecoration: scheduleEditing ? "underline dotted" : "none",
+                      textUnderlineOffset:3,
+                    }}>
+                    {d.label}
+                  </div>
+
+                  {/* Hour chips */}
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:5, flex:1 }}>
+                    {BOOKABLE_HOURS.map(h => {
+                      const isOn = dayHours.includes(h);
+                      return (
+                        <button key={h} type="button"
+                          onClick={() => toggleSlot(d.key, h)}
+                          disabled={!scheduleEditing}
+                          style={{
+                            padding:"5px 10px", borderRadius:20, fontSize:11, fontWeight:700,
+                            border: isOn ? "1.5px solid rgba(6,182,212,0.5)" : "1.5px solid #e2e8f0",
+                            background: isOn ? "rgba(6,182,212,0.12)" : "#fff",
+                            color: isOn ? "#0284c7" : "#cbd5e1",
+                            cursor: scheduleEditing ? "pointer" : "default",
+                            transition:"all .15s",
+                            fontFamily:"'Sora',sans-serif",
+                            boxShadow: isOn ? "0 1px 4px rgba(6,182,212,0.15)" : "none",
+                          }}>
+                          {fmtHour(h)}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right: slot count badge */}
+                  <div style={{
+                    flexShrink:0, fontSize:10, fontWeight:700,
+                    color: someOn ? "#06b6d4" : "#94a3b8",
+                    minWidth:32, textAlign:"right",
+                  }}>
+                    {someOn ? `${dayHours.length} h` : "Fermé"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {scheduleEditing && (
+            <>
+              <div style={{ marginTop:14, fontSize:11, color:"#94a3b8", fontStyle:"italic" }}>
+                Cliquez sur le nom du jour pour tout activer / désactiver · cliquez sur un créneau pour le basculer
+              </div>
+              {scheduleMsg && <div style={{ fontSize:12, color:"#ef4444", marginTop:8, fontWeight:600 }}>{scheduleMsg}</div>}
+              <div className="pr-btn-row">
+                <button className="pr-cancel-btn" onClick={() => { setScheduleEditing(false); setScheduleMsg(""); }}><X size={11} />Annuler</button>
+                <button className="pr-save-btn" onClick={saveSchedule} disabled={scheduleSaving}><Check size={11} />{scheduleSaving ? "Enregistrement…" : "Enregistrer"}</button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const tabs = [
-    { id:"overview", label:"Aperçu" },
-    ...(role === "worker" ? [{ id:"schedule", label:"Réservation" }] : []),
+    { id:"overview",  label:"Aperçu" },
+    ...(role === "worker" ? [
+      { id:"portfolio", label:"Portfolio" },
+      { id:"planning",  label:"Planning" },
+    ] : []),
   ];
 
   return (
@@ -795,22 +1303,11 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                 </div>
                 {isOwner && (
                   <>
-                    <button
-                      className="pr-avatar-edit-btn"
-                      title="Changer la photo"
-                      disabled={avatarUploading}
-                      onClick={() => avatarInputRef.current?.click()}
-                      style={{ opacity: avatarUploading ? 0.6 : 1 }}
-                    >
+                    <button className="pr-avatar-edit-btn" title="Changer la photo" disabled={avatarUploading}
+                      onClick={() => avatarInputRef.current?.click()} style={{ opacity: avatarUploading ? 0.6 : 1 }}>
                       <Camera size={12} color="#fff" />
                     </button>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={handleAvatarChange}
-                    />
+                    <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleAvatarChange} />
                   </>
                 )}
               </div>
@@ -842,7 +1339,10 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
           </div>
           <div className="pr-tabs">
             {tabs.map(t => (
-              <button key={t.id} className={`pr-tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+              <button key={t.id} className={`pr-tab ${tab === t.id ? "active" : ""}`} onClick={() => {
+                setTab(t.id);
+                if (profile?._id) sessionStorage.setItem(`profile_tab_${profile._id}`, t.id);
+              }}>
                 {t.label}
               </button>
             ))}
@@ -850,11 +1350,111 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         </section>
 
         <div className="pr-content">
-          {tab === "overview" && <TabOverview />}
-          {tab === "schedule" && <TabSchedule />}
+          {tab === "overview"   && TabOverview()}
+          {tab === "portfolio"  && TabPortfolio()}
+          {tab === "planning"   && TabPlanning()}
         </div>
 
       </div>
+
+      {/* Portfolio add/edit form overlay */}
+      {pfOpen && (
+        <div className="pr-lb" onClick={() => setPfOpen(false)}>
+          <div style={{ background:"#fff", borderRadius:14, padding:28, width:"100%", maxWidth:520, boxShadow:"0 40px 100px rgba(0,0,0,0.45)", maxHeight:"92vh", overflowY:"auto" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize:16, fontWeight:800, color:"#0f172e", marginBottom:20 }}>
+              {pfEditId ? "Modifier la réalisation" : "Ajouter une réalisation"}
+            </div>
+
+            {/* ── Multi-image uploader ── */}
+            <div style={{ marginBottom:16 }}>
+              <div className="pr-field-label" style={{ marginBottom:8 }}>
+                Photos <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0, color:"#94a3b8" }}>({pfExistingImages.length + pfNewFiles.length} / 10)</span>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:8 }}>
+                {/* Existing saved images */}
+                {pfExistingImages.map((src, i) => (
+                  <div key={`ex-${i}`} style={{ position:"relative", aspectRatio:"1", borderRadius:8, overflow:"hidden", background:"#e2e8f0" }}>
+                    <img src={avatarUrl(src)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    <button onClick={() => setPfExistingImages(prev => prev.filter((_, j) => j !== i))}
+                      style={{ position:"absolute", top:3, right:3, width:20, height:20, borderRadius:"50%", background:"rgba(239,68,68,0.9)", border:"none", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
+                  </div>
+                ))}
+                {/* New file previews */}
+                {pfNewFiles.map((nf, i) => (
+                  <div key={`nf-${i}`} style={{ position:"relative", aspectRatio:"1", borderRadius:8, overflow:"hidden", background:"#e2e8f0" }}>
+                    <img src={nf.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    <button onClick={() => setPfNewFiles(prev => prev.filter((_, j) => j !== i))}
+                      style={{ position:"absolute", top:3, right:3, width:20, height:20, borderRadius:"50%", background:"rgba(239,68,68,0.9)", border:"none", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
+                  </div>
+                ))}
+                {/* Add button */}
+                {(pfExistingImages.length + pfNewFiles.length) < 10 && (
+                  <div onClick={() => pfFileRef.current?.click()}
+                    style={{ aspectRatio:"1", borderRadius:8, border:"2px dashed #cbd5e1", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", background:"#f8fafc", gap:4, transition:"border-color .2s" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor="#06b6d4"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor="#cbd5e1"}>
+                    <div style={{ fontSize:22, color:"#94a3b8", lineHeight:1 }}>+</div>
+                    <div style={{ fontSize:9, color:"#94a3b8", fontWeight:700 }}>Ajouter</div>
+                  </div>
+                )}
+              </div>
+              <input ref={pfFileRef} type="file" accept="image/*" multiple style={{ display:"none" }}
+                onChange={e => { addPfFiles(e.target.files); e.target.value = ""; }} />
+            </div>
+
+            {/* ── Titre ── */}
+            <div className="pr-field" style={{ marginBottom:12 }}>
+              <div className="pr-field-label">Titre</div>
+              <input className="pr-input" value={pfDraft.title} maxLength={100} placeholder="Ex: Installation électrique complète"
+                onChange={e => setPfDraft(p => ({...p, title: e.target.value}))} />
+            </div>
+
+            {/* ── Localisation ── */}
+            <div className="pr-field-grid" style={{ marginBottom:12 }}>
+              <div className="pr-field">
+                <div className="pr-field-label">Gouvernorat</div>
+                <select className="pr-select" value={pfDraft.governorate}
+                  onChange={e => setPfDraft(p => ({...p, governorate: e.target.value, city:""}))}>
+                  <option value="">Gouvernorat</option>
+                  {GOUVERNORATS.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="pr-field">
+                <div className="pr-field-label">Délégation</div>
+                <select className="pr-select" value={pfDraft.city} disabled={!pfDraft.governorate}
+                  onChange={e => setPfDraft(p => ({...p, city: e.target.value}))}>
+                  <option value="">{pfDraft.governorate ? "Délégation" : "Choisir gouvernorat"}</option>
+                  {(DELEGATIONS[pfDraft.governorate] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* ── Position exacte (optionnel) ── */}
+            <div className="pr-field" style={{ marginBottom:12 }}>
+              <div className="pr-field-label">Position exacte <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0, color:"#94a3b8" }}>(optionnel)</span></div>
+              <input className="pr-input" value={pfDraft.exactLocation} maxLength={120} placeholder="Ex: Rue Ibn Khaldoun, Bâtiment A"
+                onChange={e => setPfDraft(p => ({...p, exactLocation: e.target.value}))} />
+            </div>
+
+            {/* ── Description ── */}
+            <div className="pr-field" style={{ marginBottom:16 }}>
+              <div className="pr-field-label">Description</div>
+              <textarea className="pr-textarea" value={pfDraft.description} maxLength={500} rows={3}
+                placeholder="Décrivez ce projet…"
+                onChange={e => setPfDraft(p => ({...p, description: e.target.value}))} />
+              <div style={{ fontSize:10, color:"#94a3b8", textAlign:"right", marginTop:3 }}>{(pfDraft.description||"").length} / 500</div>
+            </div>
+
+            {pfMsg && <div style={{ fontSize:12, color:"#ef4444", marginBottom:12, fontWeight:600 }}>{pfMsg}</div>}
+
+            <div className="pr-btn-row">
+              <button className="pr-cancel-btn" onClick={() => setPfOpen(false)}><X size={11} />Annuler</button>
+              <button className="pr-save-btn" onClick={savePfItem} disabled={pfSaving}><Check size={11} />{pfSaving ? "Enregistrement…" : "Enregistrer"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -239,6 +239,39 @@ export const workerApi = {
       headers: authHeaders(),
     }).then(handle),
 
+  addPortfolioItem: (formData) =>
+    fetch(`${BASE}/worker/portfolio`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(handle),
+
+  updatePortfolioItem: (itemId, formData) =>
+    fetch(`${BASE}/worker/portfolio/${itemId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(handle),
+
+  deletePortfolioItem: (itemId) =>
+    fetch(`${BASE}/worker/portfolio/${itemId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).then(handle),
+
+  deletePortfolioReview: (itemId, reviewId) =>
+    fetch(`${BASE}/worker/portfolio/${itemId}/review/${reviewId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).then(handle),
+
+  updateSchedule: (schedule) =>
+    fetch(`${BASE}/worker/schedule`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ availabilitySchedule: schedule }),
+    }).then(handle),
+
   getNotifications: () =>
     fetch(`${BASE}/worker/notifications`, { headers: authHeaders() }).then(handle),
 
@@ -332,6 +365,18 @@ export const reservationApi = {
       method: "PATCH",
       headers: authHeaders(),
       body: JSON.stringify({ status }),
+    }).then(handle),
+};
+
+// ════════════════════════════════════════════
+//  PORTFOLIO
+// ════════════════════════════════════════════
+export const portfolioApi = {
+  submitReview: (workerId, itemId, payload) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/review`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
     }).then(handle),
 };
 

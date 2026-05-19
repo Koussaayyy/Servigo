@@ -151,7 +151,7 @@ exports.createReservation = async (req, res) => {
     });
 
     if (activeExists) {
-      return res.status(409).json({ message: "This slot is already reserved" });
+      return res.status(409).json({ message: "Ce créneau est déjà réservé. Veuillez choisir un autre horaire." });
     }
 
     // Check if THIS CLIENT already has ANY reservation with this worker at this time
@@ -160,11 +160,11 @@ exports.createReservation = async (req, res) => {
       worker: workerId,
       bookingDate: { $gte: dayStart, $lte: dayEnd },
       bookingHour: hour,
-      status: { $nin: ["cancelled", "rejected"] }, // Exclude cancelled/rejected reservations
+      status: { $nin: ["cancelled", "rejected"] },
     });
 
     if (clientConflict) {
-      return res.status(409).json({ message: "You already have a reservation with this worker at this time" });
+      return res.status(409).json({ message: "Vous avez déjà une réservation avec ce prestataire à cet horaire." });
     }
 
     const reservation = await Reservation.create({
@@ -394,8 +394,25 @@ exports.submitClientReview = async (req, res) => {
       reviewedAt: new Date(),
     };
     await reservation.save();
-
     await recalculateWorkerRating(reservation.worker);
+
+    // Notify the worker about the new review
+    const client = await User.findById(req.user.id).select("firstName lastName");
+    const clientName = client ? `${client.firstName} ${client.lastName}`.trim() : "Un client";
+    const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+    const dateStr = toISODateString(new Date(reservation.bookingDate));
+    await User.findByIdAndUpdate(reservation.worker, {
+      $push: {
+        notifications: {
+          type: "review",
+          title: `Nouvel avis de ${clientName}`,
+          message: `${stars} pour votre service du ${dateStr}${comment ? ` — "${comment.slice(0, 80)}${comment.length > 80 ? "…" : ""}"` : ""}`,
+          reservationId: reservation._id,
+          read: false,
+          createdAt: new Date(),
+        },
+      },
+    });
 
     return res.json({ message: "Review submitted", reservation });
   } catch (err) {

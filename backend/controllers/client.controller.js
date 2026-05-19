@@ -24,12 +24,12 @@ exports.updateProfile = async (req, res) => {
     }
 
     const data = {};
-    if (firstName) data.firstName     = firstName;
-    if (lastName)  data.lastName      = lastName;
-    if (phone)     data.phone         = phone;
-    if (gender)    data.gender        = gender;
-    if (birthDate) data.birthDate     = birthDate;
-    if (parsed)    data.clientProfile = parsed;
+    if (firstName !== undefined) data.firstName     = firstName;
+    if (lastName  !== undefined) data.lastName      = lastName;
+    if (phone     !== undefined) data.phone         = phone;
+    if (gender    !== undefined) data.gender        = gender;
+    if (birthDate !== undefined) data.birthDate     = birthDate;
+    if (parsed    !== undefined) data.clientProfile = parsed;
 
     const user = await User.findByIdAndUpdate(
       req.user.id,

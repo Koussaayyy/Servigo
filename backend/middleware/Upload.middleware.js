@@ -49,6 +49,12 @@ exports.uploadPortfolioImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single("image");
 
+exports.uploadPortfolioImages = multer({
+  storage: portfolioStorage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+}).array("images", 10);
+
 const onboardingStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === "avatar") return cb(null, avatarDir);

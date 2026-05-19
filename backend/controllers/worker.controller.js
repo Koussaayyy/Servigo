@@ -27,12 +27,19 @@ exports.updateProfile = async (req, res) => {
     }
 
     const data = {};
-    if (firstName)  data.firstName     = firstName;
-    if (lastName)   data.lastName      = lastName;
-    if (phone)      data.phone         = phone;
-    if (gender)     data.gender        = gender;
-    if (birthDate)  data.birthDate     = birthDate;
-    if (parsed)     data.workerProfile = parsed;
+    if (firstName !== undefined) data.firstName = firstName;
+    if (lastName  !== undefined) data.lastName  = lastName;
+    if (phone     !== undefined) data.phone     = phone;
+    if (gender    !== undefined) data.gender    = gender;
+    if (birthDate !== undefined) data.birthDate = birthDate;
+
+    // Use dot-notation to avoid wiping portfolio/schedule/etc.
+    if (parsed) {
+      const allowed = ["city","experience","bio","hourlyRate","professions","isAvailable","availabilitySchedule","availabilityCalendar"];
+      for (const [key, val] of Object.entries(parsed)) {
+        if (allowed.includes(key)) data[`workerProfile.${key}`] = val;
+      }
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
@@ -246,5 +253,170 @@ exports.markAllNotificationsAsRead = async (req, res) => {
     return res.json({ message: "All notifications marked as read", notifications: user.notifications });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @POST /api/workers/:workerId/portfolio/:itemId/review ──
+exports.submitPortfolioReview = async (req, res) => {
+  try {
+    const { workerId, itemId } = req.params;
+    const ratingNum = Number(req.body.rating);
+    const comment   = String(req.body.comment || "").trim().slice(0, 500);
+
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ message: "La note doit être entre 1 et 5" });
+    }
+
+    if (String(req.user._id) === String(workerId)) {
+      return res.status(403).json({ message: "Vous ne pouvez pas évaluer votre propre portfolio" });
+    }
+
+    const worker = await User.findById(workerId);
+    if (!worker || worker.role !== "worker") {
+      return res.status(404).json({ message: "Prestataire introuvable" });
+    }
+
+    const item = worker.workerProfile.portfolio.id(itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Réalisation introuvable" });
+    }
+
+    const reviewerName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Anonyme";
+    const existing = item.reviews.find((r) => String(r.clientId) === String(req.user._id));
+    const isUpdate = !!existing;
+
+    if (existing) {
+      existing.rating  = ratingNum;
+      existing.comment = comment;
+    } else {
+      item.reviews.push({ clientId: req.user._id, clientName: reviewerName, rating: ratingNum, comment, createdAt: new Date() });
+    }
+
+    await worker.save();
+
+    // Notify the worker
+    const stars = "★".repeat(ratingNum) + "☆".repeat(5 - ratingNum);
+    await User.findByIdAndUpdate(workerId, {
+      $push: {
+        notifications: {
+          type: "review",
+          title: isUpdate ? `Avis modifié par ${reviewerName}` : `Nouvel avis de ${reviewerName}`,
+          message: `${stars} sur « ${item.title || "une réalisation"} »${comment ? ` — "${comment.slice(0, 80)}${comment.length > 80 ? "…" : ""}"` : ""}`,
+          read: false,
+          createdAt: new Date(),
+        },
+      },
+    });
+
+    return res.json({ message: "Avis enregistré", portfolio: worker.workerProfile.portfolio });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @POST /api/worker/portfolio ──────────────────────────
+exports.createPortfolioItem = async (req, res) => {
+  try {
+    const { title, description, city, governorate, exactLocation } = req.body;
+    const newImages = (req.files || []).map(f => `/uploads/portfolio/${f.filename}`);
+    const imageUrl  = newImages[0] || "";
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $push: { "workerProfile.portfolio": {
+        title:         title         || "",
+        description:   description   || "",
+        city:          city          || "",
+        governorate:   governorate   || "",
+        exactLocation: exactLocation || "",
+        imageUrl,
+        images: newImages,
+      }}},
+      { new: true }
+    ).select("-password");
+    res.json({ message: "Réalisation ajoutée", portfolio: user.workerProfile.portfolio });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/worker/portfolio/:itemId ───────────────────
+exports.updatePortfolioItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { title, description, city, governorate, exactLocation } = req.body;
+
+    // existingImages = server paths the client wants to keep
+    let existingImages = req.body.existingImages || [];
+    if (typeof existingImages === "string") existingImages = [existingImages];
+
+    const user = await User.findById(req.user.id);
+    const item = user.workerProfile.portfolio.id(itemId);
+    if (!item) return res.status(404).json({ message: "Réalisation introuvable" });
+
+    if (title         !== undefined) item.title         = title;
+    if (description   !== undefined) item.description   = description;
+    if (city          !== undefined) item.city          = city;
+    if (governorate   !== undefined) item.governorate   = governorate;
+    if (exactLocation !== undefined) item.exactLocation = exactLocation;
+
+    const newImages = (req.files || []).map(f => `/uploads/portfolio/${f.filename}`);
+    item.images   = [...existingImages, ...newImages];
+    item.imageUrl = item.images[0] || "";
+
+    await user.save();
+    res.json({ message: "Réalisation mise à jour", portfolio: user.workerProfile.portfolio });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @DELETE /api/worker/portfolio/:itemId ────────────────
+exports.deletePortfolioItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const user = await User.findById(req.user.id);
+    const item = user.workerProfile.portfolio.id(itemId);
+    if (!item) return res.status(404).json({ message: "Réalisation introuvable" });
+    if (item.imageUrl?.startsWith("/uploads/")) {
+      const filePath = path.join(__dirname, "..", item.imageUrl);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    item.deleteOne();
+    await user.save();
+    res.json({ message: "Réalisation supprimée", portfolio: user.workerProfile.portfolio });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @DELETE /api/worker/portfolio/:itemId/review/:reviewId
+exports.deletePortfolioReview = async (req, res) => {
+  try {
+    const { itemId, reviewId } = req.params;
+    const user = await User.findById(req.user.id);
+    const item = user.workerProfile.portfolio.id(itemId);
+    if (!item) return res.status(404).json({ message: "Réalisation introuvable" });
+    const review = item.reviews.id(reviewId);
+    if (!review) return res.status(404).json({ message: "Avis introuvable" });
+    review.deleteOne();
+    await user.save();
+    res.json({ message: "Avis supprimé", portfolio: user.workerProfile.portfolio });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PUT /api/worker/schedule ────────────────────────────
+exports.updateSchedule = async (req, res) => {
+  try {
+    const { availabilitySchedule } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { "workerProfile.availabilitySchedule": availabilitySchedule } },
+      { new: true }
+    ).select("-password");
+    res.json({ message: "Planning mis à jour", availabilitySchedule: user.workerProfile.availabilitySchedule });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
