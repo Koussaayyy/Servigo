@@ -31,6 +31,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [clientReservations, setClientReservations] = useState([]);
   const [clientHistory, setClientHistory]           = useState([]);
   const [workerReservations, setWorkerReservations] = useState([]);
+  const [selectedWorkerReservation, setSelectedWorkerReservation] = useState(null);
   const [reviewForms, setReviewForms]     = useState({});
   const [reviewLoadingId, setReviewLoadingId] = useState("");
 
@@ -181,19 +182,40 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                 : <div style={{ display:"grid",gap:10 }}>
                     {workerReservations.map((r) => (
                       <ReservationRow key={r._id} reservation={r}
-                        rightAction={r.status==="pending"
-                          ? <div style={{ display:"flex",gap:8 }}>
-                              <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"accepted")} disabled={actionLoading}>Accepter</button>
-                              <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"rejected")} disabled={actionLoading}>Refuser</button>
-                            </div>
-                          : r.status==="accepted"
-                            ? <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"completed")} disabled={actionLoading}>Terminer</button>
-                            : null}
+                        rightAction={
+                          <button
+                            className="mode-tab"
+                            onClick={() => setSelectedWorkerReservation(r)}
+                            disabled={actionLoading}
+                          >
+                            Voir détails
+                          </button>
+                        }
                       />
                     ))}
                   </div>
               }
             </section>
+          )}
+
+          {isWorker && selectedWorkerReservation && (
+            <WorkerReservationDetailsModal
+              reservation={selectedWorkerReservation}
+              actionLoading={actionLoading}
+              onClose={() => setSelectedWorkerReservation(null)}
+              onAccept={async () => {
+                await setWorkerStatus(selectedWorkerReservation._id, "accepted");
+                setSelectedWorkerReservation(null);
+              }}
+              onReject={async () => {
+                await setWorkerStatus(selectedWorkerReservation._id, "rejected");
+                setSelectedWorkerReservation(null);
+              }}
+              onComplete={async () => {
+                await setWorkerStatus(selectedWorkerReservation._id, "completed");
+                setSelectedWorkerReservation(null);
+              }}
+            />
           )}
         </div>
       </div>
@@ -216,6 +238,92 @@ function ReservationRow({ reservation, rightAction, children }) {
         {children}
       </div>
       {rightAction}
+    </div>
+  );
+}
+
+const mediaUrl = (path) => {
+  if (!path) return "";
+  if (String(path).startsWith("http")) return path;
+  return `http://localhost:5000${path}`;
+};
+
+function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, onAccept, onReject, onComplete }) {
+  const isPending = reservation?.status === "pending";
+  const isAccepted = reservation?.status === "accepted";
+  const media = Array.isArray(reservation?.mediaAttachments) ? reservation.mediaAttachments : [];
+
+  return (
+    <div
+      style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.7)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ width:"100%",maxWidth:760,maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",padding:18 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+          <h3 style={{ margin:0,fontSize:18,color:"#0f172e" }}>Détails de la réservation</h3>
+          <button className="mode-tab" onClick={onClose}>Fermer</button>
+        </div>
+
+        <div style={{ display:"grid",gap:6,fontSize:13,color:"#334155",marginBottom:14 }}>
+          <div><strong>Client:</strong> {reservation?.client?.firstName || ""} {reservation?.client?.lastName || ""}</div>
+          <div><strong>Date:</strong> {fmtDate(reservation?.bookingDate)} à {fmtHour(reservation?.bookingHour)}</div>
+          <div><strong>Service:</strong> {reservation?.serviceType || "Service"}</div>
+          <div><strong>Adresse:</strong> {reservation?.address || "-"}</div>
+          {reservation?.client?.phone && <div><strong>Téléphone:</strong> {reservation.client.phone}</div>}
+          <div><strong>Statut:</strong> {reservation?.status}</div>
+        </div>
+
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Notes du client</div>
+          <div style={{ background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10,fontSize:13,color:"#334155",minHeight:48 }}>
+            {reservation?.notes?.trim() ? reservation.notes : "Aucune note fournie."}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Photos / Vidéos</div>
+          {media.length === 0 ? (
+            <div style={{ fontSize:12,color:"#94a3b8" }}>Aucun média joint.</div>
+          ) : (
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8 }}>
+              {media.map((item, idx) => {
+                const url = mediaUrl(item?.url);
+                const isVideo = String(item?.mimeType || "").startsWith("video/");
+                return (
+                  <a
+                    key={`${url}-${idx}`}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ border:"1px solid #e2e8f0",borderRadius:8,padding:6,textDecoration:"none",color:"#0f172e",background:"#f8fafc" }}
+                  >
+                    {isVideo ? (
+                      <video src={url} controls style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6,background:"#000" }} />
+                    ) : (
+                      <img src={url} alt={item?.originalName || `media-${idx + 1}`} style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6 }} />
+                    )}
+                    <div style={{ fontSize:10,color:"#64748b",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                      {item?.originalName || (isVideo ? `Vidéo ${idx + 1}` : `Photo ${idx + 1}`)}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
+          {isPending && (
+            <>
+              <button className="mode-tab" onClick={onAccept} disabled={actionLoading}>Accepter</button>
+              <button className="mode-tab" onClick={onReject} disabled={actionLoading}>Refuser</button>
+            </>
+          )}
+          {isAccepted && (
+            <button className="mode-tab" onClick={onComplete} disabled={actionLoading}>Marquer terminé</button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

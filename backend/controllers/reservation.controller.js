@@ -97,6 +97,13 @@ async function recalculateWorkerRating(workerId) {
 exports.createReservation = async (req, res) => {
   try {
     const { workerId, bookingDate, bookingHour, serviceType, address, notes } = req.body;
+    const mediaAttachments = Array.isArray(req.files)
+      ? req.files.map((file) => ({
+          url: `/uploads/reservation-media/${file.filename}`,
+          mimeType: file.mimetype || "",
+          originalName: file.originalname || "",
+        }))
+      : [];
 
     const date = parseDateOnly(bookingDate);
     const hour = normalizeHour(bookingHour);
@@ -175,6 +182,7 @@ exports.createReservation = async (req, res) => {
       serviceType: serviceType || "",
       address: address || "",
       notes: notes || "",
+      mediaAttachments,
     });
 
     // ── Notify the worker ──────────────────────────────────

@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const reservationController = require("../controllers/reservation.controller");
 const { protect, authorize } = require("../middleware/auth.middleware");
+const { uploadReservationMedia } = require("../middleware/Upload.middleware");
 
 // Workers can also book other workers — allow both roles on booking routes
-router.post("/", protect, authorize("client", "worker"), reservationController.createReservation);
+router.post("/", protect, authorize("client", "worker"), uploadReservationMedia, reservationController.createReservation);
 router.get("/worker/:workerId/available-slots", protect, authorize("client", "worker"), reservationController.getWorkerAvailableSlots);
 router.get("/worker/:workerId/month-availability", protect, authorize("client", "worker"), reservationController.getWorkerMonthlyAvailability);
 

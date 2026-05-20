@@ -319,12 +319,16 @@ export const reservationApi = {
     }).then(handle);
   },
 
-  create: (payload) =>
-    fetch(`${BASE}/reservations`, {
+  create: (payload) => {
+    const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
+    return fetch(`${BASE}/reservations`, {
       method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
-    }).then(handle),
+      headers: isFormData
+        ? { Authorization: `Bearer ${getToken()}` }
+        : authHeaders(),
+      body: isFormData ? payload : JSON.stringify(payload),
+    }).then(handle);
+  },
 
   getClientReservations: () =>
     fetch(`${BASE}/reservations/client`, {

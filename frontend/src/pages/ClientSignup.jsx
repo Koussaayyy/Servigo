@@ -41,12 +41,12 @@ export default function ClientSignup({ onBack, onSuccess }) {
       <div className="field-row">
         <div className="field">
           <label>First Name</label>
-          <input name="firstName" type="text" placeholder="Jane"
+          <input name="firstName" type="text" placeholder="Foulen"
             value={form.firstName} onChange={handle} />
         </div>
         <div className="field">
           <label>Last Name</label>
-          <input name="lastName" type="text" placeholder="Doe"
+          <input name="lastName" type="text" placeholder="Fouleni"
             value={form.lastName} onChange={handle} />
         </div>
       </div>

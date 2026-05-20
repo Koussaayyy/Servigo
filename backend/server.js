@@ -5,7 +5,11 @@ const cors     = require("cors");
 const dotenv   = require("dotenv");
 const path     = require("path");
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env") });
+
+console.log("SMTP host:", process.env.SMTP_HOST || "(missing)");
+console.log("SMTP user:", process.env.SMTP_USER || process.env.GMAIL_USER || "(missing)");
+console.log("Dev email bypass:", process.env.ALLOW_DEV_EMAIL_BYPASS || "false");
 
 const app = express();
 

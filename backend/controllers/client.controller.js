@@ -183,7 +183,10 @@ exports.markAllNotificationsAsRead = async (req, res) => {
 exports.getSavedWorkers = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .populate("savedWorkers", "firstName lastName avatar role workerProfile")
+      .populate(
+        "savedWorkers",
+        "firstName lastName email phone gender birthDate avatar role isVerified isActive workerVerification workerProfile createdAt"
+      )
       .select("savedWorkers");
     res.json(user.savedWorkers || []);
   } catch (err) {
