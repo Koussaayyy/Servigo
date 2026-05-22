@@ -46,13 +46,6 @@ const ReservationSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    mediaAttachments: [
-      {
-        url: { type: String, required: true },
-        mimeType: { type: String, default: "" },
-        originalName: { type: String, default: "" },
-      },
-    ],
     cancellationReason: {
       type: String,
       default: "",
@@ -73,6 +66,10 @@ const ReservationSchema = new mongoose.Schema(
         type: Date,
       },
     },
+    autoExpireAt: {
+      type: Date,
+      index: true,
+    },
   },
   { timestamps: true }
 );
@@ -80,4 +77,15 @@ const ReservationSchema = new mongoose.Schema(
 ReservationSchema.index({ worker: 1, bookingDate: 1, bookingHour: 1 });
 ReservationSchema.index({ client: 1, bookingDate: -1, bookingHour: -1 });
 
+// Auto-expire pending reservations after 12 hours
+ReservationSchema.pre('save', function(next) {
+  if (this.isNew && this.status === 'pending') {
+    const now = new Date();
+    this.autoExpireAt = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+  }
+  next();
+});
+
 module.exports = mongoose.model("Reservation", ReservationSchema);
+
+

@@ -228,13 +228,68 @@ function ReservationRow({ reservation, rightAction, children }) {
   const client = reservation.client;
   const isObj  = (v) => v && typeof v === "object" && !Array.isArray(v);
   const person = isObj(worker) ? worker : isObj(client) ? client : {};
+  
+  // Status colors and labels
+  const statusConfig = {
+    pending: { label: "En attente", bg: "#fffbeb", color: "#b45309", border: "#fcd34d" },
+    accepted: { label: "Acceptée", bg: "#f0fdf4", color: "#15803d", border: "#86efac" },
+    rejected: { label: "Refusée", bg: "#fef2f2", color: "#b91c1c", border: "#fca5a5" },
+    cancelled: { label: "Annulée", bg: "#f8fafc", color: "#64748b", border: "#cbd5e1" },
+    completed: { label: "Terminée", bg: "#f0f9ff", color: "#0369a1", border: "#7dd3fc" },
+  };
+  
+  const config = statusConfig[reservation.status] || { label: reservation.status, bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" };
+  
+  // Calculate countdown for pending reservations
+  const [countdown, setCountdown] = useState("");
+  useEffect(() => {
+    if (reservation.status !== "pending" || !reservation.autoExpireAt) return;
+    
+    const interval = setInterval(() => {
+      const now = new Date();
+      const expireTime = new Date(reservation.autoExpireAt);
+      const diff = expireTime - now;
+      
+      if (diff <= 0) {
+        setCountdown("Expirée");
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        setCountdown(`${hours}h ${mins}m`);
+      }
+    }, 30000); // Update every 30 seconds
+    
+    // Initial calculation
+    const now = new Date();
+    const expireTime = new Date(reservation.autoExpireAt);
+    const diff = expireTime - now;
+    if (diff <= 0) {
+      setCountdown("Expirée");
+    } else {
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      setCountdown(`${hours}h ${mins}m`);
+    }
+    
+    return () => clearInterval(interval);
+  }, [reservation.status, reservation.autoExpireAt]);
+  
   return (
     <div style={{ border:"1px solid #e2e8f0",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center" }}>
-      <div>
+      <div style={{ flex:1 }}>
         <div style={{ fontSize:14,color:"#0f172e",fontWeight:600 }}>{person.firstName||"Utilisateur"} {person.lastName||""}</div>
         <div style={{ fontSize:12,color:"#64748b" }}>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)} · {reservation.serviceType||"Service"}</div>
         {reservation.address && <div style={{ fontSize:12,color:"#64748b" }}>{reservation.address}</div>}
-        <div style={{ fontSize:11,marginTop:3,color:"#64748b",textTransform:"uppercase",letterSpacing:".08em" }}>Statut: {reservation.status}</div>
+        <div style={{ marginTop:8,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+          <span style={{ fontSize:11,fontWeight:700,color:"#fff",background:config.color,border:`1.5px solid ${config.border}`,padding:"4px 10px",borderRadius:6,backgroundColor:config.color }}>{config.label}</span>
+          {reservation.status === "pending" && countdown && (
+            <div style={{ display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,color:"#fff",background:"#b45309",border:"1.5px solid #d97706",padding:"4px 8px",borderRadius:6,cursor:"help",title:"L'artisan a 12 heures pour accepter cette réservation. Passé ce délai, elle sera annulée automatiquement." }}>
+              <span style={{ fontSize:12 }}>⏱️</span>
+              <span>{countdown}</span>
+              <span style={{ fontSize:11,fontWeight:700 }}>avant annulation</span>
+            </div>
+          )}
+        </div>
         {children}
       </div>
       {rightAction}

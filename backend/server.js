@@ -38,6 +38,31 @@ app.use("/api/reclamations", require("./routes/reclamation.routes"));
 
 app.get("/", (req, res) => res.json({ message: "Servigo API running ✅" }));
 
+// ── Auto-expire pending reservations every minute ─────────────────
+const Reservation = require("./models/Reservation.model");
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const result = await Reservation.updateMany(
+      {
+        status: "pending",
+        autoExpireAt: { $lte: now },
+      },
+      {
+        $set: {
+          status: "cancelled",
+          cancellationReason: "Auto-cancelled: Worker did not accept within 12 hours",
+        },
+      }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`⏰ Auto-cancelled ${result.modifiedCount} expired reservations`);
+    }
+  } catch (err) {
+    console.error("❌ Auto-expire job error:", err);
+  }
+}, 60000); // Run every 60 seconds
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
