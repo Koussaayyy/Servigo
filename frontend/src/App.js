@@ -10,7 +10,6 @@ import GoogleCompleteSignup from "./pages/GoogleCompleteSignup";
 import Onboarding           from "./pages/Onboarding/Onboarding";
 import Profile              from "./pages/Profile";
 import ReservationsPage     from "./pages/ReservationsPage";
-import SavedWorkers         from "./pages/SavedWorkers";
 import AuthModal            from "./components/AuthModal";
 import AdminLoginModal      from "./components/AdminLoginModal";
 import AdminDashboard       from "./pages/AdminDashboard";
@@ -77,11 +76,6 @@ export default function App() {
       case "reservations":
         setMode("app");
         setActivePage("reservations");
-        break;
-
-      case "saved":
-        setMode("app");
-        setActivePage("saved");
         break;
 
       case "dashboard":
@@ -163,7 +157,6 @@ export default function App() {
     const pageUrlMap = {
       profile:      "/profile",
       reservations: "/reservations",
-      saved:        "/saved",
       dashboard:    "/dashboard",
     };
     const url = pageUrlMap[page] || `/${page}`;
@@ -406,36 +399,6 @@ export default function App() {
             onLogout={onLogout}
           />
           {authModalNode}
-        </>
-      );
-    }
-
-    // ── Saved Workers ─────────────────────────────────────────────────────
-    if (mode === "app" && activePage === "saved") {
-      return (
-        <>
-          <SavedWorkers
-            user={loggedUser}
-            onHome={() => switchTo("home")}
-            onNavigate={handleNavigate}
-            onLogout={onLogout}
-            onReserveWorker={(worker) => setPendingReservation(worker)}
-          />
-          {authModalNode}
-          {pendingReservation && loggedUser && (
-            <ReservationDialog
-              worker={pendingReservation}
-              user={loggedUser}
-              onClose={() => {
-                setPendingReservation(null);
-                localStorage.removeItem("pendingReservation");
-              }}
-              onSuccess={() => {
-                setPendingReservation(null);
-                localStorage.removeItem("pendingReservation");
-              }}
-            />
-          )}
         </>
       );
     }

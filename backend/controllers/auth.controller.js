@@ -26,42 +26,10 @@ const transporter = nodemailer.createTransport({
   auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
 });
 
-const isDevEmailBypassEnabled = () =>
-  process.env.ALLOW_DEV_EMAIL_BYPASS === "true";
-
-const sendMailWithFallback = async (mailOptions, fallbackLog) => {
-  console.log(`📨 Sending email to ${mailOptions.to} with subject: ${mailOptions.subject}`);
-
-  if (isDevEmailBypassEnabled()) {
-    console.warn("Email send skipped. Dev bypass enabled; using terminal fallback.");
-    if (fallbackLog) {
-      console.log(fallbackLog);
-    }
-    return { delivered: false, bypassed: true };
-  }
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ SMTP send result:", {
-      messageId: info.messageId,
-      envelope: info.envelope,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      response: info.response,
-    });
-    return { delivered: true, bypassed: false, info };
-  } catch (err) {
-    if (err?.responseCode === 535) {
-      throw new Error("Email service auth failed. Check SMTP credentials in backend env.");
-    }
-
-    throw err;
-  }
-};
-
 const sendVerificationCodeEmail = async ({ email, firstName, code }) => {
-  return sendMailWithFallback(
-    {
+  const allowDevBypass = process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_EMAIL_BYPASS === "true";
+  try {
+    await transporter.sendMail({
       from:    MAIL_FROM,
       to:      email,
       subject: "Verify your Servigo email",
@@ -77,9 +45,30 @@ const sendVerificationCodeEmail = async ({ email, firstName, code }) => {
           <p style="color: #999; font-size: 12px;">If you didn't create this account, ignore this email.</p>
         </div>
       `,
-    },
-    `DEV verification code for ${email}: ${code}`
-  );
+    });
+    return { delivered: true, bypassed: false };
+  } catch (err) {
+    if (err?.responseCode === 535) {
+      if (allowDevBypass) {
+        console.warn("Email SMTP auth failed (535). Dev bypass enabled; using terminal verification code.");
+        console.log(`DEV verification code for ${email}: ${code}`);
+        return { delivered: false, bypassed: true };
+      }
+      throw new Error("Email service auth failed. Check SMTP credentials in backend env.");
+    }
+    if (allowDevBypass) {
+      console.warn("Email send failed. Dev bypass enabled; using terminal verification code.");
+      console.log(`DEV verification code for ${email}: ${code}`);
+      return { delivered: false, bypassed: true };
+    }
+    throw err;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`DEBUG verification code for ${email}: ${code}`);
+  }
+
+  return { delivered: true, bypassed: false };
 };
 
 // ── Helper: full user object ───────────────────────────────
@@ -232,12 +221,11 @@ exports.forgotPassword = async (req, res) => {
 
     const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
 
-    await sendMailWithFallback(
-      {
-        from:    MAIL_FROM,
-        to:      email,
-        subject: "Reset your Servigo password",
-        html: `
+    await transporter.sendMail({
+      from:    MAIL_FROM,
+      to:      email,
+      subject: "Reset your Servigo password",
+      html: `
         <div style="font-family: sans-serif; max-width: 500px; margin: auto;">
           <h2 style="color: #e8620a;">Reset your password</h2>
           <p>Hi ${user.firstName},</p>
@@ -251,9 +239,7 @@ exports.forgotPassword = async (req, res) => {
           <p style="color: #999;">If you didn't request this, ignore this email.</p>
         </div>
       `,
-      },
-      `DEV password reset link for ${email}: ${resetUrl}`
-    );
+    });
 
     res.json({ message: "Reset link sent to your email!" });
   } catch (err) {
@@ -334,8 +320,6 @@ exports.resendVerificationCode = async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    console.log("🔁 Resend verification requested for:", email);
-
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "No account found with this email" });
     if (user.isVerified) return res.status(400).json({ message: "Email is already verified" });
@@ -350,8 +334,6 @@ exports.resendVerificationCode = async (req, res) => {
       firstName: user.firstName,
       code: verificationCode,
     });
-
-    console.log("✅ Resend verification completed:", emailResult);
 
     res.json({
       message: "Verification code resent",

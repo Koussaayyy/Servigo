@@ -79,7 +79,6 @@ function WorkerCard({ worker, onReserve, onNavigate, isSaved, onToggleSave }) {
         </div>
         {onToggleSave && (
           <button
-            type="button"
             onClick={() => onToggleSave(worker._id, isSaved)}
             style={{ background:isSaved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${isSaved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:7,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.2s",color:isSaved?"#06b6d4":"#94a3b8" }}
           >
@@ -123,14 +122,12 @@ function WorkerCard({ worker, onReserve, onNavigate, isSaved, onToggleSave }) {
 
       <div style={{ display:"flex",gap:8 }}>
         <button
-          type="button"
           onClick={() => typeof onReserve === "function" && onReserve(worker)}
           style={{ flex:1,background:hov?"#0f172e":"#f8fafc",color:hov?"#06b6d4":"#0f172e",border:`1.5px solid ${hov?"#0f172e":"#e2e8f0"}`,borderRadius:8,padding:"10px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.12em",textTransform:"uppercase",transition:"all 0.25s" }}
         >
           Réserver
         </button>
         <button
-          type="button"
           onClick={() => typeof onNavigate === "function" && onNavigate("profile", { profileUser: worker })}
           style={{ flex:1,background:"transparent",color:"#06b6d4",border:"1.5px solid rgba(6,182,212,0.35)",borderRadius:8,padding:"10px",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"0.12em",textTransform:"uppercase",transition:"all 0.25s" }}
         >
