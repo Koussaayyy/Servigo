@@ -111,6 +111,25 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
     const errs = validateStep(step);
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
+
+    // Step 2 → check city match against worker's city
+    if (step === 2) {
+      const workerCity = (worker?.workerProfile?.city || "").trim().toLowerCase();
+      if (workerCity) {
+        const clientGov  = gouvernorat.trim().toLowerCase();
+        const clientDel  = delegation.trim().toLowerCase();
+        const clientVill = ville.trim().toLowerCase();
+        const matches = clientVill === workerCity || clientDel === workerCity || clientGov === workerCity;
+        if (!matches) {
+          setResult({
+            ok: false,
+            message: `Ce prestataire n'intervient pas dans votre zone. Il opère à « ${worker.workerProfile.city} ». Veuillez choisir une adresse dans cette ville.`,
+          });
+          return;
+        }
+      }
+    }
+
     setStep((s) => s + 1);
   };
 

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapPin, Star, Briefcase, Edit3, Check, X, Trash2,
-  ShieldCheck, Camera, Mail, Calendar, Award, Image,
+  ShieldCheck, Camera, Mail, Calendar, Award, Image, Bookmark, BookmarkCheck,
 } from "lucide-react";
-import { avatarUrl, clientApi, workerApi, reservationApi, portfolioApi } from "../api";
+import { avatarUrl, clientApi, workerApi, portfolioApi } from "../api";
 import { GOUVERNORATS, DELEGATIONS } from "../constants/tunisia";
 import Navbar from "../components/Navbar";
+import ReservationDialog from "../components/ReservationDialog";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
@@ -37,18 +38,18 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
     repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(6,182,212,0.02) 40px, rgba(6,182,212,0.02) 41px);
 }
 .pr-hero-inner { max-width:1280px; margin:0 auto; padding-bottom:0; position:relative; }
-.pr-avatar-row { display:flex; align-items:flex-end; gap:20px; padding-bottom:0; position:relative; }
+.pr-avatar-row { display:flex; align-items:center; gap:20px; padding-bottom:0; position:relative; }
 .pr-avatar-wrap { position:relative; flex-shrink:0; }
 .pr-avatar {
-  width:100px; height:100px; border-radius:16px;
+  width:130px; height:130px; border-radius:50%;
   border:3px solid rgba(6,182,212,0.4); background:#1e293b;
   display:flex; align-items:center; justify-content:center;
   font-size:36px; font-weight:800; color:#06b6d4; overflow:hidden;
 }
-.pr-avatar img { width:100%; height:100%; object-fit:cover; border-radius:13px; }
+.pr-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
 .pr-avatar-edit-btn {
-  position:absolute; bottom:-6px; right:-6px;
-  width:28px; height:28px; border-radius:8px;
+  position:absolute; bottom:2px; right:2px;
+  width:28px; height:28px; border-radius:50%;
   background:#06b6d4; border:2px solid #0f172e;
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; transition:background .2s;
@@ -66,9 +67,13 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-role-client { background:rgba(6,182,212,0.12); color:#06b6d4; border:1.5px solid rgba(6,182,212,0.25); }
 .pr-role-admin  { background:rgba(245,158,11,0.12); color:#f59e0b; border:1.5px solid rgba(245,158,11,0.25); }
 .pr-tabs {
-  display:flex; gap:0; border-bottom:1.5px solid rgba(255,255,255,0.08);
+  display:flex; align-items:center; gap:0;
+  border-bottom:1.5px solid rgba(255,255,255,0.08);
   margin-top:20px; max-width:1280px; margin-left:auto; margin-right:auto;
   position: relative; z-index: 2;
+}
+.pr-tabs-action {
+  margin-left:auto; padding:0 16px 0 8px; display:flex; align-items:center;
 }
 .pr-tab {
   padding:14px 22px; font-size:12px; font-weight:700;
@@ -171,10 +176,11 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 
 /* ── Lightbox ── */
 .pr-lb { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; }
-.pr-lb-card { display:flex; background:#fff; border-radius:14px; overflow:hidden; max-width:920px; width:100%; max-height:92vh; box-shadow:0 40px 100px rgba(0,0,0,0.5); }
-.pr-lb-left { flex:0 0 56%; background:#000; display:flex; align-items:center; justify-content:center; min-height:300px; }
-.pr-lb-left img { width:100%; height:100%; object-fit:contain; max-height:92vh; display:block; }
-.pr-lb-right { flex:1; overflow-y:auto; display:flex; flex-direction:column; min-width:0; }
+.pr-lb-card { display:flex; background:#fff; border-radius:14px; overflow:hidden; max-width:920px; width:100%; height:min(560px,88vh); box-shadow:0 40px 100px rgba(0,0,0,0.5); }
+.pr-lb-left { flex:0 0 56%; background:#111; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+.pr-lb-left img { width:100%; height:100%; object-fit:cover; display:block; }
+.pr-lb-right { flex:1; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; min-width:0; max-width:100%; }
+.pr-lb-right * { max-width:100%; word-break:break-word; overflow-wrap:break-word; }
 .pr-lb-right::-webkit-scrollbar { width:4px; }
 .pr-lb-right::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:9px; }
 
@@ -185,11 +191,11 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 @media(max-width:1024px){ .pr-grid{ grid-template-columns:1fr; } }
 @media(max-width:768px){ .pr-hero{ padding:76px 16px 0; } .pr-content{ padding:24px 16px 64px; } .pr-hero-name{ font-size:20px; } .pr-field-grid{ grid-template-columns:1fr; } .pr-stats{ grid-template-columns:repeat(3,1fr); } }
 @media(max-width:680px){
-  .pr-lb-card{ flex-direction:column; border-radius:10px; max-height:96vh; }
-  .pr-lb-left{ flex:0 0 auto; min-height:auto; max-height:46vw; }
-  .pr-lb-left img{ max-height:46vw; }
+  .pr-lb-card{ flex-direction:column; border-radius:10px; height:auto; max-height:96vh; }
+  .pr-lb-left{ flex:0 0 240px; min-height:0; }
+  .pr-lb-right{ flex:1; min-height:0; }
 }
-@media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; } .pr-tabs{ overflow-x:auto; } .pr-pf-grid{ gap:2px; } }
+@media(max-width:480px){ .pr-avatar{ width:76px; height:76px; font-size:26px; border-radius:50%; } .pr-tabs{ overflow-x:auto; } .pr-pf-grid{ gap:2px; } }
 `;
 
 const DAYS = [
@@ -205,21 +211,6 @@ const BOOKABLE_HOURS = [8,9,10,11,12,14,15,16,17];
 
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
-const fmtDate = (dateValue) => {
-  if (!dateValue) return "-";
-  const d = new Date(dateValue);
-  if (Number.isNaN(d.getTime())) return String(dateValue).slice(0, 10);
-  return d.toLocaleDateString("fr-FR");
-};
-const next30Days = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
-};
 
 const StarRow = ({ value, hover, onHover, onLeave, onClick, size = 28 }) => (
   <div style={{ display:"flex", gap:2 }}>
@@ -243,24 +234,15 @@ const StarsDisplay = ({ rating, size = 13 }) => {
   );
 };
 
-export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onBack, onHome, onNavigate, onLogout, onUpdateUser }) {
+export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onHome, onNavigate, onLogout, onUpdateUser }) {
   const [profile, setProfile] = useState(initialProfile || currentUser || null);
-  const [loading, setLoading] = useState(!profile);
-  const [tab, setTab]         = useState(initialTab || "overview");
+  const [loading]              = useState(!profile);
+  const [tab, setTab]          = useState(initialTab || "overview");
   const [editingInfo,   setEditingInfo]   = useState(false);
   const [editingWorker, setEditingWorker] = useState(false);
   const [draftInfo,   setDraftInfo]   = useState({});
   const [draftWorker, setDraftWorker] = useState({});
   const [saving, setSaving] = useState(false);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [bookingError, setBookingError] = useState("");
-  const [bookingMessage, setBookingMessage] = useState("");
-  const [selectedService, setSelectedService] = useState("");
-  const [datePage, setDatePage] = useState(0);
-  const [monthAvailability, setMonthAvailability] = useState([]);
-  const [slots, setSlots] = useState([]);
-  const [bookingForm, setBookingForm] = useState({ bookingDate: "", bookingHour: "", address: "", notes: "" });
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [draftGovernorate, setDraftGovernorate] = useState("");
   const [saveError, setSaveError]     = useState("");
@@ -282,6 +264,11 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const [scheduleMsg, setScheduleMsg]         = useState("");
   const avatarInputRef = useRef(null);
   const pfFileRef      = useRef(null);
+
+  // ── Reserve & Save state ──────────────────────────────────
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [isSaved, setIsSaved]         = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
 
   // ── Portfolio state ───────────────────────────────────────
   const [portfolioOpenId, setPortfolioOpenId]         = useState(null);
@@ -314,17 +301,8 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const rating    = Number(wp.rating       || 0);
   const reviews   = Number(wp.totalReviews || 0);
   const avail     = wp.isAvailable !== false;
-  const canReserve = role === "worker" && (currentUser?.role === "client" || currentUser?.role === "worker") && !isOwner;
   const workerId = profile?._id ? String(profile._id) : "";
   const myUserId = String(currentUser?._id || currentUser?.id || "");
-
-  const datePages = useMemo(() => {
-    const pages = [];
-    for (let i = 0; i < monthAvailability.length; i += 7) pages.push(monthAvailability.slice(i, i + 7));
-    return pages;
-  }, [monthAvailability]);
-
-  const visibleDates = datePages[datePage] || [];
 
   const startEditInfo = () => {
     setSaveError("");
@@ -339,6 +317,21 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
       bio_client:  cp.bio     || "",
     });
     setEditingInfo(true);
+  };
+
+  const toggleSave = async () => {
+    if (saveLoading) return;
+    setSaveLoading(true);
+    try {
+      if (isSaved) {
+        await clientApi.unsaveWorker(workerId);
+        setIsSaved(false);
+      } else {
+        await clientApi.saveWorker(workerId);
+        setIsSaved(true);
+      }
+    } catch {}
+    setSaveLoading(false);
   };
 
   const startEditWorker = () => {
@@ -586,121 +579,12 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   }, [initialTab, profile?._id]);
 
   useEffect(() => {
-    if (!canReserve) return;
-    if (selectedService) return;
-    setSelectedService(profs[0] || "");
-  }, [canReserve, profs, selectedService]);
+    if (!currentUser || isOwner || role !== "worker") return;
+    clientApi.getSavedWorkers().then((list) => {
+      setIsSaved((list || []).some((w) => String(w._id) === workerId));
+    }).catch(() => {});
+  }, [workerId, isOwner, role]);
 
-  useEffect(() => {
-    setDatePage(0);
-    setBookingForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
-    setSlots([]);
-  }, [selectedService]);
-
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      if (!canReserve || tab !== "schedule" || !workerId || !selectedService) {
-        setMonthAvailability([]);
-        setSlots([]);
-        setBookingForm((prev) => ({ ...prev, bookingDate: "", bookingHour: "" }));
-        return;
-      }
-      setSlotsLoading(true);
-      setBookingError("");
-      try {
-        let days = [];
-        try {
-          const data = await reservationApi.getWorkerMonthAvailability(workerId, selectedService);
-          const raw = Array.isArray(data?.days) ? data.days : [];
-          days = raw.map((day) => {
-            if (Array.isArray(day?.slots)) return { date: day.date, slots: day.slots };
-            const hours = Array.isArray(day?.availableHours) ? day.availableHours : [];
-            return {
-              date: day.date,
-              slots: [8, 9, 10, 11, 12, 14, 15, 16, 17].map((h) => ({ hour: h, status: hours.includes(h) ? "available" : "accepted" })),
-            };
-          });
-        } catch {
-          const dates = next30Days();
-          days = await Promise.all(
-            dates.map(async (date) => {
-              try {
-                const d = await reservationApi.getWorkerAvailableSlots(workerId, date, selectedService);
-                return { date, slots: Array.isArray(d?.slots) ? d.slots : [] };
-              } catch {
-                return { date, slots: [] };
-              }
-            })
-          );
-        }
-        setMonthAvailability(days);
-        const first = days.find((d) => Array.isArray(d.slots) && d.slots.some((s) => s.status === "available"));
-        const nextDate = first?.date || days[0]?.date || "";
-        const nextSlots = days.find((d) => d.date === nextDate)?.slots || [];
-        setSlots(nextSlots);
-        if (nextDate) {
-          const idx = days.findIndex((d) => d.date === nextDate);
-          setDatePage(Math.max(0, Math.floor(idx / 7)));
-        }
-        setBookingForm((prev) => ({ ...prev, bookingDate: nextDate, bookingHour: "" }));
-      } catch (err) {
-        setMonthAvailability([]);
-        setSlots([]);
-        setBookingError(err.message || "Impossible de charger la disponibilité");
-      } finally {
-        setSlotsLoading(false);
-      }
-    };
-    fetchAvailability();
-  }, [canReserve, tab, workerId, selectedService]);
-
-  useEffect(() => {
-    if (!bookingForm.bookingDate) {
-      setSlots([]);
-      return;
-    }
-    const day = monthAvailability.find((d) => d.date === bookingForm.bookingDate);
-    const daySlots = Array.isArray(day?.slots) ? day.slots : [];
-    setSlots(daySlots);
-    const valid = daySlots.find((s) => s.status === "available" && String(s.hour) === String(bookingForm.bookingHour));
-    if (!valid) {
-      setBookingForm((prev) => ({ ...prev, bookingHour: "" }));
-    }
-  }, [bookingForm.bookingDate, bookingForm.bookingHour, monthAvailability]);
-
-  const updateBookingForm = (key) => (e) => setBookingForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  const createReservation = async () => {
-    setBookingError("");
-    setBookingMessage("");
-    if (!canReserve) return setBookingError("Réservation disponible uniquement pour les clients.");
-    if (!selectedService || !workerId || !bookingForm.bookingDate || bookingForm.bookingHour === "") {
-      return setBookingError("Sélectionnez service, date et heure.");
-    }
-    setActionLoading(true);
-    try {
-      await reservationApi.create({
-        workerId,
-        bookingDate: bookingForm.bookingDate,
-        bookingHour: Number(bookingForm.bookingHour),
-        serviceType: selectedService,
-        address: bookingForm.address,
-        notes: bookingForm.notes,
-      });
-      setBookingMessage("Réservation créée ✅");
-      setBookingForm((prev) => ({ ...prev, bookingHour: "", notes: "" }));
-      try {
-        const upd = await reservationApi.getWorkerAvailableSlots(workerId, bookingForm.bookingDate, selectedService);
-        const ns = Array.isArray(upd?.slots) ? upd.slots : [];
-        setMonthAvailability((prev) => prev.map((d) => (d.date === bookingForm.bookingDate ? { ...d, slots: ns } : d)));
-        setSlots(ns);
-      } catch {}
-    } catch (err) {
-      setBookingError(err.message || "Réservation impossible");
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   if (loading || !profile) {
     return (
@@ -938,7 +822,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
     return (
       <>
-        {/* Owner toolbar */}
         {isOwner && (
           <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
             <button className="pr-save-btn" onClick={() => openPfForm()} style={{ gap:7 }}>
@@ -1334,6 +1217,29 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                     </span>
                   )}
                 </div>
+                {!isOwner && role === "worker" && currentUser && (
+                  <div style={{ display:"flex", gap:10, marginTop:14, flexWrap:"wrap" }}>
+                    <button
+                      onClick={() => setReserveOpen(true)}
+                      disabled={!avail}
+                      style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 22px",borderRadius:10,border:"none",background:avail?"#06b6d4":"#e2e8f0",color:avail?"#fff":"#94a3b8",fontSize:13,fontWeight:700,cursor:avail?"pointer":"not-allowed",fontFamily:"'Sora',sans-serif",transition:"background .18s" }}
+                      onMouseEnter={e => { if (avail) e.currentTarget.style.background="#0891b2"; }}
+                      onMouseLeave={e => { if (avail) e.currentTarget.style.background="#06b6d4"; }}
+                    >
+                      <Calendar size={15} /> Réserver
+                    </button>
+                    <button
+                      onClick={toggleSave}
+                      disabled={saveLoading}
+                      style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 18px",borderRadius:10,border:`1.5px solid ${isSaved?"#06b6d4":"#e2e8f0"}`,background:isSaved?"rgba(6,182,212,0.08)":"#fff",color:isSaved?"#06b6d4":"#64748b",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif",transition:"all .18s" }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor="#06b6d4"; e.currentTarget.style.color="#06b6d4"; }}
+                      onMouseLeave={e => { if (!isSaved) { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#64748b"; } }}
+                    >
+                      {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
+                      {isSaved ? "Sauvegardé" : "Sauvegarder"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1454,6 +1360,15 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
             </div>
           </div>
         </div>
+      )}
+
+      {reserveOpen && (
+        <ReservationDialog
+          worker={profile}
+          user={currentUser}
+          onClose={() => setReserveOpen(false)}
+          onSuccess={() => setReserveOpen(false)}
+        />
       )}
     </>
   );

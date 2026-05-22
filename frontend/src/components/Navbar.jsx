@@ -235,7 +235,6 @@ export default function Navbar({
     { label: "Explorer",     page: "explore",      authRequired: false },
     { label: "Réservations", page: "reservations", authRequired: true  },
     { label: "Profil",       page: "profile",      authRequired: true  },
-    ...(user?.role === "worker" ? [{ label: "Portfolio", page: "portfolio", authRequired: true }] : []),
   ].filter((l) => !l.authRequired || !!user);
 
   const userInitial = avatarInitials(user?.firstName || user?.name || "U");
