@@ -10,6 +10,14 @@ const fmtDate = (dateValue) => {
   return d.toLocaleDateString();
 };
 
+const STATUS_LABELS = {
+  pending:   { label: "En attente",  bg: "#fffbeb", color: "#b45309", border: "#fcd34d" },
+  accepted:  { label: "Acceptée",    bg: "#f0fdf4", color: "#15803d", border: "#86efac" },
+  rejected:  { label: "Refusée",     bg: "#fef2f2", color: "#b91c1c", border: "#fca5a5" },
+  cancelled: { label: "Annulée",     bg: "#f8fafc", color: "#64748b", border: "#cbd5e1" },
+  completed: { label: "Terminée",    bg: "#f0f9ff", color: "#0369a1", border: "#7dd3fc" },
+};
+
 const pageCss = `
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -19,6 +27,15 @@ input,textarea,select,button { font-family:'Sora',sans-serif; }
 .rv-content { max-width:980px; margin:0 auto; padding:84px 28px 64px; }
 @media(max-width:768px){ .rv-content{ padding:80px 16px 48px; } }
 `;
+
+function StatusBadge({ status }) {
+  const s = STATUS_LABELS[status] || { label: status, bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" };
+  return (
+    <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:999,background:s.bg,color:s.color,border:`1px solid ${s.border}`,display:"inline-block" }}>
+      {s.label}
+    </span>
+  );
+}
 
 export default function ReservationsPage({ user, onHome, onNavigate, onLogout }) {
   const isClient = user?.role === "client";
@@ -31,7 +48,6 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [clientReservations, setClientReservations] = useState([]);
   const [clientHistory, setClientHistory]           = useState([]);
   const [workerReservations, setWorkerReservations] = useState([]);
-  const [selectedWorkerReservation, setSelectedWorkerReservation] = useState(null);
   const [reviewForms, setReviewForms]     = useState({});
   const [reviewLoadingId, setReviewLoadingId] = useState("");
 
@@ -182,40 +198,19 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                 : <div style={{ display:"grid",gap:10 }}>
                     {workerReservations.map((r) => (
                       <ReservationRow key={r._id} reservation={r}
-                        rightAction={
-                          <button
-                            className="mode-tab"
-                            onClick={() => setSelectedWorkerReservation(r)}
-                            disabled={actionLoading}
-                          >
-                            Voir détails
-                          </button>
-                        }
+                        rightAction={r.status==="pending"
+                          ? <div style={{ display:"flex",gap:8 }}>
+                              <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"accepted")} disabled={actionLoading}>Accepter</button>
+                              <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"rejected")} disabled={actionLoading}>Refuser</button>
+                            </div>
+                          : r.status==="accepted"
+                            ? <button className="mode-tab" onClick={() => setWorkerStatus(r._id,"completed")} disabled={actionLoading}>Terminer</button>
+                            : null}
                       />
                     ))}
                   </div>
               }
             </section>
-          )}
-
-          {isWorker && selectedWorkerReservation && (
-            <WorkerReservationDetailsModal
-              reservation={selectedWorkerReservation}
-              actionLoading={actionLoading}
-              onClose={() => setSelectedWorkerReservation(null)}
-              onAccept={async () => {
-                await setWorkerStatus(selectedWorkerReservation._id, "accepted");
-                setSelectedWorkerReservation(null);
-              }}
-              onReject={async () => {
-                await setWorkerStatus(selectedWorkerReservation._id, "rejected");
-                setSelectedWorkerReservation(null);
-              }}
-              onComplete={async () => {
-                await setWorkerStatus(selectedWorkerReservation._id, "completed");
-                setSelectedWorkerReservation(null);
-              }}
-            />
           )}
         </div>
       </div>
@@ -229,100 +224,19 @@ function ReservationRow({ reservation, rightAction, children }) {
   const isObj  = (v) => v && typeof v === "object" && !Array.isArray(v);
   const person = isObj(worker) ? worker : isObj(client) ? client : {};
   return (
-    <div style={{ border:"1px solid #e2e8f0",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center" }}>
-      <div>
+    <div style={{ border:"1px solid #e2e8f0",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start",flexWrap:"wrap" }}>
+      <div style={{ flex:1,minWidth:250 }}>
         <div style={{ fontSize:14,color:"#0f172e",fontWeight:600 }}>{person.firstName||"Utilisateur"} {person.lastName||""}</div>
-        <div style={{ fontSize:12,color:"#64748b" }}>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)} · {reservation.serviceType||"Service"}</div>
-        {reservation.address && <div style={{ fontSize:12,color:"#64748b" }}>{reservation.address}</div>}
-        <div style={{ fontSize:11,marginTop:3,color:"#64748b",textTransform:"uppercase",letterSpacing:".08em" }}>Statut: {reservation.status}</div>
+        <div style={{ fontSize:12,color:"#64748b",marginTop:4 }}>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)} · {reservation.serviceType||"Service"}</div>
+        {reservation.address && <div style={{ fontSize:12,color:"#64748b",marginTop:3 }}>{reservation.address}</div>}
+        <div style={{ marginTop:8,display:"flex",alignItems:"center",gap:8 }}>
+          <span style={{ fontSize:11,color:"#64748b" }}>Statut:</span>
+          <StatusBadge status={reservation.status} />
+        </div>
         {children}
       </div>
-      {rightAction}
-    </div>
-  );
-}
-
-const mediaUrl = (path) => {
-  if (!path) return "";
-  if (String(path).startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
-};
-
-function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, onAccept, onReject, onComplete }) {
-  const isPending = reservation?.status === "pending";
-  const isAccepted = reservation?.status === "accepted";
-  const media = Array.isArray(reservation?.mediaAttachments) ? reservation.mediaAttachments : [];
-
-  return (
-    <div
-      style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.7)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ width:"100%",maxWidth:760,maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",padding:18 }}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-          <h3 style={{ margin:0,fontSize:18,color:"#0f172e" }}>Détails de la réservation</h3>
-          <button className="mode-tab" onClick={onClose}>Fermer</button>
-        </div>
-
-        <div style={{ display:"grid",gap:6,fontSize:13,color:"#334155",marginBottom:14 }}>
-          <div><strong>Client:</strong> {reservation?.client?.firstName || ""} {reservation?.client?.lastName || ""}</div>
-          <div><strong>Date:</strong> {fmtDate(reservation?.bookingDate)} à {fmtHour(reservation?.bookingHour)}</div>
-          <div><strong>Service:</strong> {reservation?.serviceType || "Service"}</div>
-          <div><strong>Adresse:</strong> {reservation?.address || "-"}</div>
-          {reservation?.client?.phone && <div><strong>Téléphone:</strong> {reservation.client.phone}</div>}
-          <div><strong>Statut:</strong> {reservation?.status}</div>
-        </div>
-
-        <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Notes du client</div>
-          <div style={{ background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10,fontSize:13,color:"#334155",minHeight:48 }}>
-            {reservation?.notes?.trim() ? reservation.notes : "Aucune note fournie."}
-          </div>
-        </div>
-
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Photos / Vidéos</div>
-          {media.length === 0 ? (
-            <div style={{ fontSize:12,color:"#94a3b8" }}>Aucun média joint.</div>
-          ) : (
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8 }}>
-              {media.map((item, idx) => {
-                const url = mediaUrl(item?.url);
-                const isVideo = String(item?.mimeType || "").startsWith("video/");
-                return (
-                  <a
-                    key={`${url}-${idx}`}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ border:"1px solid #e2e8f0",borderRadius:8,padding:6,textDecoration:"none",color:"#0f172e",background:"#f8fafc" }}
-                  >
-                    {isVideo ? (
-                      <video src={url} controls style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6,background:"#000" }} />
-                    ) : (
-                      <img src={url} alt={item?.originalName || `media-${idx + 1}`} style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6 }} />
-                    )}
-                    <div style={{ fontSize:10,color:"#64748b",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                      {item?.originalName || (isVideo ? `Vidéo ${idx + 1}` : `Photo ${idx + 1}`)}
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
-          {isPending && (
-            <>
-              <button className="mode-tab" onClick={onAccept} disabled={actionLoading}>Accepter</button>
-              <button className="mode-tab" onClick={onReject} disabled={actionLoading}>Refuser</button>
-            </>
-          )}
-          {isAccepted && (
-            <button className="mode-tab" onClick={onComplete} disabled={actionLoading}>Marquer terminé</button>
-          )}
-        </div>
+      <div style={{ display:"flex",gap:8,alignItems:"flex-start" }}>
+        {rightAction}
       </div>
     </div>
   );

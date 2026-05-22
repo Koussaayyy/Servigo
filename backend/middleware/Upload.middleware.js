@@ -10,8 +10,6 @@ const portfolioDir = path.join(__dirname, "../uploads/portfolio");
 if (!fs.existsSync(portfolioDir)) fs.mkdirSync(portfolioDir, { recursive: true });
 const workerDocsDir = path.join(__dirname, "../uploads/worker-docs");
 if (!fs.existsSync(workerDocsDir)) fs.mkdirSync(workerDocsDir, { recursive: true });
-const reservationMediaDir = path.join(__dirname, "../uploads/reservation-media");
-if (!fs.existsSync(reservationMediaDir)) fs.mkdirSync(reservationMediaDir, { recursive: true });
 
 // ── Disk storage: saves file to uploads/avatars/ ──────────
 const storage = multer.diskStorage({
@@ -89,33 +87,3 @@ exports.uploadOnboarding = multer({
   { name: "cinDocument", maxCount: 1 },
   { name: "certificationDocument", maxCount: 1 },
 ]);
-
-const reservationMediaStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, reservationMediaDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const safeField = String(file.fieldname || "media").replace(/[^a-zA-Z0-9_-]/g, "");
-    const name = `${req.user.id}-${safeField}-${Date.now()}${ext}`;
-    cb(null, name);
-  },
-});
-
-const reservationMediaFilter = (req, file, cb) => {
-  const allowed = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-  ];
-
-  if (allowed.includes(file.mimetype)) return cb(null, true);
-  return cb(new Error("Only JPG, PNG, WEBP, MP4, WEBM or MOV files are allowed"), false);
-};
-
-exports.uploadReservationMedia = multer({
-  storage: reservationMediaStorage,
-  fileFilter: reservationMediaFilter,
-  limits: { fileSize: 25 * 1024 * 1024 },
-}).array("media", 5);

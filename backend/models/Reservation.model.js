@@ -46,13 +46,6 @@ const ReservationSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    mediaAttachments: [
-      {
-        url: { type: String, required: true },
-        mimeType: { type: String, default: "" },
-        originalName: { type: String, default: "" },
-      },
-    ],
     cancellationReason: {
       type: String,
       default: "",

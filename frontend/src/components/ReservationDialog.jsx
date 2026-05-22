@@ -50,7 +50,6 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
     return p.replace(/^\+?216/, "").replace(/[\s\-\.]/g, "");
   });
   const [notes, setNotes]     = useState("");
-  const [mediaFiles, setMediaFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult]   = useState(null); // null | { ok: bool, message: string }
   const [errors, setErrors]   = useState({});
@@ -111,25 +110,6 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
     const errs = validateStep(step);
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
-
-    // Step 2 → check city match against worker's city
-    if (step === 2) {
-      const workerCity = (worker?.workerProfile?.city || "").trim().toLowerCase();
-      if (workerCity) {
-        const clientGov  = gouvernorat.trim().toLowerCase();
-        const clientDel  = delegation.trim().toLowerCase();
-        const clientVill = ville.trim().toLowerCase();
-        const matches = clientVill === workerCity || clientDel === workerCity || clientGov === workerCity;
-        if (!matches) {
-          setResult({
-            ok: false,
-            message: `Ce prestataire n'intervient pas dans votre zone. Il opère à « ${worker.workerProfile.city} ». Veuillez choisir une adresse dans cette ville.`,
-          });
-          return;
-        }
-      }
-    }
-
     setStep((s) => s + 1);
   };
 
@@ -141,47 +121,21 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
     setSubmitting(true);
     try {
       const fullAddress = [ville, delegation, gouvernorat].filter(Boolean).join(", ");
-      const form = new FormData();
-      form.append("workerId", worker._id);
-      form.append("bookingDate", date);
-      form.append("bookingHour", String(Number(hour)));
-      form.append("serviceType", profession || "");
-      form.append("address", fullAddress);
-      form.append("notes", notes.trim());
-      form.append("phone", `+216${phone.trim()}`);
-      mediaFiles.forEach((file) => form.append("media", file));
-
-      await reservationApi.create(form);
+      await reservationApi.create({
+        workerId:    worker._id,
+        bookingDate: date,
+        bookingHour: Number(hour),
+        serviceType: profession,
+        address:     fullAddress,
+        notes:       notes.trim(),
+        phone:       `+216${phone.trim()}`,
+      });
       setResult({ ok: true, message: "Votre réservation a été envoyée avec succès ! Le prestataire va confirmer sous peu." });
     } catch (err) {
       setResult({ ok: false, message: err.message || "Une erreur est survenue. Veuillez réessayer." });
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleMediaChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    const allowed = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-    ];
-
-    const valid = files.filter((file) => allowed.includes(file.type));
-    if (!valid.length) return;
-
-    setMediaFiles((prev) => [...prev, ...valid].slice(0, 5));
-    e.target.value = "";
-  };
-
-  const removeMedia = (idx) => {
-    setMediaFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const workerName  = `${worker?.firstName || ""} ${worker?.lastName || ""}`.trim() || "Prestataire";
@@ -411,41 +365,6 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
                       </label>
                       <textarea className="rd-input" rows={3} placeholder="Détails utiles pour le prestataire…" style={{ resize:"vertical",minHeight:80 }}
                         value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:6 }}>
-                        Photos / Vidéo (optionnel)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
-                        multiple
-                        onChange={handleMediaChange}
-                        className="rd-input"
-                        style={{ padding:"8px 10px", background:"#fff" }}
-                      />
-                      <div style={{ color:"#94a3b8",fontSize:10,marginTop:4 }}>
-                        Ajoutez jusqu'à 5 fichiers pour montrer le travail au prestataire.
-                      </div>
-                      {mediaFiles.length > 0 && (
-                        <div style={{ marginTop:8, display:"grid", gap:6 }}>
-                          {mediaFiles.map((file, idx) => (
-                            <div key={`${file.name}-${idx}`} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#334155" }}>
-                              <span style={{ overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:260 }}>
-                                {file.name}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeMedia(idx)}
-                                style={{ border:"none",background:"transparent",color:"#ef4444",fontWeight:700,cursor:"pointer",fontSize:11 }}
-                              >
-                                Retirer
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
 
                     {/* Summary */}

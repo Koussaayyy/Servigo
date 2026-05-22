@@ -19,12 +19,6 @@ const STATUS_LABELS = {
   completed: { label: "Terminée",    bg: "#f0f9ff", color: "#0369a1", border: "#7dd3fc" },
 };
 
-const mediaUrl = (path) => {
-  if (!path) return "";
-  if (String(path).startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
-};
-
 const PAGE_SIZE = 6;
 
 const css = `
@@ -165,38 +159,6 @@ function ReservCard({ r, role, onCancel, onStatus, onReview, actionLoading }) {
           </div>
         )}
       </div>
-
-      {Array.isArray(r.mediaAttachments) && r.mediaAttachments.length > 0 && (
-        <div style={{ marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12 }}>
-          <div style={{ fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,letterSpacing:"0.06em",textTransform:"uppercase" }}>
-            Médias du client
-          </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8 }}>
-            {r.mediaAttachments.map((item, idx) => {
-              const url = mediaUrl(item?.url);
-              const isVideo = String(item?.mimeType || "").startsWith("video/");
-              return (
-                <a
-                  key={`${url}-${idx}`}
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ border:"1px solid #e2e8f0",borderRadius:8,padding:6,textDecoration:"none",color:"#0f172e",background:"#f8fafc" }}
-                >
-                  {isVideo ? (
-                    <video src={url} controls style={{ width:"100%",height:80,objectFit:"cover",borderRadius:6,background:"#000" }} />
-                  ) : (
-                    <img src={url} alt={item?.originalName || `media-${idx + 1}`} style={{ width:"100%",height:80,objectFit:"cover",borderRadius:6 }} />
-                  )}
-                  <div style={{ fontSize:10,color:"#64748b",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                    {item?.originalName || (isVideo ? `Vidéo ${idx + 1}` : `Photo ${idx + 1}`)}
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {reviewOpen && !hasReview && (
         <div style={{ marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12,display:"flex",flexDirection:"column",gap:8 }}>
