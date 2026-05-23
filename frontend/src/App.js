@@ -15,6 +15,8 @@ import AdminLoginModal      from "./components/AdminLoginModal";
 import AdminDashboard       from "./pages/AdminDashboard";
 import EmailVerification    from "./pages/EmailVerification";
 import ReservationDialog    from "./components/ReservationDialog";
+import ChatBot              from "./components/ChatBot";
+import SavedWorkersPage     from "./pages/SavedWorkersPage";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -81,6 +83,11 @@ export default function App() {
       case "dashboard":
         setMode("app");
         setActivePage("dashboard");
+        break;
+
+      case "saved":
+        setMode("app");
+        setActivePage("saved");
         break;
 
       // legacy /app — redirect to explore
@@ -158,6 +165,7 @@ export default function App() {
       profile:      "/profile",
       reservations: "/reservations",
       dashboard:    "/dashboard",
+      saved:        "/saved",
     };
     const url = pageUrlMap[page] || `/${page}`;
 
@@ -305,6 +313,14 @@ export default function App() {
     return adminLoginNode;
   }
 
+  // ── Shared chatbot node for all logged-in routes ────────────────────────
+  const chatBotNode = (
+    <ChatBot
+      user={loggedUser}
+      onViewWorker={(worker) => handleNavigate("profile", { profileUser: worker })}
+    />
+  );
+
   // ── EXPLORE ─────────────────────────────────────────────────────────────
   if (mode === "explore") {
     return (
@@ -341,6 +357,7 @@ export default function App() {
             }}
           />
         )}
+        {chatBotNode}
       </>
     );
   }
@@ -362,6 +379,7 @@ export default function App() {
           />
           {authModalNode}
           {adminLoginNode}
+          {chatBotNode}
         </>
       );
     }
@@ -384,6 +402,7 @@ export default function App() {
             }}
           />
           {authModalNode}
+          {chatBotNode}
         </>
       );
     }
@@ -399,6 +418,7 @@ export default function App() {
             onLogout={onLogout}
           />
           {authModalNode}
+          {chatBotNode}
         </>
       );
     }
@@ -414,6 +434,22 @@ export default function App() {
             onLogout={onLogout}
           />
           {authModalNode}
+          {chatBotNode}
+        </>
+      );
+    }
+
+    // ── Saved Workers ──────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "saved") {
+      return (
+        <>
+          <SavedWorkersPage
+            user={loggedUser}
+            onHome={() => switchTo("home")}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+          />
+          {chatBotNode}
         </>
       );
     }
@@ -465,6 +501,10 @@ export default function App() {
         {mode === "signup" && <SignupPicker />}
       </div>
       {authModalNode}
+      <ChatBot
+        user={loggedUser}
+        onViewWorker={(worker) => handleNavigate("profile", { profileUser: worker })}
+      />
     </>
   );
 }

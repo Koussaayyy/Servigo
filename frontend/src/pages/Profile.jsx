@@ -269,6 +269,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const [reserveOpen, setReserveOpen] = useState(false);
   const [isSaved, setIsSaved]         = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMsg, setSaveMsg]         = useState("");
 
   // ── Portfolio state ───────────────────────────────────────
   const [portfolioOpenId, setPortfolioOpenId]         = useState(null);
@@ -301,7 +302,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const rating    = Number(wp.rating       || 0);
   const reviews   = Number(wp.totalReviews || 0);
   const avail     = wp.isAvailable !== false;
-  const workerId = profile?._id ? String(profile._id) : "";
+  const workerId = String(profile?._id || profile?.id || "");
   const myUserId = String(currentUser?._id || currentUser?.id || "");
 
   const startEditInfo = () => {
@@ -320,18 +321,24 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   };
 
   const toggleSave = async () => {
-    if (saveLoading) return;
+    if (saveLoading || !workerId) return;
     setSaveLoading(true);
+    setSaveMsg("");
     try {
       if (isSaved) {
         await clientApi.unsaveWorker(workerId);
         setIsSaved(false);
+        setSaveMsg("Retiré des sauvegardes");
       } else {
         await clientApi.saveWorker(workerId);
         setIsSaved(true);
+        setSaveMsg("Prestataire sauvegardé !");
       }
-    } catch {}
+    } catch (err) {
+      setSaveMsg(err?.message || "Erreur, réessayez");
+    }
     setSaveLoading(false);
+    setTimeout(() => setSaveMsg(""), 3000);
   };
 
   const startEditWorker = () => {
@@ -1218,26 +1225,33 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                   )}
                 </div>
                 {!isOwner && role === "worker" && currentUser && (
-                  <div style={{ display:"flex", gap:10, marginTop:14, flexWrap:"wrap" }}>
-                    <button
-                      onClick={() => setReserveOpen(true)}
-                      disabled={!avail}
-                      style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 22px",borderRadius:10,border:"none",background:avail?"#06b6d4":"#e2e8f0",color:avail?"#fff":"#94a3b8",fontSize:13,fontWeight:700,cursor:avail?"pointer":"not-allowed",fontFamily:"'Sora',sans-serif",transition:"background .18s" }}
-                      onMouseEnter={e => { if (avail) e.currentTarget.style.background="#0891b2"; }}
-                      onMouseLeave={e => { if (avail) e.currentTarget.style.background="#06b6d4"; }}
-                    >
-                      <Calendar size={15} /> Réserver
-                    </button>
-                    <button
-                      onClick={toggleSave}
-                      disabled={saveLoading}
-                      style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 18px",borderRadius:10,border:`1.5px solid ${isSaved?"#06b6d4":"#e2e8f0"}`,background:isSaved?"rgba(6,182,212,0.08)":"#fff",color:isSaved?"#06b6d4":"#64748b",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif",transition:"all .18s" }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor="#06b6d4"; e.currentTarget.style.color="#06b6d4"; }}
-                      onMouseLeave={e => { if (!isSaved) { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#64748b"; } }}
-                    >
-                      {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
-                      {isSaved ? "Sauvegardé" : "Sauvegarder"}
-                    </button>
+                  <div style={{ marginTop:14 }}>
+                    <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                      <button
+                        onClick={() => setReserveOpen(true)}
+                        disabled={!avail}
+                        style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 22px",borderRadius:10,border:"none",background:avail?"#06b6d4":"#e2e8f0",color:avail?"#fff":"#94a3b8",fontSize:13,fontWeight:700,cursor:avail?"pointer":"not-allowed",fontFamily:"'Sora',sans-serif",transition:"background .18s" }}
+                        onMouseEnter={e => { if (avail) e.currentTarget.style.background="#0891b2"; }}
+                        onMouseLeave={e => { if (avail) e.currentTarget.style.background="#06b6d4"; }}
+                      >
+                        <Calendar size={15} /> Réserver
+                      </button>
+                      <button
+                        onClick={toggleSave}
+                        disabled={saveLoading}
+                        style={{ display:"flex",alignItems:"center",gap:7,padding:"10px 18px",borderRadius:10,border:`1.5px solid ${isSaved?"#06b6d4":"#e2e8f0"}`,background:isSaved?"rgba(6,182,212,0.08)":"#fff",color:isSaved?"#06b6d4":"#64748b",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif",transition:"all .18s" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor="#06b6d4"; e.currentTarget.style.color="#06b6d4"; }}
+                        onMouseLeave={e => { if (!isSaved) { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#64748b"; } }}
+                      >
+                        {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
+                        {isSaved ? "Sauvegardé" : "Sauvegarder"}
+                      </button>
+                    </div>
+                    {saveMsg && (
+                      <div style={{ marginTop:8,fontSize:12,fontWeight:600,color:saveMsg.startsWith("Erreur")?"#ef4444":"#10b981" }}>
+                        {saveMsg}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
