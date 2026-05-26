@@ -1,7 +1,7 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 const User = require("../models/User.model");
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 exports.chat = async (req, res) => {
   try {
@@ -45,9 +45,17 @@ Instructions :
 {"recommended_ids": ["id1", "id2"]}
 Ce bloc doit contenir uniquement les IDs des prestataires que tu recommandes (max 3).`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(`${systemPrompt}\n\nProblème de l'utilisateur : ${message.trim()}`);
-    const text = result.response.text();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message.trim() },
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    });
+
+    const text = completion.choices[0]?.message?.content || "";
 
     // Extract recommended IDs from the JSON block
     let recommendedIds = [];
@@ -63,9 +71,6 @@ Ce bloc doit contenir uniquement les IDs des prestataires que tu recommandes (ma
     const cleanText = text.replace(/\{"recommended_ids"\s*:\s*\[[^\]]*\]\}/g, "").trim();
 
     // Fetch full worker data for recommended workers
-    const recommendedWorkers = workerList.filter((w) => recommendedIds.includes(w.id));
-
-    // Also return full profile for worker cards
     const fullWorkers = await User.find({ _id: { $in: recommendedIds } })
       .select("-password -clientProfile")
       .lean();

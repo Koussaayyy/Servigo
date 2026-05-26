@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { reservationApi } from "../api";
+import { reservationApi, clientApi } from "../api";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 import Navbar from "../components/Navbar";
 
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
@@ -34,6 +35,24 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [selectedWorkerReservation, setSelectedWorkerReservation] = useState(null);
   const [reviewForms, setReviewForms]     = useState({});
   const [reviewLoadingId, setReviewLoadingId] = useState("");
+  const [savedIds, setSavedIds]           = useState(new Set());
+
+  useEffect(() => {
+    if (!isClient) return;
+    clientApi.getSavedWorkers().then((list) => {
+      setSavedIds(new Set((list || []).map((w) => String(w._id || w))));
+    }).catch(() => {});
+  }, [isClient]);
+
+  const handleToggleSave = async (workerId, currently) => {
+    const id = String(workerId);
+    setSavedIds((prev) => { const n = new Set(prev); currently ? n.delete(id) : n.add(id); return n; });
+    try {
+      currently ? await clientApi.unsaveWorker(id) : await clientApi.saveWorker(id);
+    } catch {
+      setSavedIds((prev) => { const n = new Set(prev); currently ? n.add(id) : n.delete(id); return n; });
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true); setError("");
@@ -117,6 +136,8 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                   : <div style={{ display:"grid",gap:10 }}>
                       {clientReservations.map((r) => (
                         <ReservationRow key={r._id} reservation={r}
+                          isSaved={savedIds.has(String(r.worker?._id || ""))}
+                          onToggleSave={handleToggleSave}
                           rightAction={["pending","accepted"].includes(r.status)
                             ? <button className="mode-tab" onClick={() => cancelReservation(r)} disabled={actionLoading}>Annuler</button>
                             : null}
@@ -138,6 +159,8 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                         const fs          = reviewForms[r._id] || { rating:"",comment:"",open:false };
                         return (
                           <ReservationRow key={r._id} reservation={r}
+                            isSaved={savedIds.has(String(r.worker?._id || ""))}
+                            onToggleSave={handleToggleSave}
                             rightAction={isCompleted
                               ? hasReview
                                 ? <span style={{ fontSize:11,color:"#2e7d32",fontWeight:700 }}>Avis envoyé</span>
@@ -223,11 +246,12 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   );
 }
 
-function ReservationRow({ reservation, rightAction, children }) {
+function ReservationRow({ reservation, rightAction, children, isSaved, onToggleSave }) {
   const worker = reservation.worker;
   const client = reservation.client;
   const isObj  = (v) => v && typeof v === "object" && !Array.isArray(v);
   const person = isObj(worker) ? worker : isObj(client) ? client : {};
+  const workerId = isObj(worker) ? String(worker._id || "") : "";
   
   // Status colors and labels
   const statusConfig = {
@@ -277,7 +301,15 @@ function ReservationRow({ reservation, rightAction, children }) {
   return (
     <div style={{ border:"1px solid #e2e8f0",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center" }}>
       <div style={{ flex:1 }}>
-        <div style={{ fontSize:14,color:"#0f172e",fontWeight:600 }}>{person.firstName||"Utilisateur"} {person.lastName||""}</div>
+        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+          <span style={{ fontSize:14,color:"#0f172e",fontWeight:600 }}>{person.firstName||"Utilisateur"} {person.lastName||""}</span>
+          {onToggleSave && workerId && (
+            <button onClick={() => onToggleSave(workerId, isSaved)}
+              style={{ background:isSaved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${isSaved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:6,width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .18s",flexShrink:0 }}>
+              {isSaved ? <BookmarkCheck size={11} color="#06b6d4" /> : <Bookmark size={11} color="#94a3b8" />}
+            </button>
+          )}
+        </div>
         <div style={{ fontSize:12,color:"#64748b" }}>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)} · {reservation.serviceType||"Service"}</div>
         {reservation.address && <div style={{ fontSize:12,color:"#64748b" }}>{reservation.address}</div>}
         <div style={{ marginTop:8,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>

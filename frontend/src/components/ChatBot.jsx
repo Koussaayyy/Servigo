@@ -8,7 +8,7 @@ const css = `
 @keyframes cbDot{0%,80%,100%{opacity:0}40%{opacity:1}}
 .cb-btn{position:fixed;bottom:28px;right:28px;z-index:8000;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#06b6d4,#0891b2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(6,182,212,.45);transition:transform .2s,box-shadow .2s;}
 .cb-btn:hover{transform:scale(1.1);box-shadow:0 12px 40px rgba(6,182,212,.55);}
-.cb-window{position:fixed;bottom:100px;right:28px;z-index:8000;width:370px;max-width:calc(100vw - 32px);background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(15,23,46,.22);animation:cbFadeIn .22s ease both;display:flex;flex-direction:column;overflow:hidden;height:520px;max-height:calc(100vh - 120px);}
+.cb-window{position:fixed;bottom:100px;right:28px;z-index:8000;width:370px;max-width:calc(100vw - 32px);background:#0f172e;border-radius:20px;box-shadow:0 24px 80px rgba(15,23,46,.22);animation:cbFadeIn .22s ease both;display:flex;flex-direction:column;overflow:hidden;height:520px;max-height:calc(100vh - 120px);}
 .cb-header{background:linear-gradient(135deg,#0f172e,#1e293b);padding:16px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .cb-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#f8fafc;}
 .cb-messages::-webkit-scrollbar{width:3px}.cb-messages::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9px}
@@ -35,7 +35,12 @@ const WELCOME = "Bonjour ! Je suis l'assistant Servigo 👋\nDécrivez-moi votre
 export default function ChatBot({ user, onViewWorker }) {
   const [open, setOpen]       = useState(false);
   const [input, setInput]     = useState("");
-  const [messages, setMessages] = useState([{ role:"bot", text: WELCOME }]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cb_messages");
+      return saved ? JSON.parse(saved) : [{ role:"bot", text: WELCOME }];
+    } catch { return [{ role:"bot", text: WELCOME }]; }
+  });
   const [loading, setLoading] = useState(false);
   const [unread, setUnread]   = useState(0);
   const bottomRef = useRef(null);
@@ -44,6 +49,10 @@ export default function ChatBot({ user, onViewWorker }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior:"smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    try { localStorage.setItem("cb_messages", JSON.stringify(messages)); } catch {}
+  }, [messages]);
 
   useEffect(() => {
     if (open) { setUnread(0); setTimeout(() => inputRef.current?.focus(), 100); }
@@ -84,7 +93,7 @@ export default function ChatBot({ user, onViewWorker }) {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:14,fontWeight:700,color:"#fff" }}>Assistant Servigo</div>
-              <div style={{ fontSize:11,color:"#06b6d4",fontWeight:500 }}>Propulsé par Gemini AI</div>
+              <div style={{ fontSize:11,color:"#06b6d4",fontWeight:500 }}>Propulsé par Groq AI</div>
             </div>
             <button onClick={() => setOpen(false)} style={{ background:"rgba(255,255,255,.08)",border:"none",borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#94a3b8" }}>
               <X size={15} />
