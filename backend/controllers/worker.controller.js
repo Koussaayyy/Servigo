@@ -5,6 +5,14 @@ const fs   = require("fs");
 
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const pushNotification = async (userId, { type, title, message }) => {
+  try {
+    await User.findByIdAndUpdate(userId, {
+      $push: { notifications: { type, title, message, createdAt: new Date(), read: false } },
+    });
+  } catch {}
+};
+
 // ── @GET /api/worker/profile ───────────────────────────────
 exports.getProfile = async (req, res) => {
   try {
@@ -149,6 +157,17 @@ exports.deleteAccount = async (req, res) => {
 };
 
 // ── @GET /api/worker/all ───────────────────────────────────
+exports.getWorkerById = async (req, res) => {
+  try {
+    const worker = await User.findOne({ _id: req.params.workerId, role: "worker", isActive: true })
+      .select("-password -clientProfile");
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    res.json(worker);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 exports.getAllWorkers = async (req, res) => {
   try {
     const { profession, city, includeUnavailable } = req.query;
@@ -404,6 +423,129 @@ exports.deletePortfolioReview = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
+};
+
+// ── @POST /api/workers/:workerId/portfolio/:itemId/like ──
+exports.togglePortfolioLike = async (req, res) => {
+  try {
+    const { workerId, itemId } = req.params;
+    const worker = await User.findById(workerId);
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    const item = worker.workerProfile.portfolio.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const userId = String(req.user._id);
+    const existing = item.likes.find((l) => String(l.userId) === userId);
+    if (existing) {
+      item.likes = item.likes.filter((l) => String(l.userId) !== userId);
+    } else {
+      item.likes.push({ userId: req.user._id, firstName: req.user.firstName || "", lastName: req.user.lastName || "" });
+      // Notify worker — don't notify self-like
+      if (String(workerId) !== userId) {
+        const liker = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Quelqu'un";
+        await pushNotification(workerId, {
+          type: "like",
+          title: "Nouveau j'aime ❤️",
+          message: `${liker} a aimé votre réalisation « ${item.title || "sans titre"} »`,
+        });
+      }
+    }
+    await worker.save();
+    res.json({ likes: item.likes });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @POST /api/workers/:workerId/portfolio/:itemId/comment ─
+exports.addPortfolioComment = async (req, res) => {
+  try {
+    const { workerId, itemId } = req.params;
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: "Commentaire vide" });
+    const worker = await User.findById(workerId);
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    const item = worker.workerProfile.portfolio.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const userId = String(req.user._id);
+    const existing = item.comments.find((c) => String(c.userId) === userId);
+    if (existing) return res.status(400).json({ message: "Vous avez déjà commenté cette réalisation" });
+    item.comments.push({ userId: req.user._id, firstName: req.user.firstName || "", lastName: req.user.lastName || "", avatar: req.user.avatar || "", text: text.trim(), createdAt: new Date() });
+    await worker.save();
+    // Notify worker — don't notify if commenting on own post
+    if (String(workerId) !== userId) {
+      const commenter = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Quelqu'un";
+      await pushNotification(workerId, {
+        type: "comment",
+        title: "Nouveau commentaire 💬",
+        message: `${commenter} a commenté votre réalisation « ${item.title || "sans titre"} » : "${text.trim().slice(0, 60)}${text.trim().length > 60 ? "…" : ""}"`,
+      });
+    }
+    res.json({ comments: item.comments });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @PUT /api/workers/:workerId/portfolio/:itemId/comment/:commentId ─
+exports.editPortfolioComment = async (req, res) => {
+  try {
+    const { workerId, itemId, commentId } = req.params;
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: "Commentaire vide" });
+    const worker = await User.findById(workerId);
+    const item = worker?.workerProfile?.portfolio?.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const comment = item.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Commentaire introuvable" });
+    if (String(comment.userId) !== String(req.user._id)) return res.status(403).json({ message: "Non autorisé" });
+    comment.text = text.trim();
+    await worker.save();
+    res.json({ comments: item.comments });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @DELETE /api/workers/:workerId/portfolio/:itemId/comment/:commentId ─
+exports.deletePortfolioComment = async (req, res) => {
+  try {
+    const { workerId, itemId, commentId } = req.params;
+    const worker = await User.findById(workerId);
+    const item = worker?.workerProfile?.portfolio?.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const comment = item.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Commentaire introuvable" });
+    const isOwner = String(req.user._id) === String(workerId);
+    const isAuthor = String(comment.userId) === String(req.user._id);
+    if (!isOwner && !isAuthor) return res.status(403).json({ message: "Non autorisé" });
+    comment.deleteOne();
+    await worker.save();
+    res.json({ comments: item.comments });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @POST /api/workers/:workerId/portfolio/:itemId/comment/:commentId/like ─
+exports.toggleCommentLike = async (req, res) => {
+  try {
+    const { workerId, itemId, commentId } = req.params;
+    const worker = await User.findById(workerId);
+    const item = worker?.workerProfile?.portfolio?.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    const comment = item.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Commentaire introuvable" });
+    const userId = req.user._id;
+    const liked = comment.likes.some((l) => String(l) === String(userId));
+    if (liked) {
+      comment.likes = comment.likes.filter((l) => String(l) !== String(userId));
+    } else {
+      comment.likes.push(userId);
+      // Notify the comment author — don't notify if liking own comment
+      if (String(comment.userId) !== String(userId)) {
+        const liker = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Quelqu'un";
+        await pushNotification(comment.userId, {
+          type: "like",
+          title: "Votre commentaire a été aimé ❤️",
+          message: `${liker} a aimé votre commentaire : "${comment.text.slice(0, 60)}${comment.text.length > 60 ? "…" : ""}"`,
+        });
+      }
+    }
+    await worker.save();
+    res.json({ likes: comment.likes });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
 };
 
 // ── @PUT /api/worker/schedule ────────────────────────────

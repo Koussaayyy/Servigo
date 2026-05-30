@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { avatarUrl, clientApi, workerApi } from "../api";
-import { Bell, Bookmark, CheckCheck, Calendar, CheckCircle, XCircle, Star, MessageSquare } from "lucide-react";
+import { Bell, Bookmark, CheckCheck, Calendar, CheckCircle, XCircle, Star, MessageSquare, Heart, MessageCircle } from "lucide-react";
 
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 
@@ -134,12 +134,14 @@ const css = `
 `;
 
 function notifIcon(n) {
+  if (n.type === "like")    return { icon: Heart,          color: "#ef4444" };
+  if (n.type === "comment") return { icon: MessageCircle,  color: "#8b5cf6" };
   const t = (n.title || "").toLowerCase();
-  if (t.includes("accept"))   return { icon: CheckCircle,    color: "#10b981" };
+  if (t.includes("accept"))   return { icon: CheckCircle,   color: "#10b981" };
   if (t.includes("refu") || t.includes("annul")) return { icon: XCircle, color: "#ef4444" };
-  if (t.includes("termin"))   return { icon: CheckCircle,    color: "#06b6d4" };
+  if (t.includes("termin"))   return { icon: CheckCircle,   color: "#06b6d4" };
   if (t.includes("avis") || t.includes("review")) return { icon: Star,   color: "#f59e0b" };
-  if (t.includes("message"))  return { icon: MessageSquare,  color: "#8b5cf6" };
+  if (t.includes("message"))  return { icon: MessageSquare, color: "#8b5cf6" };
   return { icon: Calendar, color: "#06b6d4" };
 }
 

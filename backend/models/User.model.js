@@ -23,7 +23,7 @@ const UserSchema = new mongoose.Schema(
       type: [
         {
           id: { type: mongoose.Schema.Types.ObjectId, auto: true },
-          type: { type: String, enum: ["reservation", "message", "review"], default: "reservation" },
+          type: { type: String, enum: ["reservation", "message", "review", "like", "comment"], default: "reservation" },
           title: { type: String, default: "" },
           message: { type: String, default: "" },
           reservationId: { type: mongoose.Schema.Types.ObjectId, ref: "Reservation" },
@@ -103,14 +103,20 @@ const UserSchema = new mongoose.Schema(
             imageUrl:      { type: String, default: "" },
             images:        { type: [String], default: [] },
             featured:      { type: Boolean, default: false },
-            reviews: {
+            likes: {
+              type: [{ userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, firstName: { type: String, default: "" }, lastName: { type: String, default: "" } }],
+              default: [],
+            },
+            comments: {
               type: [
                 {
-                  clientId:   { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-                  clientName: { type: String, default: "" },
-                  rating:     { type: Number, min: 1, max: 5 },
-                  comment:    { type: String, default: "" },
-                  createdAt:  { type: Date, default: Date.now },
+                  userId:    { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+                  firstName: { type: String, default: "" },
+                  lastName:  { type: String, default: "" },
+                  avatar:    { type: String, default: "" },
+                  text:      { type: String, default: "" },
+                  createdAt: { type: Date, default: Date.now },
+                  likes:     { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
                 },
               ],
               default: [],

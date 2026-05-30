@@ -170,6 +170,8 @@ export const clientApi = {
 //  WORKER
 // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 export const workerApi = {
+  getById: (workerId) => fetch(`${BASE}/workers/${workerId}`).then(handle),
+
   getMarketplaceWorkers: ({ profession = "", city = "" } = {}) => {
     const query = new URLSearchParams();
     if (profession) query.set("profession", profession);
@@ -376,11 +378,27 @@ export const reservationApi = {
 //  PORTFOLIO
 // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 export const portfolioApi = {
-  submitReview: (workerId, itemId, payload) =>
-    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/review`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
+  toggleLike: (workerId, itemId) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/like`, { method: "POST", headers: authHeaders() }).then(handle),
+
+  addComment: (workerId, itemId, text) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/comment`, {
+      method: "POST", headers: authHeaders(), body: JSON.stringify({ text }),
+    }).then(handle),
+
+  editComment: (workerId, itemId, commentId, text) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/comment/${commentId}`, {
+      method: "PUT", headers: authHeaders(), body: JSON.stringify({ text }),
+    }).then(handle),
+
+  deleteComment: (workerId, itemId, commentId) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/comment/${commentId}`, {
+      method: "DELETE", headers: authHeaders(),
+    }).then(handle),
+
+  toggleCommentLike: (workerId, itemId, commentId) =>
+    fetch(`${BASE}/workers/${workerId}/portfolio/${itemId}/comment/${commentId}/like`, {
+      method: "POST", headers: authHeaders(),
     }).then(handle),
 };
 

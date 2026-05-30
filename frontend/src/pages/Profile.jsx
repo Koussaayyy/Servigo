@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MapPin, Star, Briefcase, Edit3, Check, X, Trash2,
   ShieldCheck, Camera, Mail, Calendar, Award, Image, Bookmark, BookmarkCheck,
+  Heart, MessageCircle, MoreVertical, Send,
 } from "lucide-react";
 import { avatarUrl, clientApi, workerApi, portfolioApi } from "../api";
 import { GOUVERNORATS, DELEGATIONS } from "../constants/tunisia";
@@ -273,11 +274,13 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
   // ── Portfolio state ───────────────────────────────────────
   const [portfolioOpenId, setPortfolioOpenId]         = useState(null);
-  const [reviewRating, setReviewRating]               = useState(0);
-  const [reviewHover, setReviewHover]                 = useState(0);
-  const [reviewComment, setReviewComment]             = useState("");
   const [portfolioSubmitting, setPortfolioSubmitting] = useState(false);
   const [portfolioMsg, setPortfolioMsg]               = useState("");
+  const [commentText, setCommentText]                 = useState("");
+  const [editingCommentId, setEditingCommentId]       = useState(null);
+  const [editingCommentText, setEditingCommentText]   = useState("");
+  const [openMenuCommentId, setOpenMenuCommentId]     = useState(null);
+  const [showLikesPanel, setShowLikesPanel]           = useState(false);
 
   const isOwner = currentUser && profile && (
     currentUser._id === profile._id || currentUser.id === profile._id
@@ -441,25 +444,24 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   };
 
 
-  // ── Portfolio review ──────────────────────────────────────
+  // ── Portfolio likes & comments ────────────────────────────
   const openLightbox = (itemId) => {
-    const item = (wp.portfolio || []).find((p) => String(p._id) === String(itemId));
-    if (!item) return;
-    const myRev = (item.reviews || []).find((r) => String(r.clientId) === myUserId);
-    setReviewRating(myRev?.rating || 0);
-    setReviewComment(myRev?.comment || "");
-    setReviewHover(0);
     setPortfolioMsg("");
+    setCommentText("");
+    setEditingCommentId(null);
+    setOpenMenuCommentId(null);
+    setShowLikesPanel(false);
     setLbImageIdx(0);
     setPortfolioOpenId(String(itemId));
   };
 
   const closeLightbox = () => {
     setPortfolioOpenId(null);
-    setReviewRating(0);
-    setReviewComment("");
-    setReviewHover(0);
     setPortfolioMsg("");
+    setCommentText("");
+    setEditingCommentId(null);
+    setOpenMenuCommentId(null);
+    setShowLikesPanel(false);
   };
 
   const openPfForm = (item = null) => {
@@ -524,31 +526,71 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     }
   };
 
-  const deletePfReview = async (itemId, reviewId) => {
-    try {
-      const data = await workerApi.deletePortfolioReview(itemId, reviewId);
-      setProfile(prev => ({ ...prev, workerProfile: { ...prev.workerProfile, portfolio: data.portfolio } }));
-    } catch (err) {
-      alert(err.message || "Erreur");
-    }
+  const updatePortfolioItem = (itemId, patch) => {
+    setProfile(prev => ({
+      ...prev,
+      workerProfile: {
+        ...prev.workerProfile,
+        portfolio: (prev.workerProfile.portfolio || []).map(p =>
+          String(p._id) === String(itemId) ? { ...p, ...patch } : p
+        ),
+      },
+    }));
   };
 
-  const submitPortfolioReview = async (itemId) => {
-    if (!reviewRating) return;
-    setPortfolioSubmitting(true);
-    setPortfolioMsg("");
+  const toggleLike = async (itemId) => {
+    if (!currentUser) return;
     try {
-      const data = await portfolioApi.submitReview(workerId, itemId, { rating: reviewRating, comment: reviewComment });
-      setProfile((prev) => ({
-        ...prev,
-        workerProfile: { ...prev.workerProfile, portfolio: data.portfolio },
-      }));
-      setPortfolioMsg("Avis envoyé !");
+      const data = await portfolioApi.toggleLike(workerId, itemId);
+      updatePortfolioItem(itemId, { likes: data.likes });
+    } catch {}
+  };
+
+  const submitComment = async (itemId) => {
+    if (!commentText.trim() || portfolioSubmitting) return;
+    setPortfolioSubmitting(true);
+    try {
+      const data = await portfolioApi.addComment(workerId, itemId, commentText.trim());
+      updatePortfolioItem(itemId, { comments: data.comments });
+      setCommentText("");
     } catch (err) {
-      setPortfolioMsg(err.message || "Erreur lors de l'envoi");
-    } finally {
-      setPortfolioSubmitting(false);
-    }
+      setPortfolioMsg(err.message || "Erreur");
+      setTimeout(() => setPortfolioMsg(""), 3000);
+    } finally { setPortfolioSubmitting(false); }
+  };
+
+  const saveEditComment = async (itemId, commentId) => {
+    if (!editingCommentText.trim()) return;
+    try {
+      const data = await portfolioApi.editComment(workerId, itemId, commentId, editingCommentText.trim());
+      updatePortfolioItem(itemId, { comments: data.comments });
+      setEditingCommentId(null);
+    } catch (err) { alert(err.message || "Erreur"); }
+  };
+
+  const deleteComment = async (itemId, commentId) => {
+    try {
+      const data = await portfolioApi.deleteComment(workerId, itemId, commentId);
+      updatePortfolioItem(itemId, { comments: data.comments });
+      setOpenMenuCommentId(null);
+    } catch (err) { alert(err.message || "Erreur"); }
+  };
+
+  const toggleCommentLike = async (itemId, commentId) => {
+    if (!currentUser) return;
+    try {
+      const data = await portfolioApi.toggleCommentLike(workerId, itemId, commentId);
+      setProfile(prev => ({
+        ...prev,
+        workerProfile: {
+          ...prev.workerProfile,
+          portfolio: (prev.workerProfile.portfolio || []).map(p => {
+            if (String(p._id) !== String(itemId)) return p;
+            return { ...p, comments: (p.comments || []).map(c => String(c._id) === String(commentId) ? { ...c, likes: data.likes } : c) };
+          }),
+        },
+      }));
+    } catch {}
   };
 
   const startScheduleEdit = () => {
@@ -819,13 +861,13 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
   // ── Tab: Portfolio ────────────────────────────────────────
   const TabPortfolio = () => {
-    const portfolio   = wp.portfolio || [];
-    const openItem    = portfolioOpenId ? portfolio.find((p) => String(p._id) === portfolioOpenId) : null;
-    const itemReviews = openItem?.reviews || [];
-    const myReview    = itemReviews.find((r) => String(r.clientId) === myUserId);
-    const avgRating   = itemReviews.length
-      ? itemReviews.reduce((s, r) => s + r.rating, 0) / itemReviews.length : 0;
-    const canReview = currentUser?.role === "client" && !isOwner;
+    const portfolio  = wp.portfolio || [];
+    const openItem   = portfolioOpenId ? portfolio.find((p) => String(p._id) === portfolioOpenId) : null;
+    const itemLikes  = openItem?.likes    || [];
+    const itemCmts   = openItem?.comments || [];
+    const iLiked     = itemLikes.some((l) => String(l.userId) === myUserId);
+    const myComment  = itemCmts.find((c) => String(c.userId) === myUserId);
+    const canComment = !!currentUser && !myComment;
 
     return (
       <>
@@ -882,10 +924,15 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                         </button>
                       </div>
                     ) : (
-                      <>
+                      <div style={{ display:"flex",alignItems:"center",gap:10 }}>
                         {item.title && <div className="pr-pf-ov-text" style={{ fontSize:12,fontWeight:700 }}>{item.title}</div>}
-                        {itemRevs.length > 0 && <div className="pr-pf-ov-text" style={{ fontSize:11 }}>★ {avg.toFixed(1)} · {itemRevs.length} avis</div>}
-                      </>
+                        {(item.likes?.length > 0 || item.comments?.length > 0) && (
+                          <div style={{ display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#fff" }}>
+                            {item.likes?.length > 0 && <span style={{ display:"flex",alignItems:"center",gap:3 }}><Heart size={11} fill="#fff" /> {item.likes.length}</span>}
+                            {item.comments?.length > 0 && <span style={{ display:"flex",alignItems:"center",gap:3 }}><MessageCircle size={11} /> {item.comments.length}</span>}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -929,8 +976,29 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                 )}
               </div>
 
-              {/* Right — details + reviews */}
-              <div className="pr-lb-right">
+              {/* Right — details + likes + comments */}
+              <div className="pr-lb-right" style={{ position:"relative", overflow:"hidden" }}>
+
+                {/* Likes panel — slides in from right */}
+                <div style={{ position:"absolute",inset:0,background:"#fff",zIndex:10,transform:showLikesPanel?"translateX(0)":"translateX(100%)",transition:"transform .25s cubic-bezier(.22,1,.36,1)",display:"flex",flexDirection:"column" }}>
+                  <div style={{ padding:"14px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
+                    <button onClick={() => setShowLikesPanel(false)} style={{ background:"#f1f5f9",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",color:"#0f172e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700 }}>←</button>
+                    <div style={{ fontSize:14,fontWeight:700,color:"#0f172e",display:"flex",alignItems:"center",gap:7 }}>
+                      <Heart size={14} fill="#ef4444" color="#ef4444" /> {itemLikes.length} j'aime
+                    </div>
+                  </div>
+                  <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }}>
+                    {itemLikes.map((l) => (
+                      <div key={String(l.userId)} style={{ display:"flex",alignItems:"center",gap:10 }}>
+                        <div style={{ width:36,height:36,borderRadius:"50%",background:"#0f172e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#06b6d4",flexShrink:0 }}>
+                          {(l.firstName?.[0]||"?").toUpperCase()}
+                        </div>
+                        <span style={{ fontSize:13,fontWeight:600,color:"#0f172e" }}>{`${l.firstName} ${l.lastName}`.trim()||"Utilisateur"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Header */}
                 <div style={{ padding:"14px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexShrink:0 }}>
                   <div>
@@ -970,63 +1038,125 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                   </div>
                 )}
 
-                {/* Average rating */}
-                {itemReviews.length > 0 && (
-                  <div style={{ padding:"12px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
-                    <div style={{ fontSize:26,fontWeight:800,color:"#0f172e",lineHeight:1 }}>{avgRating.toFixed(1)}</div>
-                    <div>
-                      <StarsDisplay rating={avgRating} size={14} />
-                      <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{itemReviews.length} avis</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Reviews list */}
-                <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }}>
-                  {itemReviews.length === 0 && (
-                    <div style={{ fontSize:12,color:"#94a3b8",fontStyle:"italic",textAlign:"center",padding:"12px 0" }}>
-                      Aucun avis pour le moment.{!isOwner && " Soyez le premier !"}
-                    </div>
+                {/* Likes bar */}
+                <div style={{ padding:"10px 16px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:14,flexShrink:0 }}>
+                  {currentUser && (
+                    <button onClick={() => toggleLike(portfolioOpenId)}
+                      style={{ display:"flex",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",padding:"4px 0",transition:"transform .15s" }}
+                      onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"}
+                      onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+                      <Heart size={20} fill={iLiked?"#ef4444":"none"} color={iLiked?"#ef4444":"#94a3b8"} />
+                      <span style={{ fontSize:13,fontWeight:700,color:iLiked?"#ef4444":"#64748b" }}>{itemLikes.length}</span>
+                    </button>
                   )}
-                  {[...itemReviews].reverse().map((rev) => (
-                    <div key={String(rev._id)} style={{ background:"#f8fafc",borderRadius:10,padding:"10px 12px",border:"1px solid #f1f5f9",position:"relative" }}>
-                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
-                        <div style={{ fontSize:12,fontWeight:700,color:"#0f172e" }}>
-                          {rev.clientName || "Anonyme"}
-                          {String(rev.clientId) === myUserId && <span style={{ marginLeft:6,fontSize:10,color:"#06b6d4",fontWeight:700 }}>· Vous</span>}
-                        </div>
-                        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                          <StarsDisplay rating={rev.rating} size={12} />
-                          {isOwner && (
-                            <button onClick={() => deletePfReview(portfolioOpenId, String(rev._id))}
-                              style={{ background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px" }}
-                              title="Supprimer cet avis">✕</button>
-                          )}
-                        </div>
-                      </div>
-                      {rev.comment && <div style={{ fontSize:12,color:"#64748b",lineHeight:1.5 }}>{rev.comment}</div>}
-                    </div>
-                  ))}
+                  {!currentUser && itemLikes.length > 0 && (
+                    <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:13,color:"#64748b" }}>
+                      <Heart size={16} fill="#ef4444" color="#ef4444" /> {itemLikes.length}
+                    </span>
+                  )}
+                  {itemLikes.length > 0 && (
+                    <button onClick={() => setShowLikesPanel(true)}
+                      style={{ fontSize:11,color:"#06b6d4",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0 }}>
+                      Voir qui a aimé
+                    </button>
+                  )}
+                  <span style={{ marginLeft:"auto",display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#94a3b8" }}>
+                    <MessageCircle size={14} /> {itemCmts.length}
+                  </span>
                 </div>
 
-                {/* Review form — clients only */}
-                {canReview && (
-                  <div style={{ padding:"14px 16px",borderTop:"1.5px solid #f1f5f9",flexShrink:0 }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:"#94a3b8",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10 }}>
-                      {myReview ? "Modifier votre avis" : "Laisser un avis"}
+                {/* Comments list */}
+                <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }} onClick={() => setOpenMenuCommentId(null)}>
+                  {itemCmts.length === 0 && (
+                    <div style={{ fontSize:12,color:"#94a3b8",fontStyle:"italic",textAlign:"center",padding:"12px 0" }}>
+                      Aucun commentaire.{currentUser && !isOwner && " Soyez le premier !"}
                     </div>
-                    <StarRow value={reviewRating} hover={reviewHover} onHover={setReviewHover} onLeave={() => setReviewHover(0)} onClick={setReviewRating} />
-                    <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Votre commentaire (optionnel)…" maxLength={500} rows={2}
-                      style={{ marginTop:10,width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:12,color:"#0f172e",outline:"none",resize:"vertical",fontFamily:"'Sora',sans-serif",boxSizing:"border-box",background:"#f8fafc" }} />
-                    {portfolioMsg && (
-                      <div style={{ fontSize:11,marginTop:5,color:portfolioMsg.includes("!") ? "#10b981" : "#ef4444",fontWeight:600 }}>{portfolioMsg}</div>
-                    )}
-                    <button onClick={() => submitPortfolioReview(portfolioOpenId)} disabled={!reviewRating || portfolioSubmitting}
-                      style={{ marginTop:10,width:"100%",border:"none",borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,cursor:reviewRating&&!portfolioSubmitting?"pointer":"not-allowed",background:reviewRating&&!portfolioSubmitting?"#06b6d4":"#e2e8f0",color:reviewRating&&!portfolioSubmitting?"#fff":"#94a3b8",fontFamily:"'Sora',sans-serif",transition:"all .2s" }}>
-                      {portfolioSubmitting ? "Envoi…" : myReview ? "Mettre à jour" : "Envoyer l'avis"}
+                  )}
+                  {itemCmts.map((cmt) => {
+                    const cId = String(cmt._id);
+                    const isMe = String(cmt.userId) === myUserId;
+                    const cmtLiked = (cmt.likes || []).some((l) => String(l) === myUserId);
+                    const isEditing = editingCommentId === cId;
+                    return (
+                      <div key={cId} style={{ background:"#f8fafc",borderRadius:10,padding:"10px 12px",border:"1px solid #f1f5f9",position:"relative" }}>
+                        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6 }}>
+                          <div style={{ display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0 }}>
+                            {avatarUrl(cmt.avatar)
+                              ? <img src={avatarUrl(cmt.avatar)} alt="" style={{ width:28,height:28,borderRadius:"50%",objectFit:"cover",flexShrink:0 }} />
+                              : <div style={{ width:28,height:28,borderRadius:"50%",background:"#0f172e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#06b6d4",flexShrink:0 }}>{(cmt.firstName?.[0]||"?").toUpperCase()}</div>
+                            }
+                            <div style={{ fontSize:12,fontWeight:700,color:"#0f172e" }}>
+                              {`${cmt.firstName} ${cmt.lastName}`.trim() || "Anonyme"}
+                              {isMe && <span style={{ marginLeft:6,fontSize:10,color:"#06b6d4",fontWeight:700 }}>· Vous</span>}
+                            </div>
+                          </div>
+                          <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
+                            {/* Worker can like comments */}
+                            {isOwner && (
+                              <button onClick={(e) => { e.stopPropagation(); toggleCommentLike(portfolioOpenId, cId); }}
+                                style={{ background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:3,color:cmtLiked?"#ef4444":"#94a3b8",fontSize:11,fontWeight:700,padding:"2px 4px" }}>
+                                <Heart size={12} fill={cmtLiked?"#ef4444":"none"} color={cmtLiked?"#ef4444":"#94a3b8"} />
+                                {(cmt.likes||[]).length > 0 && (cmt.likes||[]).length}
+                              </button>
+                            )}
+                            {/* 3-dot menu — comment author OR worker (owner) */}
+                            {(isMe || isOwner) && (
+                              <div style={{ position:"relative" }}>
+                                <button onClick={(e) => { e.stopPropagation(); setOpenMenuCommentId(openMenuCommentId === cId ? null : cId); }}
+                                  style={{ background:"none",border:"none",cursor:"pointer",color:"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",width:24,height:24,borderRadius:6 }}>
+                                  <MoreVertical size={14} />
+                                </button>
+                                {openMenuCommentId === cId && (
+                                  <div onClick={e=>e.stopPropagation()} style={{ position:"absolute",right:0,top:26,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,0.1)",zIndex:10,minWidth:120,padding:4 }}>
+                                    {isMe && (
+                                      <button onClick={() => { setEditingCommentId(cId); setEditingCommentText(cmt.text); setOpenMenuCommentId(null); }}
+                                        style={{ width:"100%",textAlign:"left",background:"none",border:"none",padding:"8px 12px",fontSize:12,fontWeight:600,color:"#0f172e",cursor:"pointer",borderRadius:6,fontFamily:"'Sora',sans-serif" }}>
+                                        Modifier
+                                      </button>
+                                    )}
+                                    <button onClick={() => deleteComment(portfolioOpenId, cId)}
+                                      style={{ width:"100%",textAlign:"left",background:"none",border:"none",padding:"8px 12px",fontSize:12,fontWeight:600,color:"#ef4444",cursor:"pointer",borderRadius:6,fontFamily:"'Sora',sans-serif" }}>
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {isEditing ? (
+                          <div style={{ marginTop:8,display:"flex",gap:6 }}>
+                            <input value={editingCommentText} onChange={e=>setEditingCommentText(e.target.value)}
+                              style={{ flex:1,border:"1.5px solid #06b6d4",borderRadius:7,padding:"6px 10px",fontSize:12,outline:"none",fontFamily:"'Sora',sans-serif" }} />
+                            <button onClick={() => saveEditComment(portfolioOpenId, cId)}
+                              style={{ background:"#06b6d4",border:"none",borderRadius:7,padding:"6px 10px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>OK</button>
+                            <button onClick={() => setEditingCommentId(null)}
+                              style={{ background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 10px",color:"#64748b",fontSize:12,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize:12,color:"#334155",lineHeight:1.5,marginTop:6 }}>{cmt.text}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Comment input */}
+                {canComment && !isOwner && (
+                  <div style={{ padding:"12px 16px",borderTop:"1.5px solid #f1f5f9",flexShrink:0,display:"flex",gap:8,alignItems:"flex-end" }}>
+                    <textarea value={commentText} onChange={e=>setCommentText(e.target.value)}
+                      placeholder="Ajouter un commentaire…" maxLength={500} rows={2}
+                      style={{ flex:1,border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 10px",fontSize:12,color:"#0f172e",outline:"none",resize:"none",fontFamily:"'Sora',sans-serif",background:"#f8fafc" }}
+                      onFocus={e=>e.currentTarget.style.borderColor="#06b6d4"}
+                      onBlur={e=>e.currentTarget.style.borderColor="#e2e8f0"} />
+                    <button onClick={() => submitComment(portfolioOpenId)} disabled={!commentText.trim()||portfolioSubmitting}
+                      style={{ width:36,height:36,borderRadius:9,border:"none",background:commentText.trim()?"#06b6d4":"#e2e8f0",color:commentText.trim()?"#fff":"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",cursor:commentText.trim()?"pointer":"not-allowed",flexShrink:0,transition:"background .18s" }}>
+                      <Send size={14} />
                     </button>
                   </div>
+                )}
+                {portfolioMsg && (
+                  <div style={{ padding:"6px 16px",fontSize:11,color:"#ef4444",fontWeight:600,flexShrink:0 }}>{portfolioMsg}</div>
                 )}
               </div>
             </div>

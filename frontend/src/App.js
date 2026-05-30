@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import { authApi } from "./api";
+import { authApi, workerApi } from "./api";
 import LoginForm            from "./pages/LoginForm";
 import SignupPicker         from "./pages/SignupPicker";
 import ResetPassword        from "./pages/ResetPassword";
@@ -25,6 +25,7 @@ export default function App() {
   const [panelKey, setPanelKey]     = useState(0);
   const [activePage, setActivePage] = useState("explore");
   const [profileTarget, setProfileTarget] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [profileTab, setProfileTab] = useState("overview");
   const [resetToken, setResetToken]             = useState(null);
   const [googleCredential, setGoogleCredential] = useState(null);
@@ -73,6 +74,7 @@ export default function App() {
       case "profile":
         setMode("app");
         setActivePage("profile");
+        setProfileTarget(null);
         break;
 
       case "reservations":
@@ -102,7 +104,20 @@ export default function App() {
         break;
 
       default:
-        setMode(path);
+        // Handle /profile/:workerId
+        if (path.startsWith("profile/")) {
+          const wId = path.replace("profile/", "");
+          setMode("app");
+          setActivePage("profile");
+          setProfileTarget(null);
+          setProfileLoading(true);
+          workerApi.getById(wId)
+            .then((w) => setProfileTarget(w))
+            .catch(() => setProfileTarget(null))
+            .finally(() => setProfileLoading(false));
+        } else {
+          setMode(path);
+        }
         break;
     }
   }, [admin]);
@@ -162,34 +177,27 @@ export default function App() {
 
     // ── FIX: push a distinct URL per page, not always "/app" ─────────────
     const pageUrlMap = {
-      profile:      "/profile",
       reservations: "/reservations",
       dashboard:    "/dashboard",
       saved:        "/saved",
     };
-    const url = pageUrlMap[page] || `/${page}`;
 
     setMode("app");
     setActivePage(page);
 
     if (page === "profile") {
-      setProfileTarget(state?.profileUser || null);
+      const target = state?.profileUser || null;
+      setProfileTarget(target);
       setProfileTab(state?.profileTab || "overview");
+      const targetId = target?._id || target?.id;
+      const url = targetId ? `/profile/${targetId}` : "/profile";
+      window.history.pushState({ mode:"app", activePage:"profile", profileTab: state?.profileTab||"overview" }, "", url);
     } else {
       setProfileTarget(null);
       setProfileTab("overview");
+      const url = pageUrlMap[page] || `/${page}`;
+      window.history.pushState({ mode:"app", activePage:page }, "", url);
     }
-
-    window.history.pushState(
-      {
-        mode: "app",
-        activePage: page,
-        profileTarget: state?.profileUser || null,
-        profileTab: state?.profileTab || "overview",
-      },
-      "",
-      url,
-    );
   };
 
   const onSuccess = (user) => {
@@ -386,9 +394,17 @@ export default function App() {
 
     // ── Profile ────────────────────────────────────────────────────────────
     if (mode === "app" && activePage === "profile") {
+      if (profileLoading) {
+        return (
+          <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc" }}>
+            <div style={{ fontSize:13, color:"#94a3b8", fontFamily:"'Sora',sans-serif" }}>Chargement du profil…</div>
+          </div>
+        );
+      }
       return (
         <>
           <Profile
+            key={profileTarget?._id || profileTarget?.id || loggedUser?._id}
             profileUser={profileTarget || loggedUser}
             currentUser={loggedUser}
             initialTab={profileTab}
