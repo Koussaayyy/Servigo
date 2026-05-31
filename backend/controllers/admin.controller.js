@@ -1,6 +1,7 @@
 const User = require("../models/User.model");
 const Reclamation = require("../models/Reclamation.model");
 const Reservation = require("../models/Reservation.model");
+const Signal = require("../models/Signal.model");
 
 // ── @GET /api/admin/users ──────────────────────────────────
 exports.getAllUsers = async (req, res) => {
@@ -229,6 +230,35 @@ exports.migrateOldWorkers = async (req, res) => {
       modifiedCount: result.modifiedCount,
       details: `${result.modifiedCount} old worker account(s) have been verified`
     });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/signals ───────────────────────────────
+exports.getSignals = async (_req, res) => {
+  try {
+    const signals = await Signal.find().sort({ createdAt: -1 });
+    res.json(signals);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PATCH /api/admin/signals/:id/status ─────────────────
+exports.updateSignalStatus = async (req, res) => {
+  try {
+    const { status, adminNotes = "" } = req.body;
+    if (!["new", "reviewed", "dismissed"].includes(status)) {
+      return res.status(400).json({ message: "Statut invalide" });
+    }
+    const signal = await Signal.findByIdAndUpdate(
+      req.params.id,
+      { status, adminNotes, reviewedAt: new Date() },
+      { new: true }
+    );
+    if (!signal) return res.status(404).json({ message: "Signalement introuvable" });
+    res.json(signal);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

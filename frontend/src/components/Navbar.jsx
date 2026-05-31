@@ -218,13 +218,21 @@ export default function Navbar({
   };
 
   const markOne = async (notif) => {
-    if (notif.read) return;
     const api = user.role === "worker" ? workerApi : clientApi;
     try {
-      await api.markNotificationAsRead(notif._id);
-      setNotifs(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n));
-      setUnread(prev => Math.max(0, prev - 1));
+      if (!notif.read) {
+        await api.markNotificationAsRead(notif._id);
+        setNotifs(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n));
+        setUnread(prev => Math.max(0, prev - 1));
+      }
     } catch {}
+    // Navigate based on type
+    setNotifOpen(false);
+    if (notif.type === "reservation") {
+      onNavigate?.("reservations");
+    } else if (notif.type === "like" || notif.type === "comment" || notif.type === "review") {
+      onNavigate?.("profile");
+    }
   };
 
   const go = (page, state) => {

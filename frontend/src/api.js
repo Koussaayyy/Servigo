@@ -356,6 +356,13 @@ export const reservationApi = {
       body: JSON.stringify(payload),
     }).then(handle),
 
+  submitClientSignal: (reservationId, payload) =>
+    fetch(`${BASE}/reservations/${reservationId}/client-signal`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    }).then(handle),
+
   getWorkerReservations: () =>
     fetch(`${BASE}/reservations/worker`, {
       headers: authHeaders(),
@@ -483,6 +490,16 @@ export const adminApi = {
     fetch(`${BASE}/admin/users/${userId}`, {
       method: "DELETE",
       headers: adminHeaders(),
+    }).then(handle),
+
+  getSignals: () =>
+    fetch(`${BASE}/admin/signals`, { headers: adminHeaders() }).then(handle),
+
+  updateSignalStatus: (signalId, data) =>
+    fetch(`${BASE}/admin/signals/${signalId}/status`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify(data),
     }).then(handle),
 };
 

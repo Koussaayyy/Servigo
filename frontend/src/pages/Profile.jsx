@@ -821,8 +821,15 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
             <div className="pr-card-title"><span className="pr-card-title-icon"><Award size={12} />Statistiques</span></div>
             <div className="pr-stats">
               <div className="pr-stat">
-                <div className="pr-stat-value" style={{ color:"#f59e0b",display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}><Star size={14} fill="#f59e0b" />{rating.toFixed(1)}</div>
-                <div className="pr-stat-label">Note</div>
+                <div className="pr-stat-value" style={{ color:"#f59e0b",display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
+                  <Star size={14} fill="#f59e0b" />{rating > 0 ? rating.toFixed(1) : "—"}
+                </div>
+                <div style={{ display:"flex",justifyContent:"center",gap:1,margin:"3px 0 2px" }}>
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} style={{ fontSize:10,color:s<=Math.round(rating)?"#f59e0b":"#e2e8f0" }}>★</span>
+                  ))}
+                </div>
+                <div className="pr-stat-label">Moyenne</div>
               </div>
               <div className="pr-stat"><div className="pr-stat-value">{reviews}</div><div className="pr-stat-label">Avis</div></div>
               <div className="pr-stat"><div className="pr-stat-value">{wp.hourlyRate > 0 ? wp.hourlyRate : "—"}</div><div className="pr-stat-label">TND/h</div></div>

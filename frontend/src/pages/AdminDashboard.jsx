@@ -13,11 +13,14 @@ import {
   Search,
   TrendingUp,
   Clock,
+  Flag,
 } from "lucide-react";
 import { adminApi } from "../api";
 
 export default function AdminDashboard({ admin, onLogout }) {
   const [activeTab, setActiveTab] = useState("reclamations");
+  const [signals, setSignals] = useState([]);
+  const [signalLoading, setSignalLoading] = useState(false);
   const [reclamations, setReclamations] = useState([]);
   const [filteredReclamations, setFilteredReclamations] = useState([]);
   const [users, setUsers] = useState([]);
@@ -84,15 +87,17 @@ export default function AdminDashboard({ admin, onLogout }) {
     setLoading(true);
     setError("");
     try {
-      const [reclamationsData, usersData, statsData] = await Promise.all([
+      const [reclamationsData, usersData, statsData, signalsData] = await Promise.all([
         adminApi.getReclamations(),
         adminApi.getUsers(),
         adminApi.getStats(),
+        adminApi.getSignals(),
       ]);
       
       setReclamations(Array.isArray(reclamationsData) ? reclamationsData : reclamationsData.reclamations || []);
       setUsers(Array.isArray(usersData) ? usersData : usersData.users || []);
       setStats(statsData);
+      setSignals(Array.isArray(signalsData) ? signalsData : []);
     } catch (err) {
       setError(err.message || "Erreur de chargement");
       console.error("Load error:", err);
@@ -580,6 +585,7 @@ export default function AdminDashboard({ admin, onLogout }) {
         >
           {[
             { id: "reclamations", label: "Réclamations", icon: MessageSquare },
+            { id: "signals", label: "Signalements", icon: Flag, badge: signals.filter(s=>s.status==="new").length },
             { id: "users", label: "Utilisateurs", icon: Users },
             { id: "activity", label: "Activité", icon: Clock },
           ].map((tab) => {
@@ -605,6 +611,11 @@ export default function AdminDashboard({ admin, onLogout }) {
               >
                 <Icon size={16} />
                 {tab.label}
+                {tab.badge > 0 && (
+                  <span style={{ background:"#ef4444",color:"#fff",borderRadius:999,padding:"1px 6px",fontSize:10,fontWeight:700,lineHeight:"16px" }}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1164,6 +1175,57 @@ export default function AdminDashboard({ admin, onLogout }) {
                   </div>
                 );
               })
+            )}
+          </div>
+        )}
+
+        {/* Signals Tab */}
+        {activeTab === "signals" && (
+          <div style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:24 }}>
+            <h2 style={{ fontSize:18,fontWeight:700,color:"#0f172e",marginBottom:18,marginTop:0 }}>
+              Signalements ({signals.length})
+            </h2>
+            {signals.length === 0 ? (
+              <p style={{ color:"#94a3b8",fontSize:13 }}>Aucun signalement pour le moment.</p>
+            ) : (
+              <div style={{ display:"grid",gap:12 }}>
+                {signals.map((s) => {
+                  const reasonLabels = { mauvais_travail:"Mauvais travail", comportement:"Comportement", non_venu:"Non venu", autre:"Autre" };
+                  const statusColors = { new:{ bg:"#fef2f2",color:"#b91c1c",label:"Nouveau" }, reviewed:{ bg:"#f0fdf4",color:"#15803d",label:"Examiné" }, dismissed:{ bg:"#f8fafc",color:"#64748b",label:"Ignoré" } };
+                  const sc = statusColors[s.status] || statusColors.new;
+                  return (
+                    <div key={s._id} style={{ border:"1.5px solid #e2e8f0",borderRadius:10,padding:16 }}>
+                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap" }}>
+                        <div>
+                          <div style={{ fontSize:14,fontWeight:700,color:"#0f172e",marginBottom:4 }}>
+                            {s.clientName || "Client"} → {s.workerName || "Prestataire"}
+                          </div>
+                          <div style={{ fontSize:12,color:"#64748b",marginBottom:4 }}>
+                            Motif : <strong>{reasonLabels[s.reason]||s.reason}</strong>
+                            {s.serviceType && ` · Service : ${s.serviceType}`}
+                          </div>
+                          {s.message && <div style={{ fontSize:12,color:"#334155",background:"#f8fafc",borderRadius:7,padding:"6px 10px",marginTop:4 }}>{s.message}</div>}
+                          <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>{new Date(s.createdAt).toLocaleDateString("fr-FR",{ day:"2-digit",month:"short",year:"numeric" })}</div>
+                        </div>
+                        <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0 }}>
+                          <span style={{ background:sc.bg,color:sc.color,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:700 }}>{sc.label}</span>
+                          <select value={s.status} onChange={async (e) => {
+                            const ns = e.target.value;
+                            try {
+                              const updated = await adminApi.updateSignalStatus(s._id, { status: ns });
+                              setSignals(prev => prev.map(x => x._id === s._id ? updated : x));
+                            } catch {}
+                          }} style={{ border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontSize:12,fontFamily:"'Sora',sans-serif",cursor:"pointer",outline:"none" }}>
+                            <option value="new">Nouveau</option>
+                            <option value="reviewed">Examiné</option>
+                            <option value="dismissed">Ignorer</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

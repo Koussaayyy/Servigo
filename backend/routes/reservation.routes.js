@@ -12,7 +12,8 @@ router.get("/worker/:workerId/month-availability", protect, authorize("client", 
 router.get("/client", protect, authorize("client", "worker"), reservationController.getClientReservations);
 router.get("/client/history", protect, authorize("client", "worker"), reservationController.getClientHistory);
 router.patch("/:id/client-cancel", protect, authorize("client", "worker"), reservationController.cancelClientReservation);
-router.patch("/:id/client-review", protect, authorize("client", "worker"), reservationController.submitClientReview);
+router.patch("/:id/client-review",  protect, authorize("client", "worker"), reservationController.submitClientReview);
+router.patch("/:id/client-signal",  protect, authorize("client", "worker"), reservationController.submitClientSignal);
 
 router.get("/worker", protect, authorize("worker"), reservationController.getWorkerReservations);
 router.get("/worker/reviews", protect, authorize("worker"), reservationController.getWorkerReviews);

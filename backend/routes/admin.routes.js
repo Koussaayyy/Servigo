@@ -18,5 +18,7 @@ router.put("/notifications/read-all", authMiddleware.protect, authMiddleware.aut
 router.get("/worker-verifications", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getWorkerVerifications);
 router.patch("/worker-verifications/:id/review", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.reviewWorkerVerification);
 router.post("/migrate-legacy-workers", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.migrateOldWorkers);
+router.get("/signals",               authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getSignals);
+router.patch("/signals/:id/status",  authMiddleware.protect, authMiddleware.authorize("admin"), adminController.updateSignalStatus);
 
 module.exports = router;

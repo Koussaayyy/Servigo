@@ -1,5 +1,6 @@
 const Reservation = require("../models/Reservation.model");
 const User = require("../models/User.model");
+const Signal = require("../models/Signal.model");
 const mongoose = require("mongoose");
 
 const ACTIVE_STATUSES = ["pending", "accepted"];
@@ -158,7 +159,7 @@ exports.createReservation = async (req, res) => {
     });
 
     if (activeExists) {
-      return res.status(409).json({ message: "Ce cr├®neau est d├®j├á r├®serv├®. Veuillez choisir un autre horaire." });
+      return res.status(409).json({ message: "Ce creneau est deja reserve. Veuillez choisir un autre horaire." });
     }
 
     // Check if THIS CLIENT already has ANY reservation with this worker at this time
@@ -171,7 +172,7 @@ exports.createReservation = async (req, res) => {
     });
 
     if (clientConflict) {
-      return res.status(409).json({ message: "Vous avez d├®j├á une r├®servation avec ce prestataire ├á cet horaire." });
+      return res.status(409).json({ message: "Vous avez deja une reservation avec ce prestataire a cet horaire." });
     }
 
     const reservation = await Reservation.create({
@@ -191,8 +192,8 @@ exports.createReservation = async (req, res) => {
       $push: {
         notifications: {
           type: "reservation",
-          title: `Nouvelle r├®servation de ${clientName}`,
-          message: `${clientName} a r├®serv├® votre service pour le ${bookingDate} ├á ${bookingHour}h`,
+          title: `Nouvelle reservation de ${clientName}`,
+          message: `${clientName} a reserve votre service pour le ${bookingDate} a ${bookingHour}h`,
           reservationId: reservation._id,
           read: false,
           createdAt: new Date(),
@@ -207,8 +208,8 @@ exports.createReservation = async (req, res) => {
         $push: {
           notifications: {
             type: "reservation",
-            title: `Nouvelle r├®servation`,
-            message: `${clientName} a r├®serv├® ${worker.workerProfile?.professions?.[0] || "un service"} pour le ${bookingDate} ├á ${bookingHour}h`,
+            title: `Nouvelle reservation`,
+            message: `${clientName} a reserve ${worker.workerProfile?.professions?.[0] || "un service"} pour le ${bookingDate} a ${bookingHour}h`,
             reservationId: reservation._id,
             read: false,
             createdAt: new Date(),
@@ -293,8 +294,8 @@ exports.cancelClientReservation = async (req, res) => {
       $push: {
         notifications: {
           type: "reservation",
-          title: "R├®servation annul├®e",
-          message: `${clientName} a annul├® la r├®servation du ${dateStr} ├á ${reservation.bookingHour}h`,
+          title: "Reservation annulee",
+          message: `${clientName} a annule la reservation du ${dateStr} a ${reservation.bookingHour}h`,
           reservationId: reservation._id,
           read: false,
           createdAt: new Date(),
@@ -348,9 +349,9 @@ exports.updateWorkerReservationStatus = async (req, res) => {
     const workerName = worker ? `${worker.firstName} ${worker.lastName}`.trim() : "Votre prestataire";
     const dateStr = toISODateString(new Date(reservation.bookingDate));
     const notifMessages = {
-      accepted:  { title: "R├®servation accept├®e", message: `${workerName} a accept├® votre r├®servation du ${dateStr} ├á ${reservation.bookingHour}h` },
-      rejected:  { title: "R├®servation refus├®e", message: `${workerName} a refus├® votre r├®servation du ${dateStr} ├á ${reservation.bookingHour}h` },
-      completed: { title: "Service termin├®", message: `Votre r├®servation avec ${workerName} du ${dateStr} est termin├®e. Laissez un avis !` },
+      accepted:  { title: "Reservation acceptee", message: `${workerName} a accepte votre reservation du ${dateStr} a ${reservation.bookingHour}h` },
+      rejected:  { title: "Reservation refusee", message: `${workerName} a refuse votre reservation du ${dateStr} a ${reservation.bookingHour}h` },
+      completed: { title: "Service termine", message: `Votre reservation avec ${workerName} du ${dateStr} est terminee. Laissez un avis !` },
     };
     const notif = notifMessages[status];
     if (notif) {
@@ -407,14 +408,14 @@ exports.submitClientReview = async (req, res) => {
     // Notify the worker about the new review
     const client = await User.findById(req.user.id).select("firstName lastName");
     const clientName = client ? `${client.firstName} ${client.lastName}`.trim() : "Un client";
-    const stars = "Ôÿà".repeat(rating) + "Ôÿå".repeat(5 - rating);
+    const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
     const dateStr = toISODateString(new Date(reservation.bookingDate));
     await User.findByIdAndUpdate(reservation.worker, {
       $push: {
         notifications: {
           type: "review",
           title: `Nouvel avis de ${clientName}`,
-          message: `${stars} pour votre service du ${dateStr}${comment ? ` ÔÇö "${comment.slice(0, 80)}${comment.length > 80 ? "ÔÇª" : ""}"` : ""}`,
+          message: `${stars} pour votre service du ${dateStr}${comment ? ` - "${comment.slice(0, 80)}${comment.length > 80 ? "..." : ""}"` : ""}`,
           reservationId: reservation._id,
           read: false,
           createdAt: new Date(),
@@ -425,6 +426,39 @@ exports.submitClientReview = async (req, res) => {
     return res.json({ message: "Review submitted", reservation });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.submitClientSignal = async (req, res) => {
+  try {
+    const reservation = await Reservation.findOne({ _id: req.params.id, client: req.user.id })
+      .populate("client", "firstName lastName")
+      .populate("worker", "firstName lastName");
+    if (!reservation) return res.status(404).json({ message: "Réservation introuvable" });
+    if (reservation.status !== "completed") return res.status(400).json({ message: "Signalement possible uniquement sur une réservation terminée" });
+    if (reservation.clientSignal?.reported) return res.status(400).json({ message: "Vous avez déjà signalé cette réservation" });
+
+    const { reason = "autre", message = "" } = req.body;
+    const clientName = `${reservation.client?.firstName || ""} ${reservation.client?.lastName || ""}`.trim();
+    const workerName = `${reservation.worker?.firstName || ""} ${reservation.worker?.lastName || ""}`.trim();
+
+    await Signal.create({
+      reservationId: reservation._id,
+      clientId: req.user.id,
+      workerId: reservation.worker._id,
+      clientName,
+      workerName,
+      serviceType: reservation.serviceType || "",
+      reason,
+      message: String(message).trim(),
+    });
+
+    reservation.clientSignal = { reported: true, reportedAt: new Date() };
+    await reservation.save();
+
+    res.json({ message: "Signalement envoyé à l'administration" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 

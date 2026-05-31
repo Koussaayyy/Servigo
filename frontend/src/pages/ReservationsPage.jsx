@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { reservationApi, clientApi } from "../api";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark, BookmarkCheck, Star, AlertTriangle, CheckCircle, Calendar, MapPin, Phone, Wrench, Clock, Eye, Check, X, ChevronRight } from "lucide-react";
 import Navbar from "../components/Navbar";
 
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
@@ -17,8 +17,53 @@ const pageCss = `
 body { background:#f8fafc; color:#0f172e; font-family:'Sora',sans-serif; -webkit-font-smoothing:antialiased; }
 input,textarea,select,button { font-family:'Sora',sans-serif; }
 .rv-root { min-height:100vh; background:#f8fafc; }
-.rv-content { max-width:980px; margin:0 auto; padding:84px 28px 64px; }
+.rv-content { max-width:900px; margin:0 auto; padding:84px 28px 64px; }
 @media(max-width:768px){ .rv-content{ padding:80px 16px 48px; } }
+
+@keyframes rvFadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+
+.rv-card {
+  background:#fff; border:1.5px solid #e2e8f0; border-radius:14px;
+  padding:18px 20px; transition:box-shadow .2s, border-color .2s;
+  position:relative; overflow:hidden;
+}
+.rv-card:hover { border-color:rgba(6,182,212,0.3); box-shadow:0 6px 24px rgba(6,182,212,0.08); }
+.rv-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:4px 0 0 4px; }
+.rv-card.pending::before   { background:#f59e0b; }
+.rv-card.accepted::before  { background:#10b981; }
+.rv-card.rejected::before  { background:#ef4444; }
+.rv-card.cancelled::before { background:#94a3b8; }
+.rv-card.completed::before { background:#06b6d4; }
+
+.rv-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+.rv-badge.pending   { background:#fffbeb; color:#b45309; border:1.5px solid #fde68a; }
+.rv-badge.accepted  { background:#f0fdf4; color:#15803d; border:1.5px solid #bbf7d0; }
+.rv-badge.rejected  { background:#fef2f2; color:#b91c1c; border:1.5px solid #fecaca; }
+.rv-badge.cancelled { background:#f8fafc; color:#64748b; border:1.5px solid #e2e8f0; }
+.rv-badge.completed { background:#f0f9ff; color:#0369a1; border:1.5px solid #bae6fd; }
+
+.rv-timer { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; background:#fff7ed; color:#c2410c; border:1.5px solid #fed7aa; }
+
+.rv-btn-details { display:flex; align-items:center; gap:6px; padding:9px 18px; border-radius:9px; border:1.5px solid #e2e8f0; background:#f8fafc; color:#0f172e; font-size:12px; font-weight:700; cursor:pointer; transition:all .18s; white-space:nowrap; }
+.rv-btn-details:hover { border-color:#06b6d4; color:#06b6d4; background:rgba(6,182,212,0.05); }
+
+.rv-modal-overlay { position:fixed; inset:0; background:rgba(15,23,46,.72); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
+.rv-modal { width:100%; max-width:580px; max-height:92vh; background:#fff; border-radius:20px; box-shadow:0 32px 80px rgba(0,0,0,.24); display:flex; flex-direction:column; overflow:hidden; animation:rvFadeIn .2s ease both; }
+.rv-modal-header { background:linear-gradient(135deg,#0f172e,#1e293b); padding:20px 22px; display:flex; align-items:center; gap:14px; flex-shrink:0; position:relative; }
+.rv-modal-body { flex:1; overflow-y:auto; padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
+.rv-modal-footer { padding:16px 22px; border-top:1.5px solid #f1f5f9; display:flex; gap:10px; justify-content:flex-end; flex-shrink:0; }
+.rv-info-row { display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#334155; }
+.rv-info-icon { width:28px; height:28px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.rv-section-title { font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:10px; }
+.rv-notes-box { background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; font-size:13px; color:#334155; line-height:1.6; }
+.rv-action-btn { padding:11px 24px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; border:none; transition:all .18s; display:flex; align-items:center; gap:7px; }
+.rv-action-btn.accept  { background:#10b981; color:#fff; }
+.rv-action-btn.accept:hover  { background:#059669; }
+.rv-action-btn.reject  { background:#fef2f2; color:#ef4444; border:1.5px solid #fecaca; }
+.rv-action-btn.reject:hover  { background:#fee2e2; }
+.rv-action-btn.complete { background:#06b6d4; color:#fff; }
+.rv-action-btn.complete:hover { background:#0891b2; }
+.rv-action-btn:disabled { opacity:.5; cursor:not-allowed; }
 `;
 
 export default function ReservationsPage({ user, onHome, onNavigate, onLogout }) {
@@ -33,8 +78,15 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [clientHistory, setClientHistory]           = useState([]);
   const [workerReservations, setWorkerReservations] = useState([]);
   const [selectedWorkerReservation, setSelectedWorkerReservation] = useState(null);
-  const [reviewForms, setReviewForms]     = useState({});
-  const [reviewLoadingId, setReviewLoadingId] = useState("");
+  const [reviewDialog, setReviewDialog]   = useState(null); // { reservationId, workerName }
+  const [signalDialog, setSignalDialog]   = useState(null); // { reservationId, workerName }
+  const [dialogDone, setDialogDone]       = useState(null); // { type: "review"|"signal", message }
+  const [reviewRating, setReviewRating]   = useState(0);
+  const [reviewHover, setReviewHover]     = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [signalReason, setSignalReason]   = useState("mauvais_travail");
+  const [signalMessage, setSignalMessage] = useState("");
+  const [dialogLoading, setDialogLoading] = useState(false);
   const [savedIds, setSavedIds]           = useState(new Set());
 
   useEffect(() => {
@@ -93,21 +145,38 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
     finally { setActionLoading(false); }
   };
 
-  const updateReviewForm = (id, key, value) => setReviewForms((p) => ({ ...p, [id]: { rating: key === "rating" ? value : (p[id]?.rating || ""), comment: key === "comment" ? value : (p[id]?.comment || ""), open: true } }));
-  const toggleReviewForm = (id) => setReviewForms((p) => { const c = p[id] || { rating:"", comment:"", open:false }; return { ...p, [id]: { ...c, open: !c.open } }; });
+  const openReviewDialog = (r) => {
+    setReviewRating(0); setReviewComment(""); setReviewHover(0);
+    setReviewDialog({ reservationId: r._id, workerName: `${r.worker?.firstName||""} ${r.worker?.lastName||""}`.trim() });
+  };
 
-  const submitReview = async (id) => {
-    const cur = reviewForms[id] || {};
-    const rating = Number(cur.rating);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) { setError("Choisissez une note entre 1 et 5."); return; }
-    setReviewLoadingId(id); setError(""); setMessage("");
+  const openSignalDialog = (r) => {
+    setSignalReason("mauvais_travail"); setSignalMessage("");
+    setSignalDialog({ reservationId: r._id, workerName: `${r.worker?.firstName||""} ${r.worker?.lastName||""}`.trim() });
+  };
+
+  const submitReview = async () => {
+    if (!reviewRating || !reviewDialog) return;
+    setDialogLoading(true);
     try {
-      await reservationApi.submitClientReview(id, { rating, comment: String(cur.comment || "").trim() });
-      setMessage("Avis envoyé avec succès");
-      setReviewForms((p) => ({ ...p, [id]: { rating:"", comment:"", open:false } }));
+      await reservationApi.submitClientReview(reviewDialog.reservationId, { rating: reviewRating, comment: "" });
+      setReviewDialog(null);
+      setDialogDone({ type:"review", message:"Votre avis a bien été envoyé !" });
       await loadData();
-    } catch (err) { setError(err.message || "Envoi de l'avis impossible"); }
-    finally { setReviewLoadingId(""); }
+    } catch (err) { setError(err.message || "Erreur"); }
+    finally { setDialogLoading(false); }
+  };
+
+  const submitSignal = async () => {
+    if (!signalDialog) return;
+    setDialogLoading(true);
+    try {
+      await reservationApi.submitClientSignal(signalDialog.reservationId, { reason: signalReason, message: signalMessage.trim() });
+      setSignalDialog(null);
+      setDialogDone({ type:"signal", message:"Signalement envoyé à l'administration." });
+      await loadData();
+    } catch (err) { setError(err.message || "Erreur"); }
+    finally { setDialogLoading(false); }
   };
 
   return (
@@ -154,38 +223,44 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                   ? <p style={{ margin:0,color:"#64748b",fontSize:13 }}>Aucun historique.</p>
                   : <div style={{ display:"grid",gap:10 }}>
                       {clientHistory.map((r) => {
-                        const hasReview   = !!r?.clientReview?.rating;
+                        const hasReview  = !!r?.clientReview?.rating;
+                        const hasSignal  = !!r?.clientSignal?.reported;
                         const isCompleted = r?.status === "completed";
-                        const fs          = reviewForms[r._id] || { rating:"",comment:"",open:false };
                         return (
                           <ReservationRow key={r._id} reservation={r}
                             isSaved={savedIds.has(String(r.worker?._id || ""))}
                             onToggleSave={handleToggleSave}
-                            rightAction={isCompleted
-                              ? hasReview
-                                ? <span style={{ fontSize:11,color:"#2e7d32",fontWeight:700 }}>Avis envoyé</span>
-                                : <button className="mode-tab" onClick={() => toggleReviewForm(r._id)} disabled={reviewLoadingId===r._id}>{fs.open?"Fermer":"Laisser un avis"}</button>
-                              : null}
+                            rightAction={isCompleted ? (
+                              <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",minWidth:130 }}>
+                                {hasReview
+                                  ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#10b981",background:"rgba(16,185,129,0.08)",border:"1.5px solid rgba(16,185,129,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
+                                      <Star size={12} fill="#10b981" color="#10b981"/> Avis envoyé
+                                    </span>
+                                  : <button onClick={() => openReviewDialog(r)}
+                                      style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#0f172e",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
+                                      onMouseEnter={e=>{e.currentTarget.style.borderColor="#06b6d4";e.currentTarget.style.color="#06b6d4";}}
+                                      onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.color="#0f172e";}}>
+                                      <Star size={12}/> Laisser un avis
+                                    </button>
+                                }
+                                {hasSignal
+                                  ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#f59e0b",background:"rgba(245,158,11,0.08)",border:"1.5px solid rgba(245,158,11,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
+                                      <AlertTriangle size={12}/> Signalé
+                                    </span>
+                                  : <button onClick={() => openSignalDialog(r)}
+                                      style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#ef4444",background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
+                                      onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";}}
+                                      onMouseLeave={e=>{e.currentTarget.style.background="#fef2f2";}}>
+                                      <AlertTriangle size={12}/> Signaler
+                                    </button>
+                                }
+                              </div>
+                            ) : null}
                           >
                             {isCompleted && hasReview && (
-                              <div style={{ marginTop:8,fontSize:12,color:"#64748b" }}>
-                                Note: {"★".repeat(Number(r.clientReview.rating))}{"☆".repeat(Math.max(0,5-Number(r.clientReview.rating)))}
+                              <div style={{ marginTop:6,fontSize:12,color:"#64748b" }}>
+                                {"★".repeat(Number(r.clientReview.rating))}{"☆".repeat(Math.max(0,5-Number(r.clientReview.rating)))}
                                 {r.clientReview.comment ? ` · ${r.clientReview.comment}` : ""}
-                              </div>
-                            )}
-                            {isCompleted && !hasReview && fs.open && (
-                              <div style={{ marginTop:10,borderTop:"1px solid #e2e8f0",paddingTop:10,display:"grid",gap:8 }}>
-                                <div style={{ display:"flex",gap:8,alignItems:"center",fontSize:12,color:"#64748b" }}>
-                                  Note
-                                  <select value={fs.rating} onChange={(e) => updateReviewForm(r._id,"rating",e.target.value)} style={{ ...inputStyle,width:96,padding:"8px 10px",fontSize:12 }}>
-                                    <option value="">--</option>
-                                    {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
-                                  </select>
-                                </div>
-                                <textarea value={fs.comment} onChange={(e) => updateReviewForm(r._id,"comment",e.target.value)} placeholder="Votre retour (optionnel)" style={{ ...inputStyle,minHeight:64,resize:"vertical",fontSize:12 }} />
-                                <button className="submit-btn" onClick={() => submitReview(r._id)} disabled={reviewLoadingId===r._id} style={{ maxWidth:220 }}>
-                                  {reviewLoadingId===r._id ? "Envoi..." : "Envoyer l'avis"}
-                                </button>
                               </div>
                             )}
                           </ReservationRow>
@@ -206,12 +281,10 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                     {workerReservations.map((r) => (
                       <ReservationRow key={r._id} reservation={r}
                         rightAction={
-                          <button
-                            className="mode-tab"
+                          <button className="rv-btn-details"
                             onClick={() => setSelectedWorkerReservation(r)}
-                            disabled={actionLoading}
-                          >
-                            Voir détails
+                            disabled={actionLoading}>
+                            <Eye size={13}/> Détails
                           </button>
                         }
                       />
@@ -242,89 +315,162 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
           )}
         </div>
       </div>
+
+      {/* ── Review Dialog ──────────────────────────────────── */}
+      {reviewDialog && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.65)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
+          onClick={() => !dialogLoading && setReviewDialog(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",borderRadius:18,width:"100%",maxWidth:400,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,.22)",fontFamily:"'Sora',sans-serif" }}>
+            <div style={{ fontSize:16,fontWeight:800,color:"#0f172e",marginBottom:4 }}>Laisser un avis</div>
+            <div style={{ fontSize:12,color:"#64748b",marginBottom:20 }}>Pour {reviewDialog.workerName}</div>
+            <div style={{ display:"flex",justifyContent:"center",gap:8,marginBottom:20 }}>
+              {[1,2,3,4,5].map(s => (
+                <button key={s} onClick={() => setReviewRating(s)} onMouseEnter={() => setReviewHover(s)} onMouseLeave={() => setReviewHover(0)}
+                  style={{ background:"none",border:"none",cursor:"pointer",fontSize:36,color:(reviewHover||reviewRating)>=s?"#f59e0b":"#e2e8f0",transition:"color .15s",lineHeight:1 }}>★</button>
+              ))}
+            </div>
+            {reviewRating > 0 && (
+              <div style={{ textAlign:"center",fontSize:13,color:"#64748b",marginBottom:8 }}>
+                {["","Mauvais","Moyen","Bien","Très bien","Excellent"][reviewRating]}
+              </div>
+            )}
+            <div style={{ display:"flex",gap:10,marginTop:16 }}>
+              <button onClick={() => setReviewDialog(null)} disabled={dialogLoading}
+                style={{ flex:1,padding:"11px 0",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>
+                Annuler
+              </button>
+              <button onClick={submitReview} disabled={!reviewRating||dialogLoading}
+                style={{ flex:2,padding:"11px 0",borderRadius:10,border:"none",background:reviewRating?"#06b6d4":"#e2e8f0",color:reviewRating?"#fff":"#94a3b8",fontSize:13,fontWeight:700,cursor:reviewRating?"pointer":"not-allowed",fontFamily:"'Sora',sans-serif",transition:"background .18s" }}>
+                {dialogLoading ? "Envoi…" : "Envoyer l'avis"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Signal Dialog ──────────────────────────────────── */}
+      {signalDialog && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.65)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
+          onClick={() => !dialogLoading && setSignalDialog(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",borderRadius:18,width:"100%",maxWidth:400,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,.22)",fontFamily:"'Sora',sans-serif" }}>
+            <div style={{ fontSize:16,fontWeight:800,color:"#0f172e",marginBottom:4 }}>Signaler le prestataire</div>
+            <div style={{ fontSize:12,color:"#64748b",marginBottom:20 }}>À propos de {signalDialog.workerName}</div>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:8 }}>Motif</label>
+              {[
+                { value:"mauvais_travail", label:"Mauvais travail effectué" },
+                { value:"comportement",    label:"Comportement inapproprié" },
+                { value:"non_venu",        label:"Prestataire non venu" },
+                { value:"autre",           label:"Autre" },
+              ].map(opt => (
+                <label key={opt.value} style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,cursor:"pointer",fontSize:13,color:"#0f172e" }}>
+                  <input type="radio" value={opt.value} checked={signalReason===opt.value} onChange={()=>setSignalReason(opt.value)} style={{ accentColor:"#ef4444" }} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <textarea value={signalMessage} onChange={e=>setSignalMessage(e.target.value)}
+              placeholder="Détails supplémentaires (optionnel)…" maxLength={500} rows={3}
+              style={{ width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 12px",fontSize:13,fontFamily:"'Sora',sans-serif",outline:"none",resize:"none",boxSizing:"border-box",color:"#0f172e" }} />
+            <div style={{ display:"flex",gap:10,marginTop:16 }}>
+              <button onClick={() => setSignalDialog(null)} disabled={dialogLoading}
+                style={{ flex:1,padding:"11px 0",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>
+                Annuler
+              </button>
+              <button onClick={submitSignal} disabled={dialogLoading}
+                style={{ flex:2,padding:"11px 0",borderRadius:10,border:"none",background:"#ef4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif",transition:"background .18s" }}>
+                {dialogLoading ? "Envoi…" : "Envoyer le signalement"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Message ────────────────────────────────── */}
+      {dialogDone && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.65)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
+          onClick={() => setDialogDone(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff",borderRadius:18,width:"100%",maxWidth:360,padding:36,boxShadow:"0 32px 80px rgba(0,0,0,.22)",textAlign:"center",fontFamily:"'Sora',sans-serif" }}>
+            <div style={{ width:68,height:68,borderRadius:"50%",background:dialogDone.type==="review"?"rgba(16,185,129,.1)":"rgba(245,158,11,.1)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px" }}>
+              <CheckCircle size={36} color={dialogDone.type==="review"?"#10b981":"#f59e0b"} />
+            </div>
+            <div style={{ fontSize:18,fontWeight:800,color:"#0f172e",marginBottom:8 }}>
+              {dialogDone.type==="review" ? "Avis envoyé !" : "Signalement envoyé !"}
+            </div>
+            <div style={{ fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:24 }}>{dialogDone.message}</div>
+            <button onClick={() => setDialogDone(null)}
+              style={{ background:dialogDone.type==="review"?"#10b981":"#f59e0b",color:"#fff",border:"none",borderRadius:10,padding:"12px 32px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 function ReservationRow({ reservation, rightAction, children, isSaved, onToggleSave }) {
-  const worker = reservation.worker;
-  const client = reservation.client;
-  const isObj  = (v) => v && typeof v === "object" && !Array.isArray(v);
-  const person = isObj(worker) ? worker : isObj(client) ? client : {};
+  const worker   = reservation.worker;
+  const client   = reservation.client;
+  const isObj    = (v) => v && typeof v === "object" && !Array.isArray(v);
+  const person   = isObj(worker) ? worker : isObj(client) ? client : {};
   const workerId = isObj(worker) ? String(worker._id || "") : "";
-  
-  // Status colors and labels
-  const statusConfig = {
-    pending: { label: "En attente", bg: "#fffbeb", color: "#b45309", border: "#fcd34d" },
-    accepted: { label: "Acceptée", bg: "#f0fdf4", color: "#15803d", border: "#86efac" },
-    rejected: { label: "Refusée", bg: "#fef2f2", color: "#b91c1c", border: "#fca5a5" },
-    cancelled: { label: "Annulée", bg: "#f8fafc", color: "#64748b", border: "#cbd5e1" },
-    completed: { label: "Terminée", bg: "#f0f9ff", color: "#0369a1", border: "#7dd3fc" },
-  };
-  
-  const config = statusConfig[reservation.status] || { label: reservation.status, bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" };
-  
-  // Calculate countdown for pending reservations
+  const initials = ((person.firstName?.[0]||"") + (person.lastName?.[0]||"")).toUpperCase() || "?";
+  const status   = reservation.status || "pending";
+
   const [countdown, setCountdown] = useState("");
   useEffect(() => {
-    if (reservation.status !== "pending" || !reservation.autoExpireAt) return;
-    
-    const interval = setInterval(() => {
-      const now = new Date();
-      const expireTime = new Date(reservation.autoExpireAt);
-      const diff = expireTime - now;
-      
-      if (diff <= 0) {
-        setCountdown("Expirée");
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setCountdown(`${hours}h ${mins}m`);
-      }
-    }, 30000); // Update every 30 seconds
-    
-    // Initial calculation
-    const now = new Date();
-    const expireTime = new Date(reservation.autoExpireAt);
-    const diff = expireTime - now;
-    if (diff <= 0) {
-      setCountdown("Expirée");
-    } else {
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      setCountdown(`${hours}h ${mins}m`);
-    }
-    
-    return () => clearInterval(interval);
-  }, [reservation.status, reservation.autoExpireAt]);
-  
+    if (status !== "pending" || !reservation.autoExpireAt) return;
+    const calc = () => {
+      const diff = new Date(reservation.autoExpireAt) - Date.now();
+      if (diff <= 0) { setCountdown("Expirée"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setCountdown(`${h}h ${m}m`);
+    };
+    calc();
+    const t = setInterval(calc, 30000);
+    return () => clearInterval(t);
+  }, [status, reservation.autoExpireAt]);
+
   return (
-    <div style={{ border:"1px solid #e2e8f0",borderRadius:10,padding:12,display:"flex",justifyContent:"space-between",gap:10,alignItems:"center" }}>
-      <div style={{ flex:1 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-          <span style={{ fontSize:14,color:"#0f172e",fontWeight:600 }}>{person.firstName||"Utilisateur"} {person.lastName||""}</span>
-          {onToggleSave && workerId && (
-            <button onClick={() => onToggleSave(workerId, isSaved)}
-              style={{ background:isSaved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${isSaved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:6,width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .18s",flexShrink:0 }}>
-              {isSaved ? <BookmarkCheck size={11} color="#06b6d4" /> : <Bookmark size={11} color="#94a3b8" />}
-            </button>
-          )}
+    <div className={`rv-card ${status}`}>
+      <div style={{ display:"flex",alignItems:"flex-start",gap:14 }}>
+        {/* Avatar */}
+        <div style={{ width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#0f172e,#1e293b)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
+          {initials}
         </div>
-        <div style={{ fontSize:12,color:"#64748b" }}>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)} · {reservation.serviceType||"Service"}</div>
-        {reservation.address && <div style={{ fontSize:12,color:"#64748b" }}>{reservation.address}</div>}
-        <div style={{ marginTop:8,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
-          <span style={{ fontSize:11,fontWeight:700,color:"#fff",background:config.color,border:`1.5px solid ${config.border}`,padding:"4px 10px",borderRadius:6,backgroundColor:config.color }}>{config.label}</span>
-          {reservation.status === "pending" && countdown && (
-            <div style={{ display:"flex",alignItems:"center",gap:4,fontSize:10,fontWeight:700,color:"#fff",background:"#b45309",border:"1.5px solid #d97706",padding:"4px 8px",borderRadius:6,cursor:"help",title:"L'artisan a 12 heures pour accepter cette réservation. Passé ce délai, elle sera annulée automatiquement." }}>
-              <span style={{ fontSize:12 }}>⏱️</span>
-              <span>{countdown}</span>
-              <span style={{ fontSize:11,fontWeight:700 }}>avant annulation</span>
-            </div>
-          )}
+
+        {/* Info */}
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap" }}>
+            <span style={{ fontSize:14,fontWeight:700,color:"#0f172e" }}>{person.firstName||"Utilisateur"} {person.lastName||""}</span>
+            {onToggleSave && workerId && (
+              <button onClick={() => onToggleSave(workerId, isSaved)}
+                style={{ background:isSaved?"rgba(6,182,212,0.1)":"transparent",border:`1.5px solid ${isSaved?"rgba(6,182,212,0.35)":"#e2e8f0"}`,borderRadius:6,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .18s",flexShrink:0 }}>
+                {isSaved ? <BookmarkCheck size={10} color="#06b6d4" /> : <Bookmark size={10} color="#94a3b8" />}
+              </button>
+            )}
+          </div>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:12,fontSize:12,color:"#64748b",marginBottom:10 }}>
+            <span style={{ display:"flex",alignItems:"center",gap:4 }}><Calendar size={11} color="#94a3b8"/>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)}</span>
+            {reservation.serviceType && <span style={{ display:"flex",alignItems:"center",gap:4 }}><Wrench size={11} color="#94a3b8"/>{reservation.serviceType}</span>}
+            {reservation.address && <span style={{ display:"flex",alignItems:"center",gap:4 }}><MapPin size={11} color="#94a3b8"/>{reservation.address}</span>}
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+            <span className={`rv-badge ${status}`}>{
+              {pending:"En attente",accepted:"Acceptée",rejected:"Refusée",cancelled:"Annulée",completed:"Terminée"}[status]||status
+            }</span>
+            {status === "pending" && countdown && (
+              <span className="rv-timer"><Clock size={10}/>{countdown} avant annulation</span>
+            )}
+          </div>
+          {children}
         </div>
-        {children}
+
+        {/* Right action */}
+        {rightAction && <div style={{ flexShrink:0,alignSelf:"center" }}>{rightAction}</div>}
       </div>
-      {rightAction}
     </div>
   );
 }
@@ -336,78 +482,122 @@ const mediaUrl = (path) => {
 };
 
 function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, onAccept, onReject, onComplete }) {
-  const isPending = reservation?.status === "pending";
+  const isPending  = reservation?.status === "pending";
   const isAccepted = reservation?.status === "accepted";
-  const media = Array.isArray(reservation?.mediaAttachments) ? reservation.mediaAttachments : [];
+  const media      = Array.isArray(reservation?.mediaAttachments) ? reservation.mediaAttachments : [];
+  const client     = reservation?.client || {};
+  const initials   = ((client.firstName?.[0]||"") + (client.lastName?.[0]||"")).toUpperCase() || "?";
+  const statusLabel = { pending:"En attente", accepted:"Acceptée", rejected:"Refusée", cancelled:"Annulée", completed:"Terminée" };
 
   return (
-    <div
-      style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.7)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ width:"100%",maxWidth:760,maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",padding:18 }}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-          <h3 style={{ margin:0,fontSize:18,color:"#0f172e" }}>Détails de la réservation</h3>
-          <button className="mode-tab" onClick={onClose}>Fermer</button>
+    <div className="rv-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="rv-modal">
+
+        {/* Header */}
+        <div className="rv-modal-header">
+          <div style={{ width:46,height:46,borderRadius:12,background:"rgba(6,182,212,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
+            {initials}
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:16,fontWeight:700,color:"#fff" }}>{client.firstName||""} {client.lastName||""}</div>
+            <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>Demande de réservation</div>
+          </div>
+          <span className={`rv-badge ${reservation?.status}`} style={{ flexShrink:0 }}>
+            {statusLabel[reservation?.status]||reservation?.status}
+          </span>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,.08)",border:"none",borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#94a3b8",marginLeft:8,flexShrink:0 }}>
+            <X size={14}/>
+          </button>
         </div>
 
-        <div style={{ display:"grid",gap:6,fontSize:13,color:"#334155",marginBottom:14 }}>
-          <div><strong>Client:</strong> {reservation?.client?.firstName || ""} {reservation?.client?.lastName || ""}</div>
-          <div><strong>Date:</strong> {fmtDate(reservation?.bookingDate)} à {fmtHour(reservation?.bookingHour)}</div>
-          <div><strong>Service:</strong> {reservation?.serviceType || "Service"}</div>
-          <div><strong>Adresse:</strong> {reservation?.address || "-"}</div>
-          {reservation?.client?.phone && <div><strong>Téléphone:</strong> {reservation.client.phone}</div>}
-          <div><strong>Statut:</strong> {reservation?.status}</div>
-        </div>
+        {/* Body */}
+        <div className="rv-modal-body">
 
-        <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Notes du client</div>
-          <div style={{ background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10,fontSize:13,color:"#334155",minHeight:48 }}>
-            {reservation?.notes?.trim() ? reservation.notes : "Aucune note fournie."}
+          {/* Info rows */}
+          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+            <div className="rv-info-row">
+              <div className="rv-info-icon"><Calendar size={13} color="#06b6d4"/></div>
+              <div><span style={{ fontWeight:600 }}>Date : </span>{fmtDate(reservation?.bookingDate)} à {fmtHour(reservation?.bookingHour)}</div>
+            </div>
+            {reservation?.serviceType && (
+              <div className="rv-info-row">
+                <div className="rv-info-icon"><Wrench size={13} color="#8b5cf6"/></div>
+                <div><span style={{ fontWeight:600 }}>Service : </span>{reservation.serviceType}</div>
+              </div>
+            )}
+            {reservation?.address && (
+              <div className="rv-info-row">
+                <div className="rv-info-icon"><MapPin size={13} color="#10b981"/></div>
+                <div><span style={{ fontWeight:600 }}>Adresse : </span>{reservation.address}</div>
+              </div>
+            )}
+            {client.phone && (
+              <div className="rv-info-row">
+                <div className="rv-info-icon"><Phone size={13} color="#f59e0b"/></div>
+                <div><span style={{ fontWeight:600 }}>Téléphone : </span>{client.phone}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div>
+            <div className="rv-section-title">Notes du client</div>
+            <div className="rv-notes-box">
+              {reservation?.notes?.trim() || <span style={{ color:"#94a3b8",fontStyle:"italic" }}>Aucune note fournie.</span>}
+            </div>
+          </div>
+
+          {/* Media */}
+          <div>
+            <div className="rv-section-title">Photos / Vidéos</div>
+            {media.length === 0 ? (
+              <div style={{ fontSize:12,color:"#94a3b8",fontStyle:"italic" }}>Aucun média joint.</div>
+            ) : (
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8 }}>
+                {media.map((item, idx) => {
+                  const url = mediaUrl(item?.url);
+                  const isVideo = String(item?.mimeType||"").startsWith("video/");
+                  return (
+                    <a key={`${url}-${idx}`} href={url} target="_blank" rel="noreferrer"
+                      style={{ border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",textDecoration:"none",background:"#f8fafc",display:"block",transition:"border-color .18s" }}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="#06b6d4"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
+                      {isVideo
+                        ? <video src={url} style={{ width:"100%",height:90,objectFit:"cover",display:"block",background:"#000" }} />
+                        : <img src={url} alt="" style={{ width:"100%",height:90,objectFit:"cover",display:"block" }} />
+                      }
+                      <div style={{ padding:"5px 8px",fontSize:10,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                        {item?.originalName||(isVideo?`Vidéo ${idx+1}`:`Photo ${idx+1}`)}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6 }}>Photos / Vidéos</div>
-          {media.length === 0 ? (
-            <div style={{ fontSize:12,color:"#94a3b8" }}>Aucun média joint.</div>
-          ) : (
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8 }}>
-              {media.map((item, idx) => {
-                const url = mediaUrl(item?.url);
-                const isVideo = String(item?.mimeType || "").startsWith("video/");
-                return (
-                  <a
-                    key={`${url}-${idx}`}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ border:"1px solid #e2e8f0",borderRadius:8,padding:6,textDecoration:"none",color:"#0f172e",background:"#f8fafc" }}
-                  >
-                    {isVideo ? (
-                      <video src={url} controls style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6,background:"#000" }} />
-                    ) : (
-                      <img src={url} alt={item?.originalName || `media-${idx + 1}`} style={{ width:"100%",height:96,objectFit:"cover",borderRadius:6 }} />
-                    )}
-                    <div style={{ fontSize:10,color:"#64748b",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                      {item?.originalName || (isVideo ? `Vidéo ${idx + 1}` : `Photo ${idx + 1}`)}
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
+        {/* Footer actions */}
+        <div className="rv-modal-footer">
           {isPending && (
             <>
-              <button className="mode-tab" onClick={onAccept} disabled={actionLoading}>Accepter</button>
-              <button className="mode-tab" onClick={onReject} disabled={actionLoading}>Refuser</button>
+              <button className="rv-action-btn reject" onClick={onReject} disabled={actionLoading}>
+                <X size={14}/> Refuser
+              </button>
+              <button className="rv-action-btn accept" onClick={onAccept} disabled={actionLoading}>
+                <Check size={14}/> Accepter
+              </button>
             </>
           )}
           {isAccepted && (
-            <button className="mode-tab" onClick={onComplete} disabled={actionLoading}>Marquer terminé</button>
+            <button className="rv-action-btn complete" onClick={onComplete} disabled={actionLoading}>
+              <CheckCircle size={14}/> Marquer terminée
+            </button>
+          )}
+          {!isPending && !isAccepted && (
+            <button onClick={onClose} style={{ padding:"11px 24px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer" }}>
+              Fermer
+            </button>
           )}
         </div>
       </div>

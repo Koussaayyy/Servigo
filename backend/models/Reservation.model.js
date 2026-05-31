@@ -66,6 +66,21 @@ const ReservationSchema = new mongoose.Schema(
         type: Date,
       },
     },
+    mediaAttachments: {
+      type: [
+        {
+          url:          { type: String, default: "" },
+          originalName: { type: String, default: "" },
+          mimeType:     { type: String, default: "" },
+          size:         { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
+    clientSignal: {
+      reported:   { type: Boolean, default: false },
+      reportedAt: { type: Date },
+    },
     autoExpireAt: {
       type: Date,
       index: true,
