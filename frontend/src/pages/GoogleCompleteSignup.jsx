@@ -86,8 +86,14 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
 
       <div className="field">
         <label>Phone Number</label>
-        <input type="tel" placeholder="+213 6XX XXX XXX"
-          value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <div style={{ display:"flex",alignItems:"center",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#f1f5f9",overflow:"hidden",transition:"border-color .18s" }}
+          onFocusCapture={e=>e.currentTarget.style.borderColor="#06b6d4"}
+          onBlurCapture={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
+          <span style={{ padding:"10px 12px",fontSize:13,color:"#64748b",fontWeight:600,borderRight:"1.5px solid #e2e8f0",whiteSpace:"nowrap",background:"#f1f5f9" }}>🇹🇳 +216</span>
+          <input type="tel" placeholder="XX XXX XXX"
+            value={phone} onChange={(e) => setPhone(e.target.value)}
+            style={{ flex:1,border:"none",background:"transparent",padding:"10px 12px",fontSize:13,outline:"none" }} />
+        </div>
       </div>
 
       {role === "worker" && (

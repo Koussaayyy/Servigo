@@ -500,7 +500,7 @@ exports.getWorkerAvailableSlots = async (req, res) => {
       return res.json({ workerId, date, slots: [] });
     }
 
-    const scheduleHours = [...BOOKABLE_HOURS];
+    const scheduleHours = getWorkerScheduleHoursForDate(worker, bookingDate);
 
     if (scheduleHours.length === 0) {
       return res.json({ workerId, date, slots: [] });
@@ -581,7 +581,7 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
       date.setDate(today.getDate() + index);
 
       const isoDate = toISODateString(date);
-      const scheduleHours = [...BOOKABLE_HOURS];
+      const scheduleHours = getWorkerScheduleHoursForDate(worker, date);
       const dayStatuses = statusByDateHour.get(isoDate) || new Map();
 
       const isCurrentDay = index === 0;

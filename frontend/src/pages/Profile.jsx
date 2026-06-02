@@ -185,9 +185,6 @@ input,textarea,select,button{font-family:'Sora',sans-serif}
 .pr-lb-right::-webkit-scrollbar { width:4px; }
 .pr-lb-right::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:9px; }
 
-/* ── Star rating ── */
-.pr-star { font-size:28px; cursor:pointer; line-height:1; transition:transform .1s; user-select:none; display:inline-block; }
-.pr-star:hover { transform:scale(1.18); }
 
 @media(max-width:1024px){ .pr-grid{ grid-template-columns:1fr; } }
 @media(max-width:768px){ .pr-hero{ padding:76px 16px 0; } .pr-content{ padding:24px 16px 64px; } .pr-hero-name{ font-size:20px; } .pr-field-grid{ grid-template-columns:1fr; } .pr-stats{ grid-template-columns:repeat(3,1fr); } }
@@ -213,27 +210,6 @@ const BOOKABLE_HOURS = [8,9,10,11,12,14,15,16,17];
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
 
-const StarRow = ({ value, hover, onHover, onLeave, onClick, size = 28 }) => (
-  <div style={{ display:"flex", gap:2 }}>
-    {[1,2,3,4,5].map((s) => (
-      <span key={s} className="pr-star"
-        style={{ fontSize:size, color: s <= (hover || value) ? "#f59e0b" : "#d1d5db" }}
-        onMouseEnter={() => onHover(s)}
-        onMouseLeave={onLeave}
-        onClick={() => onClick(s)}
-      >★</span>
-    ))}
-  </div>
-);
-
-const StarsDisplay = ({ rating, size = 13 }) => {
-  const full = Math.round(rating);
-  return (
-    <span style={{ color:"#f59e0b", fontSize:size, letterSpacing:1 }}>
-      {"★".repeat(full)}{"☆".repeat(Math.max(0, 5 - full))}
-    </span>
-  );
-};
 
 export default function Profile({ profileUser: initialProfile, currentUser, initialTab = "overview", onHome, onNavigate, onLogout, onUpdateUser }) {
   const [profile, setProfile] = useState(initialProfile || currentUser || null);
@@ -665,7 +641,18 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
               <div className="pr-field-grid" style={{ marginBottom:16 }}>
                 <div className="pr-field"><div className="pr-field-label">Prénom</div><input className="pr-input" value={draftInfo.firstName} onChange={e => setDraftInfo(p => ({...p, firstName: e.target.value}))} /></div>
                 <div className="pr-field"><div className="pr-field-label">Nom</div><input className="pr-input" value={draftInfo.lastName} onChange={e => setDraftInfo(p => ({...p, lastName: e.target.value}))} /></div>
-                <div className="pr-field"><div className="pr-field-label">Téléphone</div><input className="pr-input" value={draftInfo.phone} onChange={e => setDraftInfo(p => ({...p, phone: e.target.value}))} /></div>
+                <div className="pr-field">
+                  <div className="pr-field-label">Téléphone</div>
+                  <div style={{ display:"flex",alignItems:"center",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#f1f5f9",overflow:"hidden",transition:"border-color .18s" }}
+                    onFocusCapture={e=>e.currentTarget.style.borderColor="#06b6d4"}
+                    onBlurCapture={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
+                    <span style={{ padding:"9px 11px",fontSize:13,color:"#64748b",fontWeight:600,borderRight:"1.5px solid #e2e8f0",whiteSpace:"nowrap",background:"#f1f5f9",flexShrink:0 }}>🇹🇳 +216</span>
+                    <input type="tel" placeholder="XX XXX XXX"
+                      value={draftInfo.phone?.replace(/^\+?216/,"")}
+                      onChange={e => setDraftInfo(p => ({...p, phone: e.target.value}))}
+                      style={{ flex:1,border:"none",background:"transparent",padding:"9px 11px",fontSize:13,outline:"none",fontFamily:"'Sora',sans-serif" }} />
+                  </div>
+                </div>
                 <div className="pr-field">
                   <div className="pr-field-label">Genre</div>
                   <select className="pr-select" value={draftInfo.gender} onChange={e => setDraftInfo(p => ({...p, gender: e.target.value}))}>
@@ -899,10 +886,8 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
         {portfolio.length > 0 && (
           <div className="pr-pf-grid pr-anim-1">
             {portfolio.map((item) => {
-              const imgs     = item.images?.length ? item.images : item.imageUrl ? [item.imageUrl] : [];
-              const imgSrc   = imgs[0] ? avatarUrl(imgs[0]) : null;
-              const itemRevs = item.reviews || [];
-              const avg      = itemRevs.length ? itemRevs.reduce((s, r) => s + r.rating, 0) / itemRevs.length : 0;
+              const imgs   = item.images?.length ? item.images : item.imageUrl ? [item.imageUrl] : [];
+              const imgSrc = imgs[0] ? avatarUrl(imgs[0]) : null;
               return (
                 <div key={String(item._id)} className="pr-pf-cell" onClick={() => openLightbox(String(item._id))}>
                   {imgSrc

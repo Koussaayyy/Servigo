@@ -57,8 +57,14 @@ export default function ClientSignup({ onBack, onSuccess }) {
       </div>
       <div className="field">
         <label>Phone Number</label>
-        <input name="phone" type="tel" placeholder="+216 XX XXX XXX"
-          value={form.phone} onChange={handle} />
+        <div style={{ display:"flex",alignItems:"center",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#f1f5f9",overflow:"hidden",transition:"border-color .18s" }}
+          onFocusCapture={e=>e.currentTarget.style.borderColor="#06b6d4"}
+          onBlurCapture={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
+          <span style={{ padding:"10px 12px",fontSize:13,color:"#64748b",fontWeight:600,borderRight:"1.5px solid #e2e8f0",whiteSpace:"nowrap",background:"#f1f5f9" }}>🇹🇳 +216</span>
+          <input name="phone" type="tel" placeholder="XX XXX XXX"
+            value={form.phone} onChange={handle}
+            style={{ flex:1,border:"none",background:"transparent",padding:"10px 12px",fontSize:13,outline:"none" }} />
+        </div>
       </div>
       <div className="field">
         <label>Password</label>

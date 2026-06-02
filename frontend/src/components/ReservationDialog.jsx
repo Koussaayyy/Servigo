@@ -414,7 +414,7 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
                         Numéro de téléphone <span style={{ color:"#ef4444" }}>*</span>
                       </label>
                       <div className="rd-phone-wrap">
-                        <span className="rd-phone-prefix">+216</span>
+                        <span className="rd-phone-prefix">🇹🇳 +216</span>
                         <input className="rd-phone-input" type="tel" placeholder="22 345 678" maxLength={11}
                           value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s]/g, ""))} />
                       </div>
