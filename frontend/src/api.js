@@ -399,6 +399,13 @@ export const reservationApi = {
       headers: authHeaders(),
       body: JSON.stringify({ status }),
     }).then(handle),
+
+  startService: (reservationId, code) =>
+    fetch(`${BASE}/reservations/${reservationId}/start-service`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ code }),
+    }).then(handle),
 };
 
 // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
@@ -521,6 +528,22 @@ export const adminApi = {
       headers: adminHeaders(),
       body: JSON.stringify(data),
     }).then(handle),
+
+  banWorker: (workerId, banReason) =>
+    fetch(`${BASE}/admin/workers/${workerId}/ban`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ banReason }),
+    }).then(handle),
+
+  unbanWorker: (workerId) =>
+    fetch(`${BASE}/admin/workers/${workerId}/unban`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+    }).then(handle),
+
+  getWorkerReports: (workerId) =>
+    fetch(`${BASE}/admin/workers/${workerId}/reports`, { headers: adminHeaders() }).then(handle),
 };
 
 export const chatApi = {

@@ -20,5 +20,8 @@ router.patch("/worker-verifications/:id/review", authMiddleware.protect, authMid
 router.post("/migrate-legacy-workers", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.migrateOldWorkers);
 router.get("/signals",               authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getSignals);
 router.patch("/signals/:id/status",  authMiddleware.protect, authMiddleware.authorize("admin"), adminController.updateSignalStatus);
+router.patch("/workers/:id/ban",     authMiddleware.protect, authMiddleware.authorize("admin"), adminController.banWorker);
+router.patch("/workers/:id/unban",   authMiddleware.protect, authMiddleware.authorize("admin"), adminController.unbanWorker);
+router.get("/workers/:id/reports",   authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getWorkerReports);
 
 module.exports = router;

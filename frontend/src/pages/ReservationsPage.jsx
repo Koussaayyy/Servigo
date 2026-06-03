@@ -11,6 +11,10 @@ const fmtDate = (dateValue) => {
   return d.toLocaleDateString();
 };
 
+// Format service code: client sees first 2 digits, worker sees last 2 digits
+const getClientCodeDisplay = (code) => code ? `${code.slice(0, 2)}**` : "-";
+const getWorkerCodeDisplay = (code) => code ? `**${code.slice(2, 4)}` : "-";
+
 const pageCss = `
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -108,6 +112,8 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [signalMessage, setSignalMessage] = useState("");
   const [dialogLoading, setDialogLoading] = useState(false);
   const [savedIds, setSavedIds]           = useState(new Set());
+  const [serviceCodeInput, setServiceCodeInput] = useState("");
+  const [serviceCodeError, setServiceCodeError] = useState("");
 
   useEffect(() => {
     clientApi.getSavedWorkers().then((list) => {
@@ -132,11 +138,20 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
         reservationApi.getClientReservations(),
         reservationApi.getClientHistory(),
       ]);
-      setClientReservations(Array.isArray(reservationsData) ? reservationsData : []);
-      setClientHistory(Array.isArray(historyData) ? historyData : []);
+      const sortedReservations = Array.isArray(reservationsData)
+        ? [...reservationsData].sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+        : [];
+      setClientReservations(sortedReservations);
+      const sortedHistory = Array.isArray(historyData)
+        ? [...historyData].sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+        : [];
+      setClientHistory(sortedHistory);
       if (isWorker) {
-        const data = await reservationApi.getWorkerReservations();
-        setWorkerReservations(Array.isArray(data) ? data : []);
+        const workerData = await reservationApi.getWorkerReservations();
+        const sortedWorkerReservations = Array.isArray(workerData)
+          ? [...workerData].sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+          : [];
+        setWorkerReservations(sortedWorkerReservations);
       }
     } catch (err) { setError(err.message || "Failed to load reservations."); }
     finally { setLoading(false); }
@@ -194,6 +209,26 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
       await loadData();
     } catch (err) { setError(err.message || "Erreur"); }
     finally { setDialogLoading(false); }
+  };
+
+  const startService = async (reservationId) => {
+    if (!serviceCodeInput || serviceCodeInput.length !== 4) {
+      setServiceCodeError("Le code doit contenir 4 chiffres");
+      return;
+    }
+    setActionLoading(true);
+    setServiceCodeError("");
+    try {
+      await reservationApi.startService(reservationId, serviceCodeInput);
+      setServiceCodeInput("");
+      setMessage("Service démarré avec succès!");
+      await loadData();
+      setSelectedWorkerReservation(null);
+    } catch (err) {
+      setServiceCodeError(err.message || "Code invalide");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -277,7 +312,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                     <ReservationRow key={r._id} reservation={r}
                       isSaved={savedIds.has(String(r.worker?._id || ""))}
                       onToggleSave={handleToggleSave}
-                      rightAction={["pending","accepted"].includes(r.status)
+                      rightAction={r.status === "pending"
                         ? <button className="rv-btn-details" style={{ color:"#ef4444",borderColor:"#fecaca" }}
                             onClick={() => cancelReservation(r)} disabled={actionLoading}>
                             <X size={13}/> Annuler
@@ -346,7 +381,16 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
             <WorkerReservationDetailsModal
               reservation={selectedWorkerReservation}
               actionLoading={actionLoading}
-              onClose={() => setSelectedWorkerReservation(null)}
+              serviceCodeInput={serviceCodeInput}
+              setServiceCodeInput={setServiceCodeInput}
+              serviceCodeError={serviceCodeError}
+              setServiceCodeError={setServiceCodeError}
+              startService={startService}
+              onClose={() => {
+                setSelectedWorkerReservation(null);
+                setServiceCodeInput("");
+                setServiceCodeError("");
+              }}
               onAccept={async () => {
                 await setWorkerStatus(selectedWorkerReservation._id, "accepted");
                 setSelectedWorkerReservation(null);
@@ -471,6 +515,7 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
   const isObj    = (v) => v && typeof v === "object" && !Array.isArray(v);
   const person   = isObj(worker) ? worker : isObj(client) ? client : {};
   const workerId = isObj(worker) ? String(worker._id || "") : "";
+  const isWorkerCard = isObj(worker); // True if this is showing the worker, false if showing client
   const initials = ((person.firstName?.[0]||"") + (person.lastName?.[0]||"")).toUpperCase() || "?";
   const status   = reservation.status || "pending";
 
@@ -520,6 +565,11 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
             {status === "pending" && countdown && (
               <span className="rv-timer"><Clock size={10}/>{countdown} avant annulation</span>
             )}
+            {reservation.serviceCode && (
+              <span style={{ fontSize:11,fontWeight:700,color:"#06b6d4",background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:6,padding:"4px 8px" }}>
+                Code: {isWorkerCard ? getWorkerCodeDisplay(reservation.serviceCode) : getClientCodeDisplay(reservation.serviceCode)}
+              </span>
+            )}
           </div>
           {children}
         </div>
@@ -537,7 +587,7 @@ const mediaUrl = (path) => {
   return `http://localhost:5000${path}`;
 };
 
-function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, onAccept, onReject, onComplete }) {
+function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, onAccept, onReject, onComplete, serviceCodeInput, setServiceCodeInput, serviceCodeError, setServiceCodeError, startService }) {
   const isPending  = reservation?.status === "pending";
   const isAccepted = reservation?.status === "accepted";
   const media      = Array.isArray(reservation?.mediaAttachments) ? reservation.mediaAttachments : [];
@@ -594,6 +644,52 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
               </div>
             )}
           </div>
+
+          {/* Service Code - Show only for accepted reservations */}
+          {isAccepted && (
+            <div>
+              <div className="rv-section-title">Code de service</div>
+              <div style={{ background:"rgba(6,182,212,0.05)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:10,padding:14 }}>
+                <div style={{ fontSize:12,color:"#64748b",marginBottom:8 }}>Entrez le code à votre arrivée pour prouver votre présence.</div>
+                {!reservation?.serviceStartedAt ? (
+                  <>
+                    <div style={{ display:"flex",gap:8,marginBottom:10 }}>
+                      <input
+                        type="text"
+                        maxLength="4"
+                        value={serviceCodeInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          if (val.length <= 4) setServiceCodeInput(val);
+                          setServiceCodeError("");
+                        }}
+                        placeholder="0000"
+                        style={{ flex:1,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:16,fontWeight:700,textAlign:"center",letterSpacing:"3px",fontFamily:"monospace",outline:"none" }}
+                      />
+                    </div>
+                    {serviceCodeError && (
+                      <div style={{ fontSize:12,color:"#ef4444",marginBottom:10,fontWeight:600 }}>⚠ {serviceCodeError}</div>
+                    )}
+                    <button
+                      onClick={() => startService(reservation._id)}
+                      disabled={actionLoading || serviceCodeInput.length !== 4}
+                      style={{ width:"100%",background:serviceCodeInput.length === 4 ? "#06b6d4" : "#cbd5e1",color:"#fff",border:"none",borderRadius:8,padding:"11px 16px",fontSize:12,fontWeight:700,cursor:serviceCodeInput.length === 4 ? "pointer" : "not-allowed",transition:"all .2s" }}
+                    >
+                      ▶ Démarrer le service
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ display:"flex",alignItems:"center",gap:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:8,padding:12 }}>
+                    <CheckCircle size={16} color="#15803d" />
+                    <div>
+                      <div style={{ fontSize:12,fontWeight:700,color:"#15803d" }}>Service démarré</div>
+                      <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>À {fmtHour(new Date(reservation.serviceStartedAt).getHours())}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div>

@@ -91,6 +91,21 @@ const ReservationSchema = new mongoose.Schema(
       type: Date,
       index: true,
     },
+
+    // ── Service Code (Proof of On-Time Arrival) ────────
+    serviceCode: {
+      type: String,
+      default: "",
+      // 4-digit random code generated on creation
+    },
+    serviceStartedAt: {
+      type: Date,
+      // Timestamp when worker successfully entered the code
+    },
+    codeVerifiedAt: {
+      type: Date,
+      // When admin verified the code for disputes
+    },
   },
   { timestamps: true }
 );

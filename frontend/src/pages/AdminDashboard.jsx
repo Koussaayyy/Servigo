@@ -1193,33 +1193,61 @@ export default function AdminDashboard({ admin, onLogout }) {
                   const reasonLabels = { mauvais_travail:"Mauvais travail", comportement:"Comportement", non_venu:"Non venu", autre:"Autre" };
                   const statusColors = { new:{ bg:"#fef2f2",color:"#b91c1c",label:"Nouveau" }, reviewed:{ bg:"#f0fdf4",color:"#15803d",label:"Examiné" }, dismissed:{ bg:"#f8fafc",color:"#64748b",label:"Ignoré" } };
                   const sc = statusColors[s.status] || statusColors.new;
+                  const res = s.reservationId;
+                  const workerShowed = res?.serviceStartedAt ? true : false;
+                  const bookingDate = res?.bookingDate ? new Date(res.bookingDate).toLocaleDateString("fr-FR") : "-";
+                  const bookingTime = res?.bookingHour ? `${String(res.bookingHour).padStart(2,"0")}:00` : "-";
+                  const serviceStartTime = res?.serviceStartedAt ? new Date(res.serviceStartedAt).toLocaleString("fr-FR") : "-";
                   return (
                     <div key={s._id} style={{ border:"1.5px solid #e2e8f0",borderRadius:10,padding:16 }}>
                       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap" }}>
-                        <div>
+                        <div style={{ flex:1 }}>
                           <div style={{ fontSize:14,fontWeight:700,color:"#0f172e",marginBottom:4 }}>
                             {s.clientName || "Client"} → {s.workerName || "Prestataire"}
                           </div>
-                          <div style={{ fontSize:12,color:"#64748b",marginBottom:4 }}>
+                          <div style={{ fontSize:12,color:"#64748b",marginBottom:6 }}>
                             Motif : <strong>{reasonLabels[s.reason]||s.reason}</strong>
                             {s.serviceType && ` · Service : ${s.serviceType}`}
                           </div>
-                          {s.message && <div style={{ fontSize:12,color:"#334155",background:"#f8fafc",borderRadius:7,padding:"6px 10px",marginTop:4 }}>{s.message}</div>}
-                          <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>{new Date(s.createdAt).toLocaleDateString("fr-FR",{ day:"2-digit",month:"short",year:"numeric" })}</div>
+                          {s.message && <div style={{ fontSize:12,color:"#334155",background:"#f8fafc",borderRadius:7,padding:"6px 10px",marginBottom:8 }}>{s.message}</div>}
+                          
+                          {/* Reservation Details for Dispute Resolution */}
+                          <div style={{ background:workerShowed?"#f0fdf4":"#fef2f2",border:`1.5px solid ${workerShowed?"#bbf7d0":"#fecaca"}`,borderRadius:8,padding:10,marginBottom:8 }}>
+                            <div style={{ fontSize:11,fontWeight:700,color:workerShowed?"#15803d":"#b91c1c",marginBottom:4 }}>
+                              {workerShowed ? "✓ Prestataire s'est pointé" : "✗ Prestataire N'a PAS démarré le service"}
+                            </div>
+                            <div style={{ fontSize:11,color:"#64748b",lineHeight:1.6 }}>
+                              <div>Réservation : {bookingDate} à {bookingTime}</div>
+                              {workerShowed && <div>Service commencé : {serviceStartTime}</div>}
+                            </div>
+                          </div>
+                          
+                          <div style={{ fontSize:11,color:"#94a3b8" }}>Signalé le {new Date(s.createdAt).toLocaleDateString("fr-FR",{ day:"2-digit",month:"short",year:"numeric" })}</div>
                         </div>
                         <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0 }}>
                           <span style={{ background:sc.bg,color:sc.color,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:700 }}>{sc.label}</span>
                           <select value={s.status} onChange={async (e) => {
                             const ns = e.target.value;
                             try {
-                              const updated = await adminApi.updateSignalStatus(s._id, { status: ns });
+                              const updated = await adminApi.updateSignalStatus(s._id, { status: ns, verified: s.status === "reviewed" && ns !== "dismissed" });
                               setSignals(prev => prev.map(x => x._id === s._id ? updated : x));
                             } catch {}
                           }} style={{ border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontSize:12,fontFamily:"'Sora',sans-serif",cursor:"pointer",outline:"none" }}>
                             <option value="new">Nouveau</option>
-                            <option value="reviewed">Examiné</option>
-                            <option value="dismissed">Ignorer</option>
+                            <option value="reviewed">Vérifier comme valide</option>
+                            <option value="dismissed">Rejeter</option>
                           </select>
+                          {s.status === "reviewed" && (
+                            <button onClick={async () => {
+                              try {
+                                await adminApi.banWorker(s.workerId, `Signalement ${s.reason} - Ban manuel`);
+                                alert("Prestataire banni");
+                                loadAllData();
+                              } catch (err) { alert("Erreur: " + err.message); }
+                            }} style={{ background:"#ef4444",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+                              Bannir
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1281,7 +1309,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                 borderBottom: "1.5px solid #e2e8f0",
                 padding: "16px 20px",
                 display: "grid",
-                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.5fr",
+                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.8fr 0.5fr",
                 gap: 16,
                 fontWeight: 700,
                 fontSize: 11,
@@ -1295,6 +1323,7 @@ export default function AdminDashboard({ admin, onLogout }) {
               <div>Rôle</div>
               <div>Statut</div>
               <div>Vérification artisan</div>
+              <div>Statut artisan</div>
               <div>Actions</div>
             </div>
 
@@ -1317,7 +1346,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                       key={user._id}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.5fr",
+                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.8fr 0.5fr",
                         gap: 16,
                         padding: "16px 20px",
                         borderBottom: "1.5px solid #f1f5f9",
@@ -1448,6 +1477,41 @@ export default function AdminDashboard({ admin, onLogout }) {
                               </div>
                             );
                           })()
+                        )}
+                      </div>
+                      <div>
+                        {user.role !== "worker" ? (
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <span
+                              style={{
+                                background: user.workerStatus === "banned" ? "#fef2f2" : user.workerStatus === "suspended" ? "#fef3c7" : "#f0fdf4",
+                                color: user.workerStatus === "banned" ? "#b91c1c" : user.workerStatus === "suspended" ? "#b45309" : "#15803d",
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                width: "fit-content",
+                              }}
+                            >
+                              {user.workerStatus === "banned" ? "🚫 Banni" : user.workerStatus === "suspended" ? "⏸ Suspendu" : "✓ Actif"}
+                            </span>
+                            {user.workerStatus === "banned" && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await adminApi.unbanWorker(user._id);
+                                    alert("Prestataire réactivé");
+                                    loadAllData();
+                                  } catch (err) { alert("Erreur: " + err.message); }
+                                }}
+                                style={{ fontSize: 10, color: "#06b6d4", background: "rgba(6,182,212,0.1)", border: "none", borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontWeight: 600 }}
+                              >
+                                Débannir
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                       <button

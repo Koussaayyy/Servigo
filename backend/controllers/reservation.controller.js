@@ -7,6 +7,11 @@ const ACTIVE_STATUSES = ["pending", "accepted"];
 const BOOKABLE_HOURS = [8, 10, 12, 14, 16]; // 2-hour slots: 08-10, 10-12, 12-14, 14-16, 16-18
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
+// Generate random 4-digit service code
+function generateServiceCode() {
+  return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+}
+
 function parseDateOnly(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
@@ -154,11 +159,6 @@ exports.createReservation = async (req, res) => {
     // Build list of all hours this reservation will occupy
     const occupiedHours = Array.from({ length: duration }, (_, i) => hour + i);
 
-    // Validate all occupied hours are within bookable slots
-    if (!occupiedHours.every(h => BOOKABLE_HOURS.includes(h))) {
-      return res.status(400).json({ message: "La durée dépasse les créneaux disponibles pour ce jour." });
-    }
-
     // Check if any of the occupied hours overlap existing active reservations
     const existingReservations = await Reservation.find({
       worker: workerId,
@@ -204,6 +204,7 @@ exports.createReservation = async (req, res) => {
       address: address || "",
       notes: notes || "",
       mediaAttachments,
+      serviceCode: generateServiceCode(),
     });
 
     // ÔöÇÔöÇ Notify the worker ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
@@ -630,6 +631,51 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
     }
 
     return res.json({ workerId, days });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── START SERVICE (Worker enters 4-digit code to prove on-time arrival) ──
+exports.startService = async (req, res) => {
+  try {
+    const { reservationId } = req.params;
+    const { code } = req.body;
+
+    if (!reservationId || !code) {
+      return res.status(400).json({ message: "reservationId and code are required" });
+    }
+
+    const reservation = await Reservation.findById(reservationId);
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    // Verify this worker owns this reservation
+    if (reservation.worker.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized to start this service" });
+    }
+
+    // Check if service already started
+    if (reservation.serviceStartedAt) {
+      return res.status(400).json({ message: "Service already started" });
+    }
+
+    // Verify the code matches
+    if (code !== reservation.serviceCode) {
+      return res.status(400).json({ message: "Invalid service code" });
+    }
+
+    // Update reservation with service start time
+    reservation.serviceStartedAt = new Date();
+    await reservation.save();
+
+    console.log(`✅ Service started for reservation ${reservationId} by worker ${req.user.id}`);
+
+    return res.json({
+      message: "Service started successfully",
+      serviceStartedAt: reservation.serviceStartedAt,
+    });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
   }

@@ -171,10 +171,13 @@ exports.getWorkerById = async (req, res) => {
 exports.getAllWorkers = async (req, res) => {
   try {
     const { profession, city, includeUnavailable } = req.query;
+    
+    // IMPORTANT: Only show workers that have been verified by admin
+    // They must have CIN and profession documents approved
     const filter = {
       role: "worker",
       isActive: true,
-      "workerVerification.status": "approved",
+      "workerVerification.status": "approved", // ← ONLY APPROVED WORKERS
     };
     
     if (includeUnavailable !== "1") {
@@ -186,8 +189,24 @@ exports.getAllWorkers = async (req, res) => {
       filter["workerProfile.city"] = { $regex: `^${escapeRegex(city)}$`, $options: "i" };
     }
     
+    console.log("🔍 Fetching workers with filter:", JSON.stringify(filter));
     const workers = await User.find(filter).select("-password -clientProfile");
-    res.json(workers);
+    console.log(`✅ Query returned ${workers.length} workers with status='approved'`);
+    
+    // Log details about returned workers
+    workers.forEach((w, i) => {
+      console.log(`  [${i+1}] ${w.firstName} ${w.lastName} - Status: ${w.workerVerification?.status}, Profession: ${w.workerProfile?.professions?.join(", ")}`);
+    });
+    
+    // Extra safety check: verify all returned workers actually have approved status
+    const validWorkers = workers.filter(w => w.workerVerification?.status === "approved");
+    console.log(`✅ After verification check: ${validWorkers.length} valid approved workers`);
+    
+    if (workers.length !== validWorkers.length) {
+      console.warn(`⚠️ WARNING: ${workers.length - validWorkers.length} workers filtered out by verification check!`);
+    }
+    
+    res.json(validWorkers);
   } catch (err) {
     console.error("❌ getAllWorkers error:", err);
     res.status(500).json({ message: "Server error", error: err.message });

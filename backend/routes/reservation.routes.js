@@ -18,5 +18,6 @@ router.patch("/:id/client-signal",  protect, authorize("client", "worker"), rese
 router.get("/worker", protect, authorize("worker"), reservationController.getWorkerReservations);
 router.get("/worker/reviews", protect, authorize("worker"), reservationController.getWorkerReviews);
 router.patch("/:id/worker-status", protect, authorize("worker"), reservationController.updateWorkerReservationStatus);
+router.patch("/:reservationId/start-service", protect, authorize("worker"), reservationController.startService);
 
 module.exports = router;

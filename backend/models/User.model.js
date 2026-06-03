@@ -137,6 +137,26 @@ const UserSchema = new mongoose.Schema(
         default: [],
       },
     },
+
+    // ── Worker violations & bans ────────────────────────────
+    workerStatus: {
+      type: String,
+      enum: ["active", "suspended", "banned"],
+      default: "active",
+    },
+    bannedAt:      { type: Date },
+    banReason:     { type: String, default: "" },
+    reportHistory: {
+      type: [
+        {
+          signalId:     { type: mongoose.Schema.Types.ObjectId, ref: "Signal" },
+          reason:       { type: String, default: "" },
+          verified:     { type: Boolean, default: false },
+          createdAt:    { type: Date, default: Date.now },
+        }
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );
