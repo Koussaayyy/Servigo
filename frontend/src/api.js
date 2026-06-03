@@ -87,6 +87,12 @@ export const authApi = {
     fetch(`${BASE}/auth/resend-verification`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+    banWorker: (workerId, banReason) =>
+      fetch(`${BASE}/admin/workers/${workerId}/ban`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ banReason }),
+      }).then(handle),
       body: JSON.stringify({ email }),
     }).then(handle),
 };
@@ -529,6 +535,12 @@ export const adminApi = {
       body: JSON.stringify(data),
     }).then(handle),
 
+  deleteSignal: (signalId) =>
+    fetch(`${BASE}/admin/signals/${signalId}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    }).then(handle),
+
   banWorker: (workerId, banReason) =>
     fetch(`${BASE}/admin/workers/${workerId}/ban`, {
       method: "PATCH",
@@ -536,8 +548,21 @@ export const adminApi = {
       body: JSON.stringify({ banReason }),
     }).then(handle),
 
+  warnWorker: (workerId, signalId, warningNote, warningReason) =>
+    fetch(`${BASE}/admin/workers/${workerId}/warn`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ signalId, warningNote, warningReason }),
+    }).then(handle),
+
   unbanWorker: (workerId) =>
     fetch(`${BASE}/admin/workers/${workerId}/unban`, {
+      method: "PATCH",
+      headers: adminHeaders(),
+    }).then(handle),
+
+  resetWorkerWarnings: (workerId) =>
+    fetch(`${BASE}/admin/workers/${workerId}/reset-warnings`, {
       method: "PATCH",
       headers: adminHeaders(),
     }).then(handle),

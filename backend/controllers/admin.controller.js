@@ -240,6 +240,8 @@ exports.getSignals = async (_req, res) => {
   try {
     const signals = await Signal.find()
       .populate("reservationId", "bookingDate bookingHour serviceStartedAt status")
+      .populate("clientId", "email firstName lastName")
+      .populate("workerId", "email firstName lastName workerStatus warningCount")
       .sort({ createdAt: -1 });
     res.json(signals);
   } catch (err) {
@@ -258,29 +260,33 @@ exports.updateSignalStatus = async (req, res) => {
     const signal = await Signal.findById(req.params.id);
     if (!signal) return res.status(404).json({ message: "Signalement introuvable" });
 
-    // Track report in worker's history if verified as real
+    // Validate report = add a warning to the worker only once
     if (status === "reviewed" && verified) {
-      const worker = await User.findById(signal.workerId);
-      if (worker) {
-        worker.reportHistory.push({
-          signalId: signal._id,
-          reason: signal.reason,
-          verified: true,
-          createdAt: new Date(),
-        });
-        await worker.save();
-
-        // Check if worker has 3+ verified non_venu reports in last 7 days
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const recentVerifiedReports = worker.reportHistory.filter(
-          (r) => r.verified && r.reason === "non_venu" && new Date(r.createdAt) > sevenDaysAgo
-        );
-
-        // Auto-ban if 3+ reports
-        if (recentVerifiedReports.length >= 3) {
-          worker.workerStatus = "banned";
-          worker.bannedAt = new Date();
-          worker.banReason = `Auto-ban: ${recentVerifiedReports.length} signalements "non venu" en 7 jours`;
+      if (!signal.warningApplied) {
+        signal.warningApplied = true;
+        const worker = await User.findById(signal.workerId);
+        if (worker) {
+          worker.warningCount = Number(worker.warningCount || 0) + 1;
+          worker.reportHistory.push({
+            signalId: signal._id,
+            reason: signal.reason,
+            verified: true,
+            createdAt: new Date(),
+          });
+          worker.workerWarnings.push({
+            signalId: signal._id,
+            reason: signal.reason,
+            note: adminNotes || "Signalement validé",
+            createdAt: new Date(),
+          });
+          worker.notifications.unshift({
+            type: "review",
+            title: "Avertissement reçu",
+            message: "Vous avez reçu un avertissement suite à un signalement validé par l'administration.",
+            reservationId: signal.reservationId,
+            read: false,
+            createdAt: new Date(),
+          });
           await worker.save();
         }
       }
@@ -297,6 +303,17 @@ exports.updateSignalStatus = async (req, res) => {
   }
 };
 
+// ── @DELETE /api/admin/signals/:id ────────────────────────
+exports.deleteSignal = async (req, res) => {
+  try {
+    const signal = await Signal.findByIdAndDelete(req.params.id);
+    if (!signal) return res.status(404).json({ message: "Signalement introuvable" });
+    res.json({ message: "Signalement supprimé" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 // ── @PATCH /api/admin/workers/:id/ban ──────────────────────
 exports.banWorker = async (req, res) => {
   try {
@@ -306,7 +323,7 @@ exports.banWorker = async (req, res) => {
     if (!worker) return res.status(404).json({ message: "Worker not found" });
     if (worker.role !== "worker") return res.status(400).json({ message: "User is not a worker" });
 
-    worker.workerStatus = "banned";
+    worker.workerStatus = "suspended";
     worker.bannedAt = new Date();
     worker.banReason = banReason;
     await worker.save();
@@ -314,6 +331,32 @@ exports.banWorker = async (req, res) => {
     res.json({
       message: "Worker banned successfully",
       worker: { id: worker._id, workerStatus: worker.workerStatus, bannedAt: worker.bannedAt },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PATCH /api/admin/workers/:id/warn ─────────────────────
+exports.warnWorker = async (req, res) => {
+  try {
+    const { signalId = "", warningNote = "Admin warning", warningReason = "" } = req.body;
+    const worker = await User.findById(req.params.id);
+
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    if (worker.role !== "worker") return res.status(400).json({ message: "User is not a worker" });
+
+    worker.workerWarnings.push({
+      signalId: signalId || undefined,
+      reason: warningReason || warningNote,
+      note: warningNote,
+      createdAt: new Date(),
+    });
+    await worker.save();
+
+    res.json({
+      message: "Worker warned successfully",
+      worker: { id: worker._id, warningsCount: worker.workerWarnings.length },
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -336,6 +379,26 @@ exports.unbanWorker = async (req, res) => {
     res.json({
       message: "Worker unbanned successfully",
       worker: { id: worker._id, workerStatus: worker.workerStatus },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @PATCH /api/admin/workers/:id/reset-warnings ──────────
+exports.resetWorkerWarnings = async (req, res) => {
+  try {
+    const worker = await User.findById(req.params.id);
+
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    if (worker.role !== "worker") return res.status(400).json({ message: "User is not a worker" });
+
+    worker.warningCount = 0;
+    await worker.save();
+
+    res.json({
+      message: "Worker warning counter reset successfully",
+      worker: { id: worker._id, warningCount: worker.warningCount },
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });

@@ -17,6 +17,18 @@ const UserSchema = new mongoose.Schema(
     isActive:   { type: Boolean, default: true },
     onboardingComplete: { type: Boolean, default: false },
     savedWorkers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    workerWarnings: {
+      type: [
+        {
+          signalId: { type: mongoose.Schema.Types.ObjectId, ref: "Signal" },
+          reason: { type: String, default: "" },
+          note: { type: String, default: "" },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    warningCount: { type: Number, default: 0 },
 
     // ── Notifications ──────────────────────────────────────
     notifications: {

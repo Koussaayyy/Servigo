@@ -15,6 +15,7 @@ const SignalSchema = new mongoose.Schema(
     },
     message:    { type: String, default: "", trim: true },
     status:     { type: String, enum: ["new", "reviewed", "dismissed"], default: "new" },
+    warningApplied: { type: Boolean, default: false },
     adminNotes: { type: String, default: "" },
     reviewedAt: { type: Date },
   },

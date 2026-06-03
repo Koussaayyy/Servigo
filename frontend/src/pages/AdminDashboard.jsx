@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Clock,
   Flag,
+  RefreshCcw,
 } from "lucide-react";
 import { adminApi } from "../api";
 
@@ -1191,61 +1192,178 @@ export default function AdminDashboard({ admin, onLogout }) {
               <div style={{ display:"grid",gap:12 }}>
                 {signals.map((s) => {
                   const reasonLabels = { mauvais_travail:"Mauvais travail", comportement:"Comportement", non_venu:"Non venu", autre:"Autre" };
-                  const statusColors = { new:{ bg:"#fef2f2",color:"#b91c1c",label:"Nouveau" }, reviewed:{ bg:"#f0fdf4",color:"#15803d",label:"Examiné" }, dismissed:{ bg:"#f8fafc",color:"#64748b",label:"Ignoré" } };
-                  const sc = statusColors[s.status] || statusColors.new;
                   const res = s.reservationId;
                   const workerShowed = res?.serviceStartedAt ? true : false;
                   const bookingDate = res?.bookingDate ? new Date(res.bookingDate).toLocaleDateString("fr-FR") : "-";
                   const bookingTime = res?.bookingHour ? `${String(res.bookingHour).padStart(2,"0")}:00` : "-";
                   const serviceStartTime = res?.serviceStartedAt ? new Date(res.serviceStartedAt).toLocaleString("fr-FR") : "-";
+                  const clientEmail = s.clientId?.email || "";
+                  const workerEmail = s.workerId?.email || "";
+                  const workerId = s.workerId?._id || s.workerId;
+                  const workerName = s.workerName || s.workerId?.firstName || "prestataire";
+                  const workerWarnings = Number(s.workerId?.warningCount || 0);
+                  const mailSubject = "Servigo - Signalement de réservation";
+                  const mailBody = `Bonjour ${s.clientName || "client"},\n\nNous avons bien reçu votre signalement concernant la réservation du ${bookingDate} à ${bookingTime}.\n\nMerci de votre message.`;
+                  const reviewedNoShow = s.status === "reviewed" && !workerShowed;
+                  const reportOutcome = workerShowed ? "Le prestataire a démarré le service" : "Aucun démarrage de service enregistré";
                   return (
-                    <div key={s._id} style={{ border:"1.5px solid #e2e8f0",borderRadius:10,padding:16 }}>
-                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap" }}>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:14,fontWeight:700,color:"#0f172e",marginBottom:4 }}>
-                            {s.clientName || "Client"} → {s.workerName || "Prestataire"}
+                    <div key={s._id} style={{ border:"1.5px solid #e2e8f0",borderRadius:12,padding:16,background:"#fff" }}>
+                      <div style={{ display:"grid",gridTemplateColumns:"1fr auto",gap:14,alignItems:"start" }}>
+                        <div>
+                          <div style={{ display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:6 }}>
+                            <div style={{ fontSize:14,fontWeight:800,color:"#0f172e" }}>
+                              {s.clientName || "Client"} → {workerName}
+                            </div>
                           </div>
-                          <div style={{ fontSize:12,color:"#64748b",marginBottom:6 }}>
-                            Motif : <strong>{reasonLabels[s.reason]||s.reason}</strong>
+
+                          <div style={{ fontSize:12,color:"#64748b",marginBottom:8,lineHeight:1.6 }}>
+                            Signalement par <strong>{s.clientName || "Client"}</strong> contre <strong>{workerName}</strong>
                             {s.serviceType && ` · Service : ${s.serviceType}`}
+                            <br />
+                            Motif : <strong>{reasonLabels[s.reason] || s.reason}</strong>
                           </div>
-                          {s.message && <div style={{ fontSize:12,color:"#334155",background:"#f8fafc",borderRadius:7,padding:"6px 10px",marginBottom:8 }}>{s.message}</div>}
-                          
-                          {/* Reservation Details for Dispute Resolution */}
-                          <div style={{ background:workerShowed?"#f0fdf4":"#fef2f2",border:`1.5px solid ${workerShowed?"#bbf7d0":"#fecaca"}`,borderRadius:8,padding:10,marginBottom:8 }}>
-                            <div style={{ fontSize:11,fontWeight:700,color:workerShowed?"#15803d":"#b91c1c",marginBottom:4 }}>
-                              {workerShowed ? "✓ Prestataire s'est pointé" : "✗ Prestataire N'a PAS démarré le service"}
+
+                          <div style={{ display:"grid",gap:10,marginBottom:10 }}>
+                            <div style={{ border:`1.5px solid ${workerShowed ? "#bbf7d0" : "#fecaca"}`,background:workerShowed ? "#f0fdf4" : "#fef2f2",borderRadius:10,padding:12 }}>
+                              <div style={{ fontSize:11,fontWeight:800,color:workerShowed ? "#15803d" : "#b91c1c",marginBottom:4 }}>
+                                {reportOutcome}
+                              </div>
+                              <div style={{ fontSize:11,color:"#64748b",lineHeight:1.6 }}>
+                                <div>Réservation : {bookingDate} à {bookingTime}</div>
+                                {workerShowed && <div>Service commencé : {serviceStartTime}</div>}
+                                {!workerShowed && <div>Le prestataire n’a pas de démarrage enregistré.</div>}
+                              </div>
                             </div>
-                            <div style={{ fontSize:11,color:"#64748b",lineHeight:1.6 }}>
-                              <div>Réservation : {bookingDate} à {bookingTime}</div>
-                              {workerShowed && <div>Service commencé : {serviceStartTime}</div>}
-                            </div>
+
+                            {s.message && (
+                              <div style={{ fontSize:12,color:"#334155",background:"#f8fafc",borderRadius:10,padding:"10px 12px",border:"1px solid #e2e8f0" }}>
+                                {s.message}
+                              </div>
+                            )}
                           </div>
-                          
-                          <div style={{ fontSize:11,color:"#94a3b8" }}>Signalé le {new Date(s.createdAt).toLocaleDateString("fr-FR",{ day:"2-digit",month:"short",year:"numeric" })}</div>
-                        </div>
-                        <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",flexShrink:0 }}>
-                          <span style={{ background:sc.bg,color:sc.color,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:700 }}>{sc.label}</span>
-                          <select value={s.status} onChange={async (e) => {
-                            const ns = e.target.value;
-                            try {
-                              const updated = await adminApi.updateSignalStatus(s._id, { status: ns, verified: s.status === "reviewed" && ns !== "dismissed" });
-                              setSignals(prev => prev.map(x => x._id === s._id ? updated : x));
-                            } catch {}
-                          }} style={{ border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontSize:12,fontFamily:"'Sora',sans-serif",cursor:"pointer",outline:"none" }}>
-                            <option value="new">Nouveau</option>
-                            <option value="reviewed">Vérifier comme valide</option>
-                            <option value="dismissed">Rejeter</option>
-                          </select>
-                          {s.status === "reviewed" && (
-                            <button onClick={async () => {
-                              try {
-                                await adminApi.banWorker(s.workerId, `Signalement ${s.reason} - Ban manuel`);
-                                alert("Prestataire banni");
-                                loadAllData();
-                              } catch (err) { alert("Erreur: " + err.message); }
-                            }} style={{ background:"#ef4444",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+
+                          <div style={{ display:"flex",gap:8,flexWrap:"wrap",alignItems:"center" }}>
+                            <span style={{ fontSize:11,color:"#94a3b8" }}>Signalé le {new Date(s.createdAt).toLocaleDateString("fr-FR",{ day:"2-digit",month:"short",year:"numeric" })}</span>
+                            {clientEmail && (
+                              <a
+                                href={`mailto:${clientEmail}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`}
+                                style={{
+                                  textDecoration:"none",
+                                  background:"rgba(6,182,212,0.1)",
+                                  color:"#0891b2",
+                                  border:"1.5px solid rgba(6,182,212,0.25)",
+                                  borderRadius:8,
+                                  padding:"7px 12px",
+                                  fontSize:12,
+                                  fontWeight:700,
+                                }}
+                              >
+                                Contacter
+                              </a>
+                            )}
+                            <button
+                              onClick={async () => {
+                                try {
+                                  if (s.warningApplied) return;
+                                  const updated = await adminApi.updateSignalStatus(s._id, {
+                                    status: "reviewed",
+                                    verified: true,
+                                    adminNotes: workerShowed ? "Signalement validé par l'administration" : "Signalement validé: no-show confirmé",
+                                  });
+                                  setSignals(prev => prev.map(x => x._id === s._id ? updated : x));
+                                  loadAllData();
+                                } catch (err) {
+                                  alert("Erreur: " + err.message);
+                                }
+                              }}
+                              style={{
+                                background:s.warningApplied ? "#f8fafc" : "#22c55e",
+                                color:s.warningApplied ? "#94a3b8" : "#fff",
+                                border:"none",
+                                borderRadius:8,
+                                padding:"7px 12px",
+                                fontSize:12,
+                                fontWeight:700,
+                                cursor:s.warningApplied ? "not-allowed" : "pointer",
+                              }}
+                              disabled={s.warningApplied}
+                            >
+                              {s.warningApplied ? "Validé" : "Valider"}
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await adminApi.deleteSignal(s._id);
+                                  setSignals(prev => prev.filter(x => x._id !== s._id));
+                                  loadAllData();
+                                } catch (err) {
+                                  alert("Erreur: " + err.message);
+                                }
+                              }}
+                              style={{
+                                background:"#f8fafc",
+                                color:"#334155",
+                                border:"1.5px solid #e2e8f0",
+                                borderRadius:8,
+                                padding:"7px 12px",
+                                fontSize:12,
+                                fontWeight:700,
+                                cursor:"pointer",
+                              }}
+                            >
+                              Ignorer
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await adminApi.banWorker(workerId, `Suspension manuelle après signalement: ${s.reason}`);
+                                  loadAllData();
+                                } catch (err) {
+                                  alert("Erreur: " + err.message);
+                                }
+                              }}
+                              style={{
+                                background:"#ef4444",
+                                color:"#fff",
+                                border:"none",
+                                borderRadius:8,
+                                padding:"7px 12px",
+                                fontSize:12,
+                                fontWeight:700,
+                                cursor:"pointer",
+                              }}
+                            >
                               Bannir
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8 }}>
+                          <div style={{ fontSize:11,color:"#94a3b8" }}>⚠️ {workerWarnings} avertissements</div>
+                          {workerWarnings > 0 && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await adminApi.resetWorkerWarnings(workerId);
+                                  loadAllData();
+                                } catch (err) {
+                                  alert("Erreur: " + err.message);
+                                }
+                              }}
+                              style={{
+                                display:"inline-flex",
+                                alignItems:"center",
+                                gap:6,
+                                background:"#ecfeff",
+                                color:"#0f766e",
+                                border:"1.5px solid #a5f3fc",
+                                borderRadius:8,
+                                padding:"6px 10px",
+                                fontSize:11,
+                                fontWeight:700,
+                                cursor:"pointer",
+                              }}
+                            >
+                              <RefreshCcw size={12} /> Réinitialiser
                             </button>
                           )}
                         </div>
@@ -1309,7 +1427,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                 borderBottom: "1.5px solid #e2e8f0",
                 padding: "16px 20px",
                 display: "grid",
-                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.8fr 0.5fr",
+                gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 1fr 0.8fr 0.5fr",
                 gap: 16,
                 fontWeight: 700,
                 fontSize: 11,
@@ -1323,6 +1441,7 @@ export default function AdminDashboard({ admin, onLogout }) {
               <div>Rôle</div>
               <div>Statut</div>
               <div>Vérification artisan</div>
+              <div>Avertissements</div>
               <div>Statut artisan</div>
               <div>Actions</div>
             </div>
@@ -1346,7 +1465,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                       key={user._id}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 0.8fr 0.5fr",
+                        gridTemplateColumns: "1fr 1.2fr 0.8fr 0.8fr 1.4fr 1fr 0.8fr 0.5fr",
                         gap: 16,
                         padding: "16px 20px",
                         borderBottom: "1.5px solid #f1f5f9",
@@ -1483,11 +1602,33 @@ export default function AdminDashboard({ admin, onLogout }) {
                         {user.role !== "worker" ? (
                           <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>
                         ) : (
+                          <span
+                            style={{
+                              background: Number(user.warningCount || 0) >= 3 ? "#fef2f2" : Number(user.warningCount || 0) > 0 ? "#fef3c7" : "#f0fdf4",
+                              color: Number(user.warningCount || 0) >= 3 ? "#b91c1c" : Number(user.warningCount || 0) > 0 ? "#b45309" : "#15803d",
+                              padding: "6px 10px",
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              width: "fit-content",
+                            }}
+                          >
+                            {Number(user.warningCount || 0) >= 1 ? `⚠️ ${user.warningCount} avertissements` : "✅ 0 avertissement"}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        {user.role !== "worker" ? (
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>
+                        ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                             <span
                               style={{
-                                background: user.workerStatus === "banned" ? "#fef2f2" : user.workerStatus === "suspended" ? "#fef3c7" : "#f0fdf4",
-                                color: user.workerStatus === "banned" ? "#b91c1c" : user.workerStatus === "suspended" ? "#b45309" : "#15803d",
+                                background: user.workerStatus === "suspended" ? "#fef3c7" : "#f0fdf4",
+                                color: user.workerStatus === "suspended" ? "#b45309" : "#15803d",
                                 padding: "4px 8px",
                                 borderRadius: 6,
                                 fontSize: 11,
@@ -1495,9 +1636,23 @@ export default function AdminDashboard({ admin, onLogout }) {
                                 width: "fit-content",
                               }}
                             >
-                              {user.workerStatus === "banned" ? "🚫 Banni" : user.workerStatus === "suspended" ? "⏸ Suspendu" : "✓ Actif"}
+                              {user.workerStatus === "suspended" ? "⏸ Suspendu" : "✓ Actif"}
                             </span>
-                            {user.workerStatus === "banned" && (
+                            {Number(user.warningCount || 0) >= 3 && user.workerStatus !== "suspended" && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await adminApi.banWorker(user._id, "Suspension suggérée après 3 avertissements");
+                                    alert("Prestataire suspendu");
+                                    loadAllData();
+                                  } catch (err) { alert("Erreur: " + err.message); }
+                                }}
+                                style={{ fontSize: 10, color: "#92400e", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontWeight: 600 }}
+                              >
+                                Suspendre
+                              </button>
+                            )}
+                            {user.workerStatus === "suspended" && (
                               <button
                                 onClick={async () => {
                                   try {
@@ -1508,7 +1663,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                                 }}
                                 style={{ fontSize: 10, color: "#06b6d4", background: "rgba(6,182,212,0.1)", border: "none", borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontWeight: 600 }}
                               >
-                                Débannir
+                                Réactiver
                               </button>
                             )}
                           </div>
