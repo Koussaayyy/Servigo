@@ -849,7 +849,7 @@ function SectionPortfolio({ user, onSaved, onToast }) {
 }
 
 function SectionDisponibilite({ user, onSaved, onToast }) {
-  const BOOKABLE_HOURS = [8, 9, 10, 11, 12, 14, 15, 16, 17];
+  const BOOKABLE_HOURS = [8, 10, 12, 14, 16];
   const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const DAY_LABELS = {
     monday: "Lundi",

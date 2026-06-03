@@ -48,6 +48,7 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
   const [datePage, setDatePage] = useState(0);
   const [date, setDate]         = useState("");
   const [hour, setHour]         = useState("");
+  const duration = 2; // every slot is a fixed 2-hour block
   const [slots, setSlots]       = useState([]);
   const [gouvernorat, setGouvernorat] = useState("");
   const [delegation, setDelegation]   = useState("");
@@ -153,6 +154,7 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
       form.append("workerId", worker._id);
       form.append("bookingDate", date);
       form.append("bookingHour", String(Number(hour)));
+      form.append("duration", String(duration));
       form.append("serviceType", profession || "");
       form.append("address", fullAddress);
       form.append("notes", notes.trim());
@@ -336,25 +338,26 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
                       {errors.date && <div style={{ color:"#ef4444",fontSize:11,marginTop:5 }}>{errors.date}</div>}
                     </div>
 
+                    {/* 2-hour slot picker */}
                     <div>
-                      <div style={{ fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8 }}>Heure</div>
+                      <div style={{ fontSize:11,fontWeight:700,color:"#64748b",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8 }}>Créneau (2h)</div>
                       {!date ? (
                         <div style={{ fontSize:12,color:"#94a3b8" }}>Choisissez d'abord une date</div>
                       ) : (
-                        <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:7 }}>
+                        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7 }}>
                           {slots.map((slot) => {
                             const tooSoon = isTooSoon(date, slot.hour);
-                            const avail  = slot.status === "available" && !tooSoon;
-                            const active = String(hour) === String(slot.hour);
+                            const avail   = slot.status === "available" && !tooSoon;
+                            const active  = String(hour) === String(slot.hour);
                             let bg="#f8fafc",bc="#e2e8f0",tc="#94a3b8",cur="not-allowed",op=0.55;
-                            if (avail && active)  { bg="#06b6d4"; bc="#06b6d4"; tc="#fff"; cur="pointer"; op=1; }
-                            else if (avail)       { bg="#f0fdfe"; bc="#67e8f9"; tc="#0e7490"; cur="pointer"; op=1; }
+                            if (avail && active) { bg="#06b6d4"; bc="#06b6d4"; tc="#fff"; cur="pointer"; op=1; }
+                            else if (avail)      { bg="#f0fdfe"; bc="#67e8f9"; tc="#0e7490"; cur="pointer"; op=1; }
                             return (
                               <button key={slot.hour} type="button" className="rd-hour-btn" disabled={!avail}
                                 title={tooSoon && slot.status === "available" ? "Réservation impossible — délai de 24h requis" : undefined}
                                 onClick={() => avail && setHour(String(slot.hour))}
-                                style={{ border:`1.5px solid ${bc}`,background:bg,color:tc,cursor:cur,opacity:op }}>
-                                {fmtHour(slot.hour)}
+                                style={{ border:`1.5px solid ${bc}`,background:bg,color:tc,cursor:cur,opacity:op,fontSize:12 }}>
+                                {fmtHour(slot.hour)} – {fmtHour(slot.hour + 2)}
                               </button>
                             );
                           })}
@@ -465,7 +468,7 @@ export default function ReservationDialog({ worker, user, initialProfession, onC
                       <div style={{ fontWeight:700,color:"#0f172e",fontSize:13,marginBottom:4 }}>Récapitulatif</div>
                       <div><span style={{ fontWeight:600 }}>Prestataire :</span> {workerName}</div>
                       <div><span style={{ fontWeight:600 }}>Service :</span> {profession}</div>
-                      <div><span style={{ fontWeight:600 }}>Date :</span> {fmtDate(date)} à {fmtHour(Number(hour))}</div>
+                      <div><span style={{ fontWeight:600 }}>Date :</span> {fmtDate(date)} · {fmtHour(Number(hour))} – {fmtHour(Number(hour) + 2)}</div>
                       <div><span style={{ fontWeight:600 }}>Adresse :</span> {[ville, delegation, gouvernorat].filter(Boolean).join(", ")}</div>
                     </div>
                   </div>

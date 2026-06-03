@@ -4,7 +4,7 @@ const Signal = require("../models/Signal.model");
 const mongoose = require("mongoose");
 
 const ACTIVE_STATUSES = ["pending", "accepted"];
-const BOOKABLE_HOURS = [8, 9, 10, 11, 12, 14, 15, 16, 17];
+const BOOKABLE_HOURS = [8, 10, 12, 14, 16]; // 2-hour slots: 08-10, 10-12, 12-14, 14-16, 16-18
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 function parseDateOnly(dateStr) {
@@ -97,7 +97,8 @@ async function recalculateWorkerRating(workerId) {
 
 exports.createReservation = async (req, res) => {
   try {
-    const { workerId, bookingDate, bookingHour, serviceType, address, notes } = req.body;
+    const { workerId, bookingDate, bookingHour, duration: rawDuration, serviceType, address, notes } = req.body;
+    const duration = 2; // every slot is a fixed 2-hour block
     const mediaAttachments = Array.isArray(req.files)
       ? req.files.map((file) => ({
           url: `/uploads/reservation-media/${file.filename}`,
@@ -150,29 +151,47 @@ exports.createReservation = async (req, res) => {
 
     const { start: dayStart, end: dayEnd } = getDayRange(date);
 
-    // Check if slot is already taken by active reservation (pending/accepted)
-    const activeExists = await Reservation.findOne({
-      worker: workerId,
-      bookingDate: { $gte: dayStart, $lte: dayEnd },
-      bookingHour: hour,
-      status: { $in: ACTIVE_STATUSES },
-    });
+    // Build list of all hours this reservation will occupy
+    const occupiedHours = Array.from({ length: duration }, (_, i) => hour + i);
 
-    if (activeExists) {
-      return res.status(409).json({ message: "Ce creneau est deja reserve. Veuillez choisir un autre horaire." });
+    // Validate all occupied hours are within bookable slots
+    if (!occupiedHours.every(h => BOOKABLE_HOURS.includes(h))) {
+      return res.status(400).json({ message: "La durée dépasse les créneaux disponibles pour ce jour." });
     }
 
-    // Check if THIS CLIENT already has ANY reservation with this worker at this time
-    const clientConflict = await Reservation.findOne({
+    // Check if any of the occupied hours overlap existing active reservations
+    const existingReservations = await Reservation.find({
+      worker: workerId,
+      bookingDate: { $gte: dayStart, $lte: dayEnd },
+      status: { $in: ACTIVE_STATUSES },
+    }).select("bookingHour duration");
+
+    const bookedHours = new Set();
+    existingReservations.forEach(r => {
+      const d = r.duration || 1;
+      for (let h = r.bookingHour; h < r.bookingHour + d; h++) bookedHours.add(h);
+    });
+
+    if (occupiedHours.some(h => bookedHours.has(h))) {
+      return res.status(409).json({ message: "Un ou plusieurs créneaux sont déjà réservés. Veuillez choisir un autre horaire." });
+    }
+
+    // Check if THIS CLIENT already has a reservation overlapping the same slot
+    const clientReservations = await Reservation.find({
       client: req.user.id,
       worker: workerId,
       bookingDate: { $gte: dayStart, $lte: dayEnd },
-      bookingHour: hour,
       status: { $nin: ["cancelled", "rejected"] },
+    }).select("bookingHour duration");
+
+    const clientBookedHours = new Set();
+    clientReservations.forEach(r => {
+      const d = r.duration || 1;
+      for (let h = r.bookingHour; h < r.bookingHour + d; h++) clientBookedHours.add(h);
     });
 
-    if (clientConflict) {
-      return res.status(409).json({ message: "Vous avez deja une reservation avec ce prestataire a cet horaire." });
+    if (occupiedHours.some(h => clientBookedHours.has(h))) {
+      return res.status(409).json({ message: "Vous avez déjà une réservation à cet horaire." });
     }
 
     const reservation = await Reservation.create({
@@ -180,6 +199,7 @@ exports.createReservation = async (req, res) => {
       worker: workerId,
       bookingDate: date,
       bookingHour: hour,
+      duration,
       serviceType: serviceType || "",
       address: address || "",
       notes: notes || "",
@@ -500,7 +520,9 @@ exports.getWorkerAvailableSlots = async (req, res) => {
       return res.json({ workerId, date, slots: [] });
     }
 
-    const scheduleHours = getWorkerScheduleHoursForDate(worker, bookingDate);
+    // Filter to new 2-hour slot starts only, discarding any legacy odd hours stored in DB
+    const scheduleHours = getWorkerScheduleHoursForDate(worker, bookingDate)
+      .filter(h => BOOKABLE_HOURS.includes(h));
 
     if (scheduleHours.length === 0) {
       return res.json({ workerId, date, slots: [] });
@@ -513,12 +535,15 @@ exports.getWorkerAvailableSlots = async (req, res) => {
       worker: workerId,
       bookingDate: { $gte: dayStart, $lte: dayEnd },
       status: { $nin: ["cancelled", "rejected"] },
-    }).select("bookingHour status");
+    }).select("bookingHour duration status");
 
-    // Create status map for each hour
+    // Block all hours occupied by each reservation (multi-hour support)
     const slotStatuses = {};
     allReservations.forEach((res) => {
-      slotStatuses[res.bookingHour] = res.status; // "pending", "accepted", or "completed"
+      const dur = res.duration || 1;
+      for (let h = res.bookingHour; h < res.bookingHour + dur; h++) {
+        slotStatuses[h] = res.status;
+      }
     });
 
     // Build slots array with status
@@ -581,7 +606,8 @@ exports.getWorkerMonthlyAvailability = async (req, res) => {
       date.setDate(today.getDate() + index);
 
       const isoDate = toISODateString(date);
-      const scheduleHours = getWorkerScheduleHoursForDate(worker, date);
+      const scheduleHours = getWorkerScheduleHoursForDate(worker, date)
+        .filter(h => BOOKABLE_HOURS.includes(h));
       const dayStatuses = statusByDateHour.get(isoDate) || new Map();
 
       const isCurrentDay = index === 0;

@@ -20,6 +20,25 @@ input,textarea,select,button { font-family:'Sora',sans-serif; }
 .rv-content { max-width:900px; margin:0 auto; padding:84px 28px 64px; }
 @media(max-width:768px){ .rv-content{ padding:80px 16px 48px; } }
 
+.rv-tabs { display:flex; gap:6px; margin-bottom:22px; border-bottom:1.5px solid #e2e8f0; padding-bottom:0; }
+.rv-tab {
+  position:relative; padding:10px 18px 11px; border:none; background:none; cursor:pointer;
+  font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:#64748b;
+  border-bottom:2.5px solid transparent; margin-bottom:-1.5px; transition:color .18s;
+  display:flex; align-items:center; gap:7px; white-space:nowrap;
+}
+.rv-tab:hover { color:#0f172e; }
+.rv-tab.active { color:#06b6d4; border-bottom-color:#06b6d4; }
+.rv-tab-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; border-radius:999px; padding:0 5px;
+  font-size:10px; font-weight:800;
+  background:#e2e8f0; color:#64748b;
+}
+.rv-tab.active .rv-tab-badge { background:rgba(6,182,212,0.15); color:#06b6d4; }
+.rv-tab-badge.urgent { background:#fef3c7; color:#b45309; }
+@media(max-width:600px){ .rv-tab{ padding:9px 12px 10px; font-size:12px; } }
+
 @keyframes rvFadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 
 .rv-card {
@@ -70,6 +89,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const isClient = user?.role === "client";
   const isWorker = user?.role === "worker";
 
+  const [tab, setTab] = useState(isWorker ? "recues" : "encours");
   const [loading, setLoading]             = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError]     = useState("");
@@ -90,11 +110,10 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const [savedIds, setSavedIds]           = useState(new Set());
 
   useEffect(() => {
-    if (!isClient) return;
     clientApi.getSavedWorkers().then((list) => {
       setSavedIds(new Set((list || []).map((w) => String(w._id || w))));
     }).catch(() => {});
-  }, [isClient]);
+  }, []);
 
   const handleToggleSave = async (workerId, currently) => {
     const id = String(workerId);
@@ -109,21 +128,19 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   const loadData = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      if (isClient) {
-        const [reservationsData, historyData] = await Promise.all([
-          reservationApi.getClientReservations(),
-          reservationApi.getClientHistory(),
-        ]);
-        setClientReservations(Array.isArray(reservationsData) ? reservationsData : []);
-        setClientHistory(Array.isArray(historyData) ? historyData : []);
-      }
+      const [reservationsData, historyData] = await Promise.all([
+        reservationApi.getClientReservations(),
+        reservationApi.getClientHistory(),
+      ]);
+      setClientReservations(Array.isArray(reservationsData) ? reservationsData : []);
+      setClientHistory(Array.isArray(historyData) ? historyData : []);
       if (isWorker) {
         const data = await reservationApi.getWorkerReservations();
         setWorkerReservations(Array.isArray(data) ? data : []);
       }
     } catch (err) { setError(err.message || "Failed to load reservations."); }
     finally { setLoading(false); }
-  }, [isClient, isWorker]);
+  }, [isWorker]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -187,111 +204,142 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
 
         <div className="rv-content">
           <h1 style={{ fontFamily:"'Sora',sans-serif",fontSize:28,fontWeight:700,color:"#0f172e",marginBottom:6 }}>Réservations</h1>
-          <p style={{ color:"#64748b",fontSize:13,marginBottom:18 }}>
-            {isClient ? "Vos réservations en cours et votre historique." : "Gérez les demandes de réservation reçues."}
+          <p style={{ color:"#64748b",fontSize:13,marginBottom:20 }}>
+            {isWorker ? "Gérez vos demandes reçues et vos réservations effectuées." : "Vos réservations en cours et votre historique."}
           </p>
 
-          {loading && <p style={{ color:"#64748b",fontSize:13 }}>Chargement...</p>}
-          {error   && <div style={{ marginBottom:10,color:"#c0392b",fontSize:13 }}>{error}</div>}
-          {message && <div style={{ marginBottom:10,color:"#0f172e",fontSize:13 }}>{message}</div>}
+          {error   && <div style={{ marginBottom:14,color:"#c0392b",fontSize:13,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"10px 14px" }}>{error}</div>}
+          {message && <div style={{ marginBottom:14,color:"#15803d",fontSize:13,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:8,padding:"10px 14px" }}>{message}</div>}
 
-          {!loading && isClient && (
-            <>
-              {/* Active reservations */}
-              <section style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:18,marginBottom:16 }}>
-                <h3 style={{ marginTop:0,marginBottom:12,fontSize:16,color:"#0f172e" }}>Mes réservations</h3>
-                {clientReservations.length === 0
-                  ? <p style={{ margin:0,color:"#64748b",fontSize:13 }}>Aucune réservation active.</p>
-                  : <div style={{ display:"grid",gap:10 }}>
-                      {clientReservations.map((r) => (
-                        <ReservationRow key={r._id} reservation={r}
-                          isSaved={savedIds.has(String(r.worker?._id || ""))}
-                          onToggleSave={handleToggleSave}
-                          rightAction={["pending","accepted"].includes(r.status)
-                            ? <button className="mode-tab" onClick={() => cancelReservation(r)} disabled={actionLoading}>Annuler</button>
-                            : null}
-                        />
-                      ))}
-                    </div>
-                }
-              </section>
-
-              {/* History */}
-              <section style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:18 }}>
-                <h3 style={{ marginTop:0,marginBottom:12,fontSize:16,color:"#0f172e" }}>Historique</h3>
-                {clientHistory.length === 0
-                  ? <p style={{ margin:0,color:"#64748b",fontSize:13 }}>Aucun historique.</p>
-                  : <div style={{ display:"grid",gap:10 }}>
-                      {clientHistory.map((r) => {
-                        const hasReview  = !!r?.clientReview?.rating;
-                        const hasSignal  = !!r?.clientSignal?.reported;
-                        const isCompleted = r?.status === "completed";
-                        return (
-                          <ReservationRow key={r._id} reservation={r}
-                            isSaved={savedIds.has(String(r.worker?._id || ""))}
-                            onToggleSave={handleToggleSave}
-                            rightAction={isCompleted ? (
-                              <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",minWidth:130 }}>
-                                {hasReview
-                                  ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#10b981",background:"rgba(16,185,129,0.08)",border:"1.5px solid rgba(16,185,129,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
-                                      <Star size={12} fill="#10b981" color="#10b981"/> Avis envoyé
-                                    </span>
-                                  : <button onClick={() => openReviewDialog(r)}
-                                      style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#0f172e",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
-                                      onMouseEnter={e=>{e.currentTarget.style.borderColor="#06b6d4";e.currentTarget.style.color="#06b6d4";}}
-                                      onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.color="#0f172e";}}>
-                                      <Star size={12}/> Laisser un avis
-                                    </button>
-                                }
-                                {hasSignal
-                                  ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#f59e0b",background:"rgba(245,158,11,0.08)",border:"1.5px solid rgba(245,158,11,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
-                                      <AlertTriangle size={12}/> Signalé
-                                    </span>
-                                  : <button onClick={() => openSignalDialog(r)}
-                                      style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#ef4444",background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
-                                      onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";}}
-                                      onMouseLeave={e=>{e.currentTarget.style.background="#fef2f2";}}>
-                                      <AlertTriangle size={12}/> Signaler
-                                    </button>
-                                }
-                              </div>
-                            ) : null}
-                          >
-                            {isCompleted && hasReview && (
-                              <div style={{ marginTop:6,fontSize:12,color:"#64748b" }}>
-                                {"★".repeat(Number(r.clientReview.rating))}{"☆".repeat(Math.max(0,5-Number(r.clientReview.rating)))}
-                                {r.clientReview.comment ? ` · ${r.clientReview.comment}` : ""}
-                              </div>
-                            )}
-                          </ReservationRow>
-                        );
-                      })}
-                    </div>
-                }
-              </section>
-            </>
+          {/* ── Tab bar ── */}
+          {!loading && (
+            <div className="rv-tabs">
+              {isWorker ? (
+                <>
+                  <button className={`rv-tab ${tab === "recues" ? "active" : ""}`} onClick={() => setTab("recues")}>
+                    Reçues
+                    <span className={`rv-tab-badge ${workerReservations.filter(r => r.status === "pending").length > 0 ? "urgent" : ""}`}>
+                      {workerReservations.length}
+                    </span>
+                  </button>
+                  <button className={`rv-tab ${tab === "envoyees" ? "active" : ""}`} onClick={() => setTab("envoyees")}>
+                    Envoyées
+                    <span className="rv-tab-badge">{clientReservations.length}</span>
+                  </button>
+                  <button className={`rv-tab ${tab === "historique" ? "active" : ""}`} onClick={() => setTab("historique")}>
+                    Historique
+                    <span className="rv-tab-badge">{clientHistory.length}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className={`rv-tab ${tab === "encours" ? "active" : ""}`} onClick={() => setTab("encours")}>
+                    En cours
+                    <span className="rv-tab-badge">{clientReservations.length}</span>
+                  </button>
+                  <button className={`rv-tab ${tab === "historique" ? "active" : ""}`} onClick={() => setTab("historique")}>
+                    Historique
+                    <span className="rv-tab-badge">{clientHistory.length}</span>
+                  </button>
+                </>
+              )}
+            </div>
           )}
 
-          {!loading && isWorker && (
-            <section style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:18 }}>
-              <h3 style={{ marginTop:0,marginBottom:12,fontSize:16,color:"#0f172e" }}>Demandes reçues</h3>
+          {loading && <p style={{ color:"#64748b",fontSize:13,padding:"32px 0",textAlign:"center" }}>Chargement...</p>}
+
+          {/* ── Tab: Reçues (worker only) ── */}
+          {!loading && tab === "recues" && isWorker && (
+            <div style={{ display:"grid",gap:10 }}>
               {workerReservations.length === 0
-                ? <p style={{ margin:0,color:"#64748b",fontSize:13 }}>Aucune demande pour le moment.</p>
-                : <div style={{ display:"grid",gap:10 }}>
-                    {workerReservations.map((r) => (
-                      <ReservationRow key={r._id} reservation={r}
-                        rightAction={
-                          <button className="rv-btn-details"
-                            onClick={() => setSelectedWorkerReservation(r)}
-                            disabled={actionLoading}>
-                            <Eye size={13}/> Détails
-                          </button>
-                        }
-                      />
-                    ))}
-                  </div>
+                ? <EmptyState label="Aucune demande reçue pour le moment." />
+                : workerReservations.map((r) => (
+                    <ReservationRow key={r._id} reservation={r}
+                      rightAction={
+                        <button className="rv-btn-details"
+                          onClick={() => setSelectedWorkerReservation(r)}
+                          disabled={actionLoading}>
+                          <Eye size={13}/> Détails
+                        </button>
+                      }
+                    />
+                  ))
               }
-            </section>
+            </div>
+          )}
+
+          {/* ── Tab: Envoyées (worker) / En cours (client) ── */}
+          {!loading && (tab === "envoyees" || tab === "encours") && (
+            <div style={{ display:"grid",gap:10 }}>
+              {clientReservations.length === 0
+                ? <EmptyState label="Aucune réservation active." />
+                : clientReservations.map((r) => (
+                    <ReservationRow key={r._id} reservation={r}
+                      isSaved={savedIds.has(String(r.worker?._id || ""))}
+                      onToggleSave={handleToggleSave}
+                      rightAction={["pending","accepted"].includes(r.status)
+                        ? <button className="rv-btn-details" style={{ color:"#ef4444",borderColor:"#fecaca" }}
+                            onClick={() => cancelReservation(r)} disabled={actionLoading}>
+                            <X size={13}/> Annuler
+                          </button>
+                        : null}
+                    />
+                  ))
+              }
+            </div>
+          )}
+
+          {/* ── Tab: Historique ── */}
+          {!loading && tab === "historique" && (
+            <div style={{ display:"grid",gap:10 }}>
+              {clientHistory.length === 0
+                ? <EmptyState label="Aucun historique." />
+                : clientHistory.map((r) => {
+                    const hasReview   = !!r?.clientReview?.rating;
+                    const hasSignal   = !!r?.clientSignal?.reported;
+                    const isCompleted = r?.status === "completed";
+                    return (
+                      <ReservationRow key={r._id} reservation={r}
+                        isSaved={savedIds.has(String(r.worker?._id || ""))}
+                        onToggleSave={handleToggleSave}
+                        rightAction={isCompleted ? (
+                          <div style={{ display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",minWidth:130 }}>
+                            {hasReview
+                              ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#10b981",background:"rgba(16,185,129,0.08)",border:"1.5px solid rgba(16,185,129,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
+                                  <Star size={12} fill="#10b981" color="#10b981"/> Avis envoyé
+                                </span>
+                              : <button onClick={() => openReviewDialog(r)}
+                                  style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#0f172e",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
+                                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#06b6d4";e.currentTarget.style.color="#06b6d4";}}
+                                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.color="#0f172e";}}>
+                                  <Star size={12}/> Laisser un avis
+                                </button>
+                            }
+                            {hasSignal
+                              ? <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#f59e0b",background:"rgba(245,158,11,0.08)",border:"1.5px solid rgba(245,158,11,0.2)",borderRadius:8,padding:"7px 12px",whiteSpace:"nowrap" }}>
+                                  <AlertTriangle size={12}/> Signalé
+                                </span>
+                              : <button onClick={() => openSignalDialog(r)}
+                                  style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:700,color:"#ef4444",background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 12px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .18s",fontFamily:"'Sora',sans-serif" }}
+                                  onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";}}
+                                  onMouseLeave={e=>{e.currentTarget.style.background="#fef2f2";}}>
+                                  <AlertTriangle size={12}/> Signaler
+                                </button>
+                            }
+                          </div>
+                        ) : null}
+                      >
+                        {isCompleted && hasReview && (
+                          <div style={{ marginTop:6,fontSize:12,color:"#64748b" }}>
+                            {"★".repeat(Number(r.clientReview.rating))}{"☆".repeat(Math.max(0,5-Number(r.clientReview.rating)))}
+                            {r.clientReview.comment ? ` · ${r.clientReview.comment}` : ""}
+                          </div>
+                        )}
+                      </ReservationRow>
+                    );
+                  })
+              }
+            </div>
           )}
 
           {isWorker && selectedWorkerReservation && (
@@ -409,6 +457,14 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   );
 }
 
+function EmptyState({ label }) {
+  return (
+    <div style={{ textAlign:"center",padding:"48px 24px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,color:"#94a3b8",fontSize:13 }}>
+      {label}
+    </div>
+  );
+}
+
 function ReservationRow({ reservation, rightAction, children, isSaved, onToggleSave }) {
   const worker   = reservation.worker;
   const client   = reservation.client;
@@ -453,7 +509,7 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
             )}
           </div>
           <div style={{ display:"flex",flexWrap:"wrap",gap:12,fontSize:12,color:"#64748b",marginBottom:10 }}>
-            <span style={{ display:"flex",alignItems:"center",gap:4 }}><Calendar size={11} color="#94a3b8"/>{fmtDate(reservation.bookingDate)} à {fmtHour(reservation.bookingHour)}</span>
+            <span style={{ display:"flex",alignItems:"center",gap:4 }}><Calendar size={11} color="#94a3b8"/>{fmtDate(reservation.bookingDate)} · {fmtHour(reservation.bookingHour)} – {fmtHour(reservation.bookingHour + (reservation.duration || 2))}</span>
             {reservation.serviceType && <span style={{ display:"flex",alignItems:"center",gap:4 }}><Wrench size={11} color="#94a3b8"/>{reservation.serviceType}</span>}
             {reservation.address && <span style={{ display:"flex",alignItems:"center",gap:4 }}><MapPin size={11} color="#94a3b8"/>{reservation.address}</span>}
           </div>
@@ -517,7 +573,7 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
             <div className="rv-info-row">
               <div className="rv-info-icon"><Calendar size={13} color="#06b6d4"/></div>
-              <div><span style={{ fontWeight:600 }}>Date : </span>{fmtDate(reservation?.bookingDate)} à {fmtHour(reservation?.bookingHour)}</div>
+              <div><span style={{ fontWeight:600 }}>Date : </span>{fmtDate(reservation?.bookingDate)} · {fmtHour(reservation?.bookingHour)} – {fmtHour((reservation?.bookingHour || 0) + (reservation?.duration || 2))}</div>
             </div>
             {reservation?.serviceType && (
               <div className="rv-info-row">

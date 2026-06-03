@@ -288,6 +288,26 @@ export const workerApi = {
       method: "PUT",
       headers: authHeaders(),
     }).then(handle),
+
+  addService: (service) =>
+    fetch(`${BASE}/worker/services`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(service),
+    }).then(handle),
+
+  updateService: (serviceId, service) =>
+    fetch(`${BASE}/worker/services/${serviceId}`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify(service),
+    }).then(handle),
+
+  deleteService: (serviceId) =>
+    fetch(`${BASE}/worker/services/${serviceId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).then(handle),
 };
 
 // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MapPin, Star, Briefcase, Edit3, Check, X, Trash2,
   ShieldCheck, Camera, Mail, Calendar, Award, Image, Bookmark, BookmarkCheck,
-  Heart, MessageCircle, MoreVertical, Send,
+  Heart, MessageCircle, MoreVertical, Send, Tag, Plus, Clock,
 } from "lucide-react";
 import { avatarUrl, clientApi, workerApi, portfolioApi } from "../api";
 import { GOUVERNORATS, DELEGATIONS } from "../constants/tunisia";
@@ -205,7 +205,8 @@ const DAYS = [
   { key:"saturday",  label:"Sam" },
   { key:"sunday",    label:"Dim" },
 ];
-const BOOKABLE_HOURS = [8,9,10,11,12,14,15,16,17];
+const BOOKABLE_HOURS = [8, 10, 12, 14, 16]; // 2-hour slots: 08-10, 10-12, 12-14, 14-16, 16-18
+const SLOT_DURATION = 2;
 
 const avatarInitials = (n) => (n?.[0] || "?").toUpperCase();
 const fmtHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
@@ -239,6 +240,13 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const [scheduleDraft, setScheduleDraft]     = useState({});
   const [scheduleSaving, setScheduleSaving]   = useState(false);
   const [scheduleMsg, setScheduleMsg]         = useState("");
+  // Services tab state
+  const [svcFormOpen, setSvcFormOpen] = useState(false);
+  const [svcEditId,   setSvcEditId]   = useState(null);
+  const [svcSaving,   setSvcSaving]   = useState(false);
+  const [svcDeleting, setSvcDeleting] = useState(null);
+  const [svcDraft,    setSvcDraft]    = useState({ name:"", description:"", price:"", duration:"" });
+  const [svcErr,      setSvcErr]      = useState("");
   const avatarInputRef = useRef(null);
   const pfFileRef      = useRef(null);
 
@@ -571,7 +579,10 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
   const startScheduleEdit = () => {
     const base = {};
-    DAYS.forEach(d => { base[d.key] = [...(wp.availabilitySchedule?.[d.key] || [])]; });
+    DAYS.forEach(d => {
+      base[d.key] = (wp.availabilitySchedule?.[d.key] || [])
+        .filter(h => BOOKABLE_HOURS.includes(Number(h)));
+    });
     setScheduleDraft(base);
     setScheduleEditing(true);
     setScheduleMsg("");
@@ -852,6 +863,199 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
       </div>
     </div>
   );
+
+  // ── Tab: Services ─────────────────────────────────────────
+  const TabServices = () => {
+    const services = wp.services || [];
+
+    const openAdd  = () => { setSvcDraft({ name:"", description:"", price:"", duration:"" }); setSvcEditId(null); setSvcErr(""); setSvcFormOpen(true); };
+    const openEdit = (s) => { setSvcDraft({ name:s.name, description:s.description||"", price:String(s.price), duration:String(s.duration||"") }); setSvcEditId(String(s._id)); setSvcErr(""); setSvcFormOpen(true); };
+    const closeForm = () => { setSvcFormOpen(false); setSvcEditId(null); setSvcErr(""); };
+
+    const save = async () => {
+      if (!svcDraft.name.trim()) { setSvcErr("Le nom du service est requis."); return; }
+      if (svcDraft.price === "" || isNaN(Number(svcDraft.price))) { setSvcErr("Le prix doit être un nombre."); return; }
+      setSvcSaving(true); setSvcErr("");
+      try {
+        const payload = { name: svcDraft.name.trim(), description: svcDraft.description.trim(), price: Number(svcDraft.price), duration: Number(svcDraft.duration) || 0 };
+        const res = svcEditId
+          ? await workerApi.updateService(svcEditId, payload)
+          : await workerApi.addService(payload);
+        const updated = { ...profile, workerProfile: { ...profile.workerProfile, services: res.services } };
+        setProfile(updated);
+        if (isOwner) onUpdateUser?.(updated);
+        closeForm();
+      } catch (e) { setSvcErr(e.message || "Erreur"); }
+      finally { setSvcSaving(false); }
+    };
+
+    const remove = async (id) => {
+      if (!window.confirm("Supprimer ce service ?")) return;
+      setSvcDeleting(id);
+      try {
+        const res = await workerApi.deleteService(id);
+        const updated = { ...profile, workerProfile: { ...profile.workerProfile, services: res.services } };
+        setProfile(updated);
+        if (isOwner) onUpdateUser?.(updated);
+      } catch (e) { alert(e.message || "Erreur"); }
+      finally { setSvcDeleting(null); }
+    };
+
+    const inputSt = { width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 12px",fontSize:13,fontFamily:"'Sora',sans-serif",outline:"none",color:"#0f172e",boxSizing:"border-box" };
+    const noSpinSt = { ...inputSt, MozAppearance:"textfield" };
+
+    return (
+      <>
+      <style>{`input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}`}</style>
+      <div className="pr-anim-1">
+
+        {/* Header */}
+        {isOwner && (
+          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:14 }}>
+            <button className="pr-save-btn" onClick={openAdd} style={{ gap:7 }}>
+              <Plus size={14}/> Ajouter un service
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {services.length === 0 && (
+          <div className="pr-card pr-anim-1" style={{ textAlign:"center", padding:"48px 24px" }}>
+            <Tag size={40} color="#cbd5e1" style={{ marginBottom:14 }} />
+            <div style={{ fontSize:14, color:"#94a3b8", fontWeight:500 }}>
+              {isOwner ? "Aucun service. Cliquez sur « Ajouter » pour commencer." : "Ce prestataire n'a pas encore ajouté de services."}
+            </div>
+          </div>
+        )}
+
+        {/* Services grid */}
+        {services.length > 0 && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:14 }}>
+            {services.map((s) => (
+              <div key={String(s._id)}
+                style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:14,padding:"18px 20px",position:"relative",display:"flex",flexDirection:"column",minHeight:150,transition:"box-shadow .2s,border-color .2s" }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(6,182,212,0.35)";e.currentTarget.style.boxShadow="0 6px 20px rgba(6,182,212,0.08)";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="none";}}>
+                {/* Owner actions */}
+                {isOwner && (
+                  <div style={{ position:"absolute",top:12,right:12,display:"flex",gap:6 }}>
+                    <button onClick={() => openEdit(s)}
+                      style={{ width:28,height:28,borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s" }}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor="#06b6d4";e.currentTarget.style.background="rgba(6,182,212,0.06)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
+                      <Edit3 size={12} color="#64748b"/>
+                    </button>
+                    <button onClick={() => remove(String(s._id))} disabled={svcDeleting === String(s._id)}
+                      style={{ width:28,height:28,borderRadius:8,border:"1.5px solid #fecaca",background:"#fef2f2",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s",opacity:svcDeleting===String(s._id)?0.5:1 }}
+                      onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";}}
+                      onMouseLeave={e=>{e.currentTarget.style.background="#fef2f2";}}>
+                      <Trash2 size={12} color="#ef4444"/>
+                    </button>
+                  </div>
+                )}
+                {/* Icon */}
+                <div style={{ width:38,height:38,borderRadius:10,background:"rgba(6,182,212,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10,flexShrink:0 }}>
+                  <Tag size={17} color="#06b6d4"/>
+                </div>
+                {/* Name */}
+                <div style={{ fontSize:14,fontWeight:700,color:"#0f172e",marginBottom:5,paddingRight:isOwner?64:0,lineHeight:1.35 }}>{s.name}</div>
+                {/* Description */}
+                {s.description && (
+                  <div style={{ fontSize:12,color:"#64748b",lineHeight:1.55,marginBottom:10,flex:1 }}>{s.description}</div>
+                )}
+                {!s.description && <div style={{ flex:1 }}/>}
+                {/* Price + duration — always at bottom */}
+                <div style={{ display:"flex",alignItems:"center",gap:10,paddingTop:10,borderTop:"1.5px solid #f1f5f9",marginTop:4,flexWrap:"nowrap" }}>
+                  <span style={{ fontSize:15,fontWeight:800,color:"#06b6d4",whiteSpace:"nowrap" }}>
+                    {s.price > 0 ? `${s.price} TND` : "Sur devis"}
+                  </span>
+                  {s.duration > 0 && (
+                    <span style={{ display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:"#94a3b8",background:"#f1f5f9",borderRadius:6,padding:"3px 8px",whiteSpace:"nowrap",marginLeft:"auto" }}>
+                      <Clock size={10}/>{s.duration} min
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>{/* end .pr-anim-1 */}
+
+        {/* Add / Edit form overlay — outside the animated div so position:fixed covers the full viewport */}
+        {svcFormOpen && (
+          <div style={{ position:"fixed",inset:0,background:"rgba(15,23,46,.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
+            onClick={closeForm}>
+            <div onClick={e=>e.stopPropagation()}
+              style={{ background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:460,boxShadow:"0 32px 80px rgba(0,0,0,.28)",fontFamily:"'Sora',sans-serif" }}>
+              <div style={{ fontSize:16,fontWeight:800,color:"#0f172e",marginBottom:20 }}>
+                {svcEditId ? "Modifier le service" : "Ajouter un service"}
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
+                {/* Name */}
+                <div>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+                    <label style={{ fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:".15em",textTransform:"uppercase" }}>Nom du service *</label>
+                    <span style={{ fontSize:10,color:"#94a3b8" }}>{svcDraft.name.length}/60</span>
+                  </div>
+                  <input value={svcDraft.name} maxLength={60}
+                    onChange={e=>setSvcDraft(p=>({...p,name:e.target.value}))} placeholder="Ex : Coupe homme, Teinture, Manucure…"
+                    style={inputSt} onFocus={e=>e.target.style.borderColor="#06b6d4"} onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
+                </div>
+                {/* Description */}
+                <div>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+                    <label style={{ fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:".15em",textTransform:"uppercase" }}>Description</label>
+                    <span style={{ fontSize:10,color:"#94a3b8" }}>{svcDraft.description.length}/150</span>
+                  </div>
+                  <textarea value={svcDraft.description} maxLength={150} rows={2}
+                    onChange={e=>setSvcDraft(p=>({...p,description:e.target.value}))} placeholder="Description courte du service…"
+                    style={{ ...inputSt,resize:"none" }}
+                    onFocus={e=>e.target.style.borderColor="#06b6d4"} onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
+                </div>
+                {/* Price + duration */}
+                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+                  <div>
+                    <label style={{ fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:".15em",textTransform:"uppercase",display:"block",marginBottom:6 }}>Prix (TND) *</label>
+                    <div style={{ position:"relative" }}>
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={svcDraft.price} maxLength={6}
+                        onChange={e=>{ const v=e.target.value.replace(/[^0-9]/g,""); setSvcDraft(p=>({...p,price:v})); }}
+                        placeholder="0 = Sur devis"
+                        style={{ ...noSpinSt,paddingRight:40 }}
+                        onFocus={e=>e.target.style.borderColor="#06b6d4"} onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
+                      <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:700,color:"#94a3b8",pointerEvents:"none" }}>TND</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:".15em",textTransform:"uppercase",display:"block",marginBottom:6 }}>Durée (min)</label>
+                    <div style={{ position:"relative" }}>
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={svcDraft.duration} maxLength={4}
+                        onChange={e=>{ const v=e.target.value.replace(/[^0-9]/g,""); if(Number(v)<=1440||v==="") setSvcDraft(p=>({...p,duration:v})); }}
+                        placeholder="Optionnel"
+                        style={{ ...noSpinSt,paddingRight:40 }}
+                        onFocus={e=>e.target.style.borderColor="#06b6d4"} onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
+                      <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:700,color:"#94a3b8",pointerEvents:"none" }}>min</span>
+                    </div>
+                  </div>
+                </div>
+                {svcErr && <div style={{ fontSize:12,color:"#ef4444",background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"8px 12px" }}>{svcErr}</div>}
+              </div>
+              <div style={{ display:"flex",gap:10,marginTop:22 }}>
+                <button onClick={closeForm} disabled={svcSaving}
+                  style={{ flex:1,padding:"11px 0",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Sora',sans-serif" }}>
+                  Annuler
+                </button>
+                <button onClick={save} disabled={svcSaving}
+                  style={{ flex:2,padding:"11px 0",borderRadius:10,border:"none",background:"#06b6d4",color:"#fff",fontSize:13,fontWeight:700,cursor:svcSaving?"not-allowed":"pointer",fontFamily:"'Sora',sans-serif",opacity:svcSaving?0.7:1 }}>
+                  {svcSaving ? "Enregistrement…" : svcEditId ? "Modifier" : "Ajouter"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
 
   // ── Tab: Portfolio ────────────────────────────────────────
   const TabPortfolio = () => {
@@ -1161,7 +1365,11 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
   // ── Tab: Planning ─────────────────────────────────────────
   const TabPlanning = () => {
-    const schedule = scheduleEditing ? scheduleDraft : (wp.availabilitySchedule || {});
+    const rawSchedule = scheduleEditing ? scheduleDraft : (wp.availabilitySchedule || {});
+    // Always normalize to only valid 2-hour slot starts, even when viewing old DB data
+    const schedule = Object.fromEntries(
+      Object.entries(rawSchedule).map(([k, v]) => [k, (v || []).filter(h => BOOKABLE_HOURS.includes(Number(h)))])
+    );
     const hasAnySlot = DAYS.some(d => (schedule[d.key] || []).length > 0);
 
     const toggleSlot = (day, hour) => {
@@ -1231,38 +1439,39 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                     {d.label}
                   </div>
 
-                  {/* Hour chips */}
-                  <div style={{ display:"flex", flexWrap:"wrap", gap:5, flex:1 }}>
-                    {BOOKABLE_HOURS.map(h => {
-                      const isOn = dayHours.includes(h);
-                      return (
-                        <button key={h} type="button"
-                          onClick={() => toggleSlot(d.key, h)}
-                          disabled={!scheduleEditing}
-                          style={{
-                            padding:"5px 10px", borderRadius:20, fontSize:11, fontWeight:700,
-                            border: isOn ? "1.5px solid rgba(6,182,212,0.5)" : "1.5px solid #e2e8f0",
-                            background: isOn ? "rgba(6,182,212,0.12)" : "#fff",
-                            color: isOn ? "#0284c7" : "#cbd5e1",
-                            cursor: scheduleEditing ? "pointer" : "default",
-                            transition:"all .15s",
-                            fontFamily:"'Sora',sans-serif",
-                            boxShadow: isOn ? "0 1px 4px rgba(6,182,212,0.15)" : "none",
-                          }}>
-                          {fmtHour(h)}
-                        </button>
-                      );
-                    })}
+                  {/* Each slot is a 2-hour block — same label in both edit and view mode */}
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6, flex:1, alignItems:"center" }}>
+                    {someOn || scheduleEditing ? (
+                      BOOKABLE_HOURS.map(h => {
+                        const isOn = dayHours.includes(h);
+                        if (!scheduleEditing && !isOn) return null;
+                        return (
+                          <button key={h} type="button"
+                            onClick={() => scheduleEditing && toggleSlot(d.key, h)}
+                            style={{
+                              padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700,
+                              border: isOn ? "1.5px solid rgba(6,182,212,0.5)" : "1.5px solid #e2e8f0",
+                              background: isOn ? "rgba(6,182,212,0.12)" : "#fff",
+                              color: isOn ? "#0284c7" : "#cbd5e1",
+                              cursor: scheduleEditing ? "pointer" : "default",
+                              transition:"all .15s", fontFamily:"'Sora',sans-serif",
+                              boxShadow: isOn ? "0 1px 4px rgba(6,182,212,0.15)" : "none",
+                            }}>
+                            {fmtHour(h)} – {fmtHour(h + SLOT_DURATION)}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <span style={{ fontSize:11,color:"#94a3b8" }}>Fermé</span>
+                    )}
                   </div>
 
-                  {/* Right: slot count badge */}
-                  <div style={{
-                    flexShrink:0, fontSize:10, fontWeight:700,
-                    color: someOn ? "#06b6d4" : "#94a3b8",
-                    minWidth:32, textAlign:"right",
-                  }}>
-                    {someOn ? `${dayHours.length} h` : "Fermé"}
-                  </div>
+                  {/* Right: slot count */}
+                  {someOn && (
+                    <div style={{ flexShrink:0,fontSize:10,fontWeight:700,color:"#06b6d4",minWidth:42,textAlign:"right" }}>
+                      {dayHours.length * SLOT_DURATION}h
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1288,6 +1497,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const tabs = [
     { id:"overview",  label:"Aperçu" },
     ...(role === "worker" ? [
+      { id:"services",  label:"Services" },
       { id:"portfolio", label:"Portfolio" },
       { id:"planning",  label:"Planning" },
     ] : []),
@@ -1393,6 +1603,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
 
         <div className="pr-content">
           {tab === "overview"   && TabOverview()}
+          {tab === "services"   && TabServices()}
           {tab === "portfolio"  && TabPortfolio()}
           {tab === "planning"   && TabPlanning()}
         </div>

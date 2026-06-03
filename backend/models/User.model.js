@@ -92,6 +92,17 @@ const UserSchema = new mongoose.Schema(
         default: [],
       },
       hourlyRate:   { type: Number, default: 0 },
+      services: {
+        type: [
+          {
+            name:        { type: String, default: "" },
+            description: { type: String, default: "" },
+            price:       { type: Number, default: 0 },
+            duration:    { type: Number, default: 0 },
+          },
+        ],
+        default: [],
+      },
       portfolio: {
         type: [
           {

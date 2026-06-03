@@ -25,6 +25,12 @@ const ReservationSchema = new mongoose.Schema(
       min: 0,
       max: 23,
     },
+    duration: {
+      type: Number,
+      default: 2,
+      min: 1,
+      max: 8,
+    },
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected", "cancelled", "completed"],

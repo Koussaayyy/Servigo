@@ -549,16 +549,73 @@ exports.toggleCommentLike = async (req, res) => {
 };
 
 // ── @PUT /api/worker/schedule ────────────────────────────
+const VALID_SLOT_HOURS = [8, 10, 12, 14, 16];
+
 exports.updateSchedule = async (req, res) => {
   try {
     const { availabilitySchedule } = req.body;
+    // Strip any non-valid slot hours before saving
+    const clean = {};
+    for (const [day, hours] of Object.entries(availabilitySchedule || {})) {
+      clean[day] = (Array.isArray(hours) ? hours : [])
+        .map(Number)
+        .filter(h => VALID_SLOT_HOURS.includes(h));
+    }
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { $set: { "workerProfile.availabilitySchedule": availabilitySchedule } },
+      { $set: { "workerProfile.availabilitySchedule": clean } },
       { new: true }
     ).select("-password");
     res.json({ message: "Planning mis à jour", availabilitySchedule: user.workerProfile.availabilitySchedule });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
+};
+
+// ── @POST /api/worker/services ───────────────────────────
+exports.addService = async (req, res) => {
+  try {
+    const { name, description, price, duration } = req.body;
+    if (!name || price === undefined) return res.status(400).json({ message: "Nom et prix requis" });
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $push: { "workerProfile.services": { name, description: description || "", price: Number(price), duration: Number(duration) || 0 } } },
+      { new: true }
+    ).select("-password");
+    const services = user.workerProfile.services;
+    res.json({ message: "Service ajouté", service: services[services.length - 1], services });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @PUT /api/worker/services/:serviceId ─────────────────
+exports.updateService = async (req, res) => {
+  try {
+    const { name, description, price, duration } = req.body;
+    const user = await User.findOneAndUpdate(
+      { _id: req.user.id, "workerProfile.services._id": req.params.serviceId },
+      {
+        $set: {
+          "workerProfile.services.$.name":        name,
+          "workerProfile.services.$.description": description || "",
+          "workerProfile.services.$.price":       Number(price),
+          "workerProfile.services.$.duration":    Number(duration) || 0,
+        },
+      },
+      { new: true }
+    ).select("-password");
+    if (!user) return res.status(404).json({ message: "Service introuvable" });
+    res.json({ message: "Service mis à jour", services: user.workerProfile.services });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+// ── @DELETE /api/worker/services/:serviceId ──────────────
+exports.deleteService = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { "workerProfile.services": { _id: req.params.serviceId } } },
+      { new: true }
+    ).select("-password");
+    res.json({ message: "Service supprimé", services: user.workerProfile.services });
+  } catch (err) { res.status(500).json({ message: "Server error", error: err.message }); }
 };

@@ -22,6 +22,9 @@ router.delete("/portfolio/:itemId/review/:reviewId",       protect, authorize("w
 router.delete("/portfolio/:itemId",                        protect, authorize("worker"), workerController.deletePortfolioItem);
 router.put("/schedule",                                    protect, authorize("worker"), workerController.updateSchedule);
 router.put("/availability",                                protect, authorize("worker"), workerController.toggleAvailability);
+router.post("/services",                                   protect, authorize("worker"), workerController.addService);
+router.put("/services/:serviceId",                         protect, authorize("worker"), workerController.updateService);
+router.delete("/services/:serviceId",                      protect, authorize("worker"), workerController.deleteService);
 
 // Notifications
 router.get("/notifications", protect, authorize("worker"), workerController.getNotifications);
