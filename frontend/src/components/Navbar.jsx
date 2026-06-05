@@ -242,10 +242,11 @@ export default function Navbar({
   };
 
   const links = [
-    { label: "Explorer",     page: "explore",      authRequired: false },
-    { label: "Réservations", page: "reservations", authRequired: true  },
-    { label: "Profil",       page: "profile",      authRequired: true  },
-  ].filter((l) => !l.authRequired || !!user);
+    { label: "Explorer",     page: "explore",      authRequired: false, workerOnly: false },
+    { label: "Dashboard",    page: "dashboard",    authRequired: true,  workerOnly: true  },
+    { label: "Réservations", page: "reservations", authRequired: true,  workerOnly: false },
+    { label: "Profil",       page: "profile",      authRequired: true,  workerOnly: false },
+  ].filter((l) => (!l.authRequired || !!user) && (!l.workerOnly || user?.role === "worker"));
 
   const userInitial = avatarInitials(user?.firstName || user?.name || "U");
 

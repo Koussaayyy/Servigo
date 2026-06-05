@@ -17,6 +17,7 @@ import EmailVerification    from "./pages/EmailVerification";
 import ReservationDialog    from "./components/ReservationDialog";
 import ChatBot              from "./components/ChatBot";
 import SavedWorkersPage     from "./pages/SavedWorkersPage";
+import WorkerDashboard      from "./pages/WorkerDashboard";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -439,11 +440,11 @@ export default function App() {
       );
     }
 
-    // ── Dashboard ──────────────────────────────────────────────────────────
+    // ── Dashboard (workers only) ───────────────────────────────────────────
     if (mode === "app" && activePage === "dashboard") {
       return (
         <>
-          <ReservationsPage
+          <WorkerDashboard
             user={loggedUser}
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
