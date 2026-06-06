@@ -292,6 +292,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                 ? <EmptyState label="Aucune demande reçue pour le moment." />
                 : workerReservations.map((r) => (
                     <ReservationRow key={r._id} reservation={r}
+                        viewerRole="worker"
                       rightAction={
                         <button className="rv-btn-details"
                           onClick={() => setSelectedWorkerReservation(r)}
@@ -312,6 +313,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                 ? <EmptyState label="Aucune réservation active." />
                 : clientReservations.map((r) => (
                     <ReservationRow key={r._id} reservation={r}
+                        viewerRole="client"
                       isSaved={savedIds.has(String(r.worker?._id || ""))}
                       onToggleSave={handleToggleSave}
                       rightAction={r.status === "pending"
@@ -337,6 +339,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
                     const isCompleted = r?.status === "completed";
                     return (
                       <ReservationRow key={r._id} reservation={r}
+                        viewerRole="client"
                         isSaved={savedIds.has(String(r.worker?._id || ""))}
                         onToggleSave={handleToggleSave}
                         rightAction={isCompleted ? (
@@ -511,15 +514,15 @@ function EmptyState({ label }) {
   );
 }
 
-function ReservationRow({ reservation, rightAction, children, isSaved, onToggleSave }) {
+function ReservationRow({ reservation, rightAction, children, isSaved, onToggleSave, viewerRole = "client" }) {
   const worker   = reservation.worker;
   const client   = reservation.client;
   const isObj    = (v) => v && typeof v === "object" && !Array.isArray(v);
   const person   = isObj(worker) ? worker : isObj(client) ? client : {};
   const workerId = isObj(worker) ? String(worker._id || "") : "";
-  const isWorkerCard = isObj(worker); // True if this is showing the worker, false if showing client
   const initials = ((person.firstName?.[0]||"") + (person.lastName?.[0]||"")).toUpperCase() || "?";
   const status   = reservation.status || "pending";
+  const isWorkerView = viewerRole === "worker";
 
   const [countdown, setCountdown] = useState("");
   useEffect(() => {
@@ -572,9 +575,9 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
             )}
             {reservation.serviceCode && (
               <span style={{ display:"flex",flexDirection:"column",gap:2,fontSize:11,fontWeight:700,color:"#06b6d4",background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:6,padding:"5px 10px" }}>
-                <span>Code : {isWorkerCard ? getWorkerCodeDisplay(reservation.serviceCode) : getClientCodeDisplay(reservation.serviceCode)}</span>
+                <span>Code : {isWorkerView ? getWorkerCodeDisplay(reservation.serviceCode) : getClientCodeDisplay(reservation.serviceCode)}</span>
                 <span style={{ fontSize:10,fontWeight:500,color:"#64748b" }}>
-                  {isWorkerCard
+                  {isWorkerView
                     ? "Demandez les 2 premiers chiffres au client pour compléter le code."
                     : "Communiquez ces 2 chiffres au prestataire le jour du service."}
                 </span>
@@ -664,7 +667,7 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
               <div className="rv-section-title">Code de service</div>
               <div style={{ background:"rgba(6,182,212,0.05)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:10,padding:14 }}>
                 <div style={{ fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.6 }}>
-                  Demandez les 2 premiers chiffres au client et saisissez-les ci-dessous.
+                    Demandez les 2 premiers chiffres au client et saisissez-les dans la case de gauche. Vos chiffres sont déjà affichés à droite.
                 </div>
                 {!reservation?.serviceStartedAt ? (
                   <>
@@ -687,7 +690,7 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
                       </div>
                     </div>
                     <div style={{ fontSize:11,color:"#94a3b8",textAlign:"center",marginBottom:10 }}>
-                      <span style={{ color:"#64748b",fontWeight:600 }}>Chiffres du client</span> + <span style={{ color:"#06b6d4",fontWeight:600 }}>Vos chiffres (pré-remplis)</span>
+                      <span style={{ color:"#64748b",fontWeight:600 }}>Chiffres du client</span> + <span style={{ color:"#06b6d4",fontWeight:600 }}>Vos chiffres auto-remplis</span>
                     </div>
                     {serviceCodeError && (
                       <div style={{ fontSize:12,color:"#ef4444",marginBottom:10,fontWeight:600 }}>⚠ {serviceCodeError}</div>

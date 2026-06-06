@@ -270,6 +270,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const isOwner = currentUser && profile && (
     currentUser._id === profile._id || currentUser.id === profile._id
   );
+  const hydratedSelfProfileRef = useRef(false);
 
   const findGovernoratForCity = (city) => {
     if (!city) return "";
@@ -596,6 +597,28 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     }
     if (tab !== want) setTab(want);
   }, [initialTab, profile?._id]);
+
+  useEffect(() => {
+    if (!profile?._id || !currentUser || role !== "worker" || !isOwner) return;
+    if (hydratedSelfProfileRef.current) return;
+
+    hydratedSelfProfileRef.current = true;
+    let cancelled = false;
+
+    workerApi.getProfile()
+      .then((freshProfile) => {
+        if (cancelled || !freshProfile?._id) return;
+        setProfile(freshProfile);
+        onUpdateUser?.(freshProfile);
+      })
+      .catch(() => {
+        hydratedSelfProfileRef.current = false;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isOwner, onUpdateUser, profile?._id, role]);
 
   useEffect(() => {
     if (!currentUser || isOwner || role !== "worker") return;

@@ -1,5 +1,5 @@
 // AdminDashboard.jsx - Admin dashboard with Servigo design system
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LogOut, LayoutDashboard, AlertCircle, Users, MessageSquare,
   Trash2, ChevronDown, Eye, EyeOff, Search, TrendingUp, Clock,
@@ -54,6 +54,30 @@ export default function AdminDashboard({ admin, onLogout }) {
   const [workerSearch, setWorkerSearch] = useState("");
   const [workerVerifFilter, setWorkerVerifFilter] = useState("all");
   const [workerStatusFilter, setWorkerStatusFilter] = useState("all");
+  const [dialog, setDialog] = useState(null);
+  const dialogResolver = useRef(null);
+
+  const closeDialog = (result = false) => {
+    if (dialogResolver.current) {
+      dialogResolver.current(result);
+      dialogResolver.current = null;
+    }
+    setDialog(null);
+  };
+
+  const openConfirmDialog = ({ title, message, confirmText = "OK", cancelText = "Annuler", danger = false }) =>
+    new Promise((resolve) => {
+      dialogResolver.current = resolve;
+      setDialog({ type: "confirm", title, message, confirmText, cancelText, danger });
+    });
+
+  const openInfoDialog = ({ title = "Information", message }) => {
+    if (dialogResolver.current) {
+      dialogResolver.current(false);
+      dialogResolver.current = null;
+    }
+    setDialog({ type: "info", title, message });
+  };
 
   useEffect(() => {
     loadAllData();
@@ -206,24 +230,24 @@ export default function AdminDashboard({ admin, onLogout }) {
   };
 
   const handleDeleteReclamation = async (reclamationId) => {
-    if (!window.confirm("Supprimer cette réclamation ?")) return;
+    if (!(await openConfirmDialog({ title: "Supprimer la réclamation", message: "Supprimer cette réclamation ?", confirmText: "Supprimer", danger: true }))) return;
     try {
       await adminApi.deleteReclamation(reclamationId);
       setReclamations((prev) => prev.filter((r) => r._id !== reclamationId));
       addActivity("Réclamation supprimée", reclamationId);
     } catch (err) {
-      setError(err.message || "Erreur lors de la suppression");
+      openInfoDialog({ title: "Erreur", message: err.message || "Erreur lors de la suppression" });
     }
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Supprimer cet utilisateur ?")) return;
+    if (!(await openConfirmDialog({ title: "Supprimer l'utilisateur", message: "Supprimer cet utilisateur ?", confirmText: "Supprimer", danger: true }))) return;
     try {
       await adminApi.deleteUser(userId);
       setUsers((prev) => prev.filter((u) => u._id !== userId));
       addActivity("Utilisateur supprimé", userId);
     } catch (err) {
-      setError(err.message || "Erreur lors de la suppression");
+      openInfoDialog({ title: "Erreur", message: err.message || "Erreur lors de la suppression" });
     }
   };
 
@@ -565,19 +589,19 @@ export default function AdminDashboard({ admin, onLogout }) {
                 setNewServiceIcon("Briefcase");
                 setNewServiceColor("#06b6d4");
               } catch (err) {
-                alert(err.message);
+                openInfoDialog({ title: "Erreur", message: err.message || "Erreur lors de la création du service" });
               } finally {
                 setServiceLoading(false);
               }
             };
 
             const removeService = async (id) => {
-              if (!window.confirm("Supprimer ce service ?")) return;
+              if (!(await openConfirmDialog({ title: "Supprimer le service", message: "Supprimer ce service ?", confirmText: "Supprimer", danger: true }))) return;
               try {
                 await adminApi.deleteService(id);
                 setServices(prev => prev.filter(s => s._id !== id));
               } catch (err) {
-                alert(err.message);
+                openInfoDialog({ title: "Erreur", message: err.message || "Erreur lors de la suppression du service" });
               }
             };
 
@@ -1625,7 +1649,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                                   setSignals(prev => prev.map(x => x._id === s._id ? updated : x));
                                   loadAllData();
                                 } catch (err) {
-                                  alert("Erreur: " + err.message);
+                                  openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") });
                                 }
                               }}
                               style={{
@@ -1649,7 +1673,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                                   setSignals(prev => prev.filter(x => x._id !== s._id));
                                   loadAllData();
                                 } catch (err) {
-                                  alert("Erreur: " + err.message);
+                                  openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") });
                                 }
                               }}
                               style={{
@@ -1671,7 +1695,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                                   await adminApi.banWorker(workerId, `Suspension manuelle après signalement: ${s.reason}`);
                                   loadAllData();
                                 } catch (err) {
-                                  alert("Erreur: " + err.message);
+                                  openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") });
                                 }
                               }}
                               style={{
@@ -1698,7 +1722,7 @@ export default function AdminDashboard({ admin, onLogout }) {
                                   await adminApi.resetWorkerWarnings(workerId);
                                   loadAllData();
                                 } catch (err) {
-                                  alert("Erreur: " + err.message);
+                                  openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") });
                                 }
                               }}
                               style={{
@@ -2047,11 +2071,11 @@ export default function AdminDashboard({ admin, onLogout }) {
                         {isSuspended && (
                           <button
                             onClick={async () => {
-                              if (!window.confirm(`Débannir ${u.firstName} ${u.lastName} ?`)) return;
+                              if (!(await openConfirmDialog({ title: "Débannir le compte", message: `Débannir ${u.firstName} ${u.lastName} ?`, confirmText: "Débannir", danger: true }))) return;
                               try {
                                 await adminApi.unbanWorker(u._id);
                                 setUsers(prev => prev.map(x => x._id === u._id ? { ...x, workerStatus:"active", bannedAt:null, banReason:"" } : x));
-                              } catch(err) { alert("Erreur: " + err.message); }
+                              } catch(err) { openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") }); }
                             }}
                             style={{ background:"#22c55e",color:"#fff",border:"none",borderRadius:7,padding:"6px 11px",fontSize:11,fontWeight:700,cursor:"pointer" }}
                           >
@@ -2061,11 +2085,11 @@ export default function AdminDashboard({ admin, onLogout }) {
                         {isInactive && (
                           <button
                             onClick={async () => {
-                              if (!window.confirm(`Réactiver le compte de ${u.firstName} ${u.lastName} ?`)) return;
+                              if (!(await openConfirmDialog({ title: "Réactiver le compte", message: `Réactiver le compte de ${u.firstName} ${u.lastName} ?`, confirmText: "Réactiver", danger: false }))) return;
                               try {
                                 await adminApi.toggleUserStatus(u._id);
                                 setUsers(prev => prev.map(x => x._id === u._id ? { ...x, isActive:true } : x));
-                              } catch(err) { alert("Erreur: " + err.message); }
+                              } catch(err) { openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") }); }
                             }}
                             style={{ background:"#06b6d4",color:"#fff",border:"none",borderRadius:7,padding:"6px 11px",fontSize:11,fontWeight:700,cursor:"pointer" }}
                           >
@@ -2074,11 +2098,11 @@ export default function AdminDashboard({ admin, onLogout }) {
                         )}
                         <button
                           onClick={async () => {
-                            if (!window.confirm(`Supprimer définitivement le compte de ${u.firstName} ${u.lastName} ? Cette action est irréversible.`)) return;
+                            if (!(await openConfirmDialog({ title: "Supprimer définitivement", message: `Supprimer définitivement le compte de ${u.firstName} ${u.lastName} ? Cette action est irréversible.`, confirmText: "Supprimer", danger: true }))) return;
                             try {
                               await adminApi.deleteUser(u._id);
                               setUsers(prev => prev.filter(x => x._id !== u._id));
-                            } catch(err) { alert("Erreur: " + err.message); }
+                            } catch(err) { openInfoDialog({ title: "Erreur", message: "Erreur: " + (err.message || "Action impossible") }); }
                           }}
                           style={{ background:"none",border:"1.5px solid #fecaca",borderRadius:7,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#ef4444",cursor:"pointer" }}
                         >
@@ -2187,6 +2211,57 @@ export default function AdminDashboard({ admin, onLogout }) {
         )}
         </main>
       </div>
+
+      {dialog && (
+        <div
+          style={{ position:"fixed", inset:0, background:"rgba(15,23,46,0.55)", zIndex:4000, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
+          onClick={() => dialog.type === "info" && closeDialog(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width:"100%", maxWidth:420, background:"#fff", borderRadius:16, border:"1.5px solid #e2e8f0", boxShadow:"0 24px 70px rgba(0,0,0,0.22)", overflow:"hidden", fontFamily:"'Sora',sans-serif" }}
+          >
+            <div style={{ padding:"18px 20px", background: dialog.type === "confirm" ? "#0f172e" : "#f8fafc", borderBottom:"1px solid #e2e8f0" }}>
+              <div style={{ fontSize:15, fontWeight:800, color: dialog.type === "confirm" ? "#fff" : "#0f172e" }}>{dialog.title}</div>
+            </div>
+            <div style={{ padding:"18px 20px", color:"#334155", fontSize:13, lineHeight:1.7 }}>
+              {dialog.message}
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end", padding:"0 20px 20px" }}>
+              {dialog.type === "confirm" && (
+                <button
+                  onClick={() => closeDialog(false)}
+                  style={{ padding:"10px 16px", borderRadius:10, border:"1.5px solid #e2e8f0", background:"#fff", color:"#64748b", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'Sora',sans-serif" }}
+                >
+                  {dialog.cancelText || "Annuler"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (dialog.type === "confirm") {
+                    closeDialog(true);
+                    return;
+                  }
+                  closeDialog(false);
+                }}
+                style={{
+                  padding:"10px 16px",
+                  borderRadius:10,
+                  border:"none",
+                  background: dialog.type === "confirm" && dialog.danger ? "#ef4444" : "#06b6d4",
+                  color:"#fff",
+                  fontSize:12,
+                  fontWeight:700,
+                  cursor:"pointer",
+                  fontFamily:"'Sora',sans-serif",
+                }}
+              >
+                {dialog.type === "confirm" ? (dialog.confirmText || "OK") : "Fermer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -164,6 +164,40 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  useEffect(() => {
+    if (mode !== "app" || activePage !== "profile") return;
+    if (profileTarget) {
+      setProfileLoading(false);
+      return;
+    }
+    if (!loggedUser || loggedUser.role !== "worker") {
+      setProfileLoading(false);
+      return;
+    }
+
+    const workerId = loggedUser._id || loggedUser.id;
+    if (!workerId) return;
+
+    let cancelled = false;
+    setProfileLoading(true);
+
+    workerApi.getById(workerId)
+      .then((freshUser) => {
+        if (cancelled || !freshUser?._id) return;
+        setProfileTarget(freshUser);
+        setLoggedUser(freshUser);
+        localStorage.setItem("user", JSON.stringify(freshUser));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePage, loggedUser, mode, profileTarget]);
+
   // ── DETECT RESET TOKEN ──────────────────────────────────────────────────
   useEffect(() => {
     const match = window.location.pathname.match(/^\/reset-password\/(.+)$/);
@@ -251,7 +285,11 @@ export default function App() {
     localStorage.clear();
     setLoggedUser(null);
     setProfileTarget(null);
-    switchTo("home");
+    setActivePage("explore");
+    setProfileTab("overview");
+    setProfileLoading(false);
+    setMode("home");
+    window.history.replaceState({ mode:"home" }, "", "/");
   };
 
   const Redirect = ({ to }) => {
