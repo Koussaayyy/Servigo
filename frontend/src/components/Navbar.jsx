@@ -85,13 +85,13 @@ const css = `
 .nb-dropdown-btn.danger { color:#b91c1c; }
 .nb-btn-ghost {
   border:1.5px solid #e2e8f0; background:#fff; color:#0f172e;
-  border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600;
+  border-radius:24px; padding:9px 20px; font-size:12px; font-weight:600;
   cursor:pointer; transition:all .2s; white-space:nowrap; font-family:'Sora',sans-serif;
 }
 .nb-btn-ghost:hover { border-color:#cbd5e1; }
 .nb-btn-solid {
   border:none; background:#0f172e; color:#06b6d4;
-  border-radius:8px; padding:8px 18px; font-size:11px; font-weight:700;
+  border-radius:24px; padding:9px 20px; font-size:11px; font-weight:700;
   cursor:pointer; letter-spacing:0.1em; text-transform:uppercase;
   box-shadow:0 4px 16px rgba(6,182,212,0.15); white-space:nowrap;
   transition:all .2s; font-family:'Sora',sans-serif;
@@ -351,7 +351,7 @@ export default function Navbar({
                       <div className="nb-dropdown-email">{user.email || ""}</div>
                     </div>
                     <button className="nb-dropdown-btn" onClick={() => go("profile")}>Mon Profil</button>
-                    <button className="nb-dropdown-btn" onClick={() => go("reservations")}>Mes Réservations</button>
+                    <button className="nb-dropdown-btn" onClick={() => go("settings")}>Paramètres</button>
                     <button className="nb-dropdown-btn danger" onClick={() => { setOpen(false); onLogout?.(); }}>Déconnexion</button>
                   </div>
                 )}

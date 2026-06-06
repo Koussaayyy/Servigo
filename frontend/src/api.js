@@ -118,11 +118,31 @@ export const clientApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }).then(handle),
 
-  deleteAccount: (currentPassword) =>
+  sendDeleteCode: () =>
+    fetch(`${BASE}/client/send-delete-code`, {
+      method: "POST",
+      headers: authHeaders(),
+    }).then(handle),
+
+  deleteAccount: (code) =>
     fetch(`${BASE}/client/account`, {
       method: "DELETE",
       headers: authHeaders(),
-      body: JSON.stringify({ currentPassword }),
+      body: JSON.stringify({ code }),
+    }).then(handle),
+
+  sendEmailChangeCode: (newEmail) =>
+    fetch(`${BASE}/client/send-email-change-code`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ newEmail }),
+    }).then(handle),
+
+  changeEmail: (code) =>
+    fetch(`${BASE}/client/email`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ code }),
     }).then(handle),
 
   uploadAvatar: (file) => {
@@ -208,11 +228,31 @@ export const workerApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }).then(handle),
 
-  deleteAccount: (currentPassword) =>
+  sendDeleteCode: () =>
+    fetch(`${BASE}/worker/send-delete-code`, {
+      method: "POST",
+      headers: authHeaders(),
+    }).then(handle),
+
+  deleteAccount: (code) =>
     fetch(`${BASE}/worker/account`, {
       method: "DELETE",
       headers: authHeaders(),
-      body: JSON.stringify({ currentPassword }),
+      body: JSON.stringify({ code }),
+    }).then(handle),
+
+  sendEmailChangeCode: (newEmail) =>
+    fetch(`${BASE}/worker/send-email-change-code`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ newEmail }),
+    }).then(handle),
+
+  changeEmail: (code) =>
+    fetch(`${BASE}/worker/email`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ code }),
     }).then(handle),
 
   uploadAvatar: (file) => {
@@ -525,6 +565,12 @@ export const adminApi = {
       headers: adminHeaders(),
     }).then(handle),
 
+  toggleUserStatus: (userId) =>
+    fetch(`${BASE}/admin/users/${userId}/toggle`, {
+      method: "PUT",
+      headers: adminHeaders(),
+    }).then(handle),
+
   getSignals: () =>
     fetch(`${BASE}/admin/signals`, { headers: adminHeaders() }).then(handle),
 
@@ -569,6 +615,22 @@ export const adminApi = {
 
   getWorkerReports: (workerId) =>
     fetch(`${BASE}/admin/workers/${workerId}/reports`, { headers: adminHeaders() }).then(handle),
+
+  getServices: () =>
+    fetch(`${BASE}/admin/services`, { headers: adminHeaders() }).then(handle),
+
+  createService: (data) =>
+    fetch(`${BASE}/admin/services`, {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  deleteService: (id) =>
+    fetch(`${BASE}/admin/services/${id}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    }).then(handle),
 };
 
 export const chatApi = {
@@ -578,4 +640,8 @@ export const chatApi = {
       headers: authHeaders(),
       body: JSON.stringify({ message, city }),
     }).then(handle),
+};
+
+export const servicesApi = {
+  getAll: () => fetch(`${BASE}/workers/services`).then(handle),
 };

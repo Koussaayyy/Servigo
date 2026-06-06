@@ -205,7 +205,10 @@ export default function WorkerDashboard({ user, onHome, onNavigate, onLogout }) 
                     const ini = ((c.firstName?.[0]||"")+(c.lastName?.[0]||"")).toUpperCase()||"?";
                     return (
                       <div key={r._id} className="wd-row">
-                        <div className="wd-av">{ini}</div>
+                        {avatarUrl(c.avatar)
+                          ? <img src={avatarUrl(c.avatar)} alt="" style={{ width:36,height:36,borderRadius:10,objectFit:"cover",flexShrink:0,border:"1.5px solid #e2e8f0" }}/>
+                          : <div className="wd-av">{ini}</div>
+                        }
                         <div className="wd-info">
                           <div className="wd-name">{c.firstName||"Client"} {c.lastName||""}</div>
                           <div className="wd-meta">
@@ -248,7 +251,10 @@ export default function WorkerDashboard({ user, onHome, onNavigate, onLogout }) 
                     const ini = ((c.firstName?.[0]||"")+(c.lastName?.[0]||"")).toUpperCase()||"?";
                     return (
                       <div key={r._id} className="wd-row">
-                        <div className="wd-av">{ini}</div>
+                        {avatarUrl(c.avatar)
+                          ? <img src={avatarUrl(c.avatar)} alt="" style={{ width:36,height:36,borderRadius:10,objectFit:"cover",flexShrink:0,border:"1.5px solid #e2e8f0" }}/>
+                          : <div className="wd-av">{ini}</div>
+                        }
                         <div className="wd-info">
                           <div className="wd-name">{c.firstName||"Client"} {c.lastName||""}</div>
                           <div className="wd-meta">
@@ -284,7 +290,10 @@ export default function WorkerDashboard({ user, onHome, onNavigate, onLogout }) 
                     const ini = ((c.firstName?.[0]||"")+(c.lastName?.[0]||"")).toUpperCase()||"?";
                     return (
                       <div key={r._id} className="wd-row">
-                        <div className="wd-av">{ini}</div>
+                        {avatarUrl(c.avatar)
+                          ? <img src={avatarUrl(c.avatar)} alt="" style={{ width:36,height:36,borderRadius:10,objectFit:"cover",flexShrink:0,border:"1.5px solid #e2e8f0" }}/>
+                          : <div className="wd-av">{ini}</div>
+                        }
                         <div className="wd-info">
                           <div className="wd-name">{c.firstName||"Client"} {c.lastName||""}</div>
                           <div className="wd-meta">

@@ -27,4 +27,8 @@ router.patch("/workers/:id/unban",   authMiddleware.protect, authMiddleware.auth
 router.patch("/workers/:id/reset-warnings", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.resetWorkerWarnings);
 router.get("/workers/:id/reports",   authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getWorkerReports);
 
+router.get("/services",        authMiddleware.protect, authMiddleware.authorize("admin"), adminController.getAllServices);
+router.post("/services",       authMiddleware.protect, authMiddleware.authorize("admin"), adminController.createService);
+router.delete("/services/:id", authMiddleware.protect, authMiddleware.authorize("admin"), adminController.deleteService);
+
 module.exports = router;

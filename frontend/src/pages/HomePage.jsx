@@ -312,38 +312,22 @@ export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout,
                       : userInitial}
                   </button>
                   {profileOpen && (
-                    <div
-                      style={{
-                        position:"absolute",
-                        top:44,
-                        right:0,
-                        minWidth:190,
-                        background:"#fff",
-                        border:"1.5px solid #e2e8f0",
-                        borderRadius:10,
-                        boxShadow:"0 14px 36px rgba(15,23,46,0.12)",
-                        padding:8,
-                        zIndex:1200,
-                        display:"grid",
-                        gap:4,
-                      }}
-                    >
-                      <button
-                        onClick={() => { setProfileOpen(false); onNavigate?.("profile"); }}
-                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}
-                      >
+                    <div style={{ position:"absolute",top:44,right:0,minWidth:200,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 14px 36px rgba(15,23,46,0.12)",padding:8,zIndex:1200,display:"grid",gap:4 }}>
+                      {/* Header — name + email */}
+                      <div style={{ padding:"8px 12px 10px",borderBottom:"1px solid #f1f5f9",marginBottom:4 }}>
+                        <div style={{ fontSize:13,fontWeight:700,color:"#0f172e" }}>{user?.firstName || "Utilisateur"}</div>
+                        <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{user?.email || ""}</div>
+                      </div>
+                      <button onClick={() => { setProfileOpen(false); onNavigate?.("profile"); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600,fontFamily:"inherit" }}>
                         Mon Profil
                       </button>
-                      <button
-                        onClick={() => { setProfileOpen(false); onNavigate?.("reservations"); }}
-                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600 }}
-                      >
-                        Mes Réservations
+                      <button onClick={() => { setProfileOpen(false); onNavigate?.("settings"); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#0f172e",fontWeight:600,fontFamily:"inherit" }}>
+                        Paramètres
                       </button>
-                      <button
-                        onClick={() => { setProfileOpen(false); onLogout?.(); }}
-                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#b91c1c",fontWeight:700 }}
-                      >
+                      <button onClick={() => { setProfileOpen(false); onLogout?.(); }}
+                        style={{ background:"#fff",border:"none",textAlign:"left",padding:"10px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"#b91c1c",fontWeight:700,fontFamily:"inherit" }}>
                         Déconnexion
                       </button>
                     </div>
@@ -365,8 +349,12 @@ export default function HomePage({ onLogin, onSignup, onExplore, user, onLogout,
                 </div>
               ) : (
                 <div style={{ display:"grid",gap:8,marginTop:12 }}>
+                  <div style={{ padding:"8px 4px 10px",borderBottom:"1px solid #f1f5f9",marginBottom:4 }}>
+                    <div style={{ fontSize:13,fontWeight:700,color:"#0f172e" }}>{user?.firstName || "Utilisateur"}</div>
+                    <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{user?.email || ""}</div>
+                  </div>
                   <button onClick={() => { setNavOpen(false); onNavigate?.("profile"); }} style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left" }}>Mon Profil</button>
-                  <button onClick={() => { setNavOpen(false); onNavigate?.("reservations"); }} style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left" }}>Mes Réservations</button>
+                  <button onClick={() => { setNavOpen(false); onNavigate?.("settings"); }} style={{ border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172e",borderRadius:8,padding:10,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left" }}>Paramètres</button>
                   <button onClick={() => { setNavOpen(false); onLogout?.(); }} style={{ border:"1.5px solid rgba(239,68,68,0.35)",background:"#fff",color:"#b91c1c",borderRadius:8,padding:10,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"left" }}>Déconnexion</button>
                 </div>
               )}

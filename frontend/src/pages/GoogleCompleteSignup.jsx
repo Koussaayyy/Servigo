@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { authApi } from "../api";
-import { PROFESSIONS, CITIES } from "../constants/data";
+import { useState, useEffect } from "react";
+import { authApi, servicesApi } from "../api";
+import { CITIES } from "../constants/data";
 
 export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
   const [role, setRole]         = useState(null);
@@ -12,6 +12,13 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [step, setStep]         = useState(1); // 1 = pick role, 2 = fill details
+  const [professions, setProfessions] = useState([]);
+
+  useEffect(() => {
+    servicesApi.getAll()
+      .then(data => setProfessions(Array.isArray(data) ? data.map(s => s.name) : []))
+      .catch(() => setProfessions(["Électricien","Plombier","Maçon","Vitrier","Menuisier","Peintre","Climatisation","Serrurier","Jardinier","Carreleur","Déménagement","Mécanicien"]));
+  }, []);
 
   const toggle = (p) => setSelected((s) =>
     s.includes(p) ? s.filter((x) => x !== p) : [...s, p]
@@ -121,7 +128,7 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
           <div className="field">
             <label>Your Profession(s)</label>
             <div className="prof-grid">
-              {PROFESSIONS.map((p) => (
+              {professions.map((p) => (
                 <button key={p} type="button"
                   className={`prof-chip ${selected.includes(p) ? "selected" : ""}`}
                   onClick={() => toggle(p)}>

@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const workerController = require("../controllers/worker.controller");
+const adminController = require("../controllers/admin.controller");
 const { protect, authorize } = require("../middleware/auth.middleware");
+
+// Public services list (used during registration/onboarding)
+router.get("/services", adminController.getAllServices);
 
 // Public marketplace endpoint
 router.get("/", workerController.getAllWorkers);

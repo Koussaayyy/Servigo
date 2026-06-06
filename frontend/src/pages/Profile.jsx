@@ -3,6 +3,7 @@ import {
   MapPin, Star, Briefcase, Edit3, Check, X, Trash2,
   ShieldCheck, Camera, Mail, Calendar, Award, Image, Bookmark, BookmarkCheck,
   Heart, MessageCircle, MoreVertical, Send, Tag, Plus, Clock,
+  Phone, User, Banknote, CircleDot, Settings,
 } from "lucide-react";
 import { avatarUrl, clientApi, workerApi, portfolioApi } from "../api";
 import { GOUVERNORATS, DELEGATIONS } from "../constants/tunisia";
@@ -295,11 +296,6 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const startEditInfo = () => {
     setSaveError("");
     setDraftInfo({
-      firstName:   profile.firstName || "",
-      lastName:    profile.lastName  || "",
-      phone:       profile.phone     || "",
-      gender:      profile.gender    || "",
-      birthDate:   profile.birthDate ? String(profile.birthDate).slice(0, 10) : "",
       address:     cp.address || "",
       city_client: cp.city    || "",
       bio_client:  cp.bio     || "",
@@ -365,33 +361,17 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     setSaveError("");
     setSaveSuccess("");
     try {
-      let data;
-      if (role === "worker") {
-        data = await workerApi.updateProfile({
-          firstName: draftInfo.firstName,
-          lastName:  draftInfo.lastName,
-          phone:     draftInfo.phone,
-          gender:    draftInfo.gender,
-          birthDate: draftInfo.birthDate,
-        });
-      } else {
-        data = await clientApi.updateProfile({
-          firstName:     draftInfo.firstName,
-          lastName:      draftInfo.lastName,
-          phone:         draftInfo.phone,
-          gender:        draftInfo.gender,
-          birthDate:     draftInfo.birthDate,
-          clientProfile: {
-            address: draftInfo.address,
-            city:    draftInfo.city_client,
-            bio:     draftInfo.bio_client,
-          },
-        });
-      }
+      const data = await clientApi.updateProfile({
+        clientProfile: {
+          address: draftInfo.address,
+          city:    draftInfo.city_client,
+          bio:     draftInfo.bio_client,
+        },
+      });
       const updated = { ...profile, ...data.user };
       setProfile(updated);
       if (isOwner) onUpdateUser?.(updated);
-      setSaveSuccess("Informations enregistrées ✓");
+      setSaveSuccess("Profil mis à jour ✓");
       setEditingInfo(false);
     } catch (err) {
       setSaveError(err.message || "Erreur lors de la sauvegarde");
@@ -574,7 +554,10 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
           }),
         },
       }));
-    } catch {}
+    } catch (err) {
+      setPortfolioMsg(err.message || "Erreur");
+      setTimeout(() => setPortfolioMsg(""), 3000);
+    }
   };
 
   const startScheduleEdit = () => {
@@ -637,108 +620,113 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
   const TabOverview = () => (
     <div className="pr-grid pr-anim-1">
       <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-        <div className="pr-card">
-          <div className="pr-card-title">
-            <span className="pr-card-title-icon"><Mail size={12} />Informations personnelles</span>
-            {isOwner && !editingInfo && (
+        {/* ── Informations personnelles ── */}
+        <div className="pr-card" style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1.5px solid #f1f5f9" }}>
+            <span style={{ fontSize:12, fontWeight:700, color:"#0f172e" }}>Informations personnelles</span>
+            {isOwner && role === "client" && !editingInfo && (
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 {saveSuccess && !editingWorker && <span style={{ fontSize:11, color:"#10b981", fontWeight:700 }}>{saveSuccess}</span>}
-                <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditInfo(); }}><Edit3 size={11} />Modifier</button>
+                <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditInfo(); }}><Edit3 size={11}/>Modifier</button>
               </div>
             )}
           </div>
-          {editingInfo ? (
-            <>
-              <div className="pr-field-grid" style={{ marginBottom:16 }}>
-                <div className="pr-field"><div className="pr-field-label">Prénom</div><input className="pr-input" value={draftInfo.firstName} onChange={e => setDraftInfo(p => ({...p, firstName: e.target.value}))} /></div>
-                <div className="pr-field"><div className="pr-field-label">Nom</div><input className="pr-input" value={draftInfo.lastName} onChange={e => setDraftInfo(p => ({...p, lastName: e.target.value}))} /></div>
+
+          {/* Edit form — clients only */}
+          {editingInfo && role === "client" ? (
+            <div style={{ padding:"18px 20px" }}>
+              <div className="pr-field-grid" style={{ marginBottom:14 }}>
                 <div className="pr-field">
-                  <div className="pr-field-label">Téléphone</div>
-                  <div style={{ display:"flex",alignItems:"center",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#f1f5f9",overflow:"hidden",transition:"border-color .18s" }}
-                    onFocusCapture={e=>e.currentTarget.style.borderColor="#06b6d4"}
-                    onBlurCapture={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
-                    <span style={{ padding:"9px 11px",fontSize:13,color:"#64748b",fontWeight:600,borderRight:"1.5px solid #e2e8f0",whiteSpace:"nowrap",background:"#f1f5f9",flexShrink:0 }}>🇹🇳 +216</span>
-                    <input type="tel" placeholder="XX XXX XXX"
-                      value={draftInfo.phone?.replace(/^\+?216/,"")}
-                      onChange={e => setDraftInfo(p => ({...p, phone: e.target.value}))}
-                      style={{ flex:1,border:"none",background:"transparent",padding:"9px 11px",fontSize:13,outline:"none",fontFamily:"'Sora',sans-serif" }} />
-                  </div>
+                  <div className="pr-field-label">Ville</div>
+                  <input className="pr-input" value={draftInfo.city_client} onChange={e => setDraftInfo(p => ({...p, city_client: e.target.value}))} placeholder="Ex: Tunis, Sfax…"/>
                 </div>
                 <div className="pr-field">
-                  <div className="pr-field-label">Genre</div>
-                  <select className="pr-select" value={draftInfo.gender} onChange={e => setDraftInfo(p => ({...p, gender: e.target.value}))}>
-                    <option value="">Non renseigné</option>
-                    <option value="male">Homme</option>
-                    <option value="female">Femme</option>
-                    <option value="other">Autre</option>
-                  </select>
+                  <div className="pr-field-label">Adresse</div>
+                  <input className="pr-input" value={draftInfo.address} onChange={e => setDraftInfo(p => ({...p, address: e.target.value}))} placeholder="Rue, numéro…"/>
                 </div>
-                <div className="pr-field"><div className="pr-field-label">Date de naissance</div><input className="pr-input" type="date" value={draftInfo.birthDate} onChange={e => setDraftInfo(p => ({...p, birthDate: e.target.value}))} /></div>
               </div>
-              {role === "client" && (
-                <>
-                  <div className="pr-field-grid" style={{ marginBottom:16 }}>
-                    <div className="pr-field"><div className="pr-field-label">Adresse</div><input className="pr-input" value={draftInfo.address} onChange={e => setDraftInfo(p => ({...p, address: e.target.value}))} /></div>
-                    <div className="pr-field"><div className="pr-field-label">Ville</div><input className="pr-input" value={draftInfo.city_client} onChange={e => setDraftInfo(p => ({...p, city_client: e.target.value}))} /></div>
-                  </div>
-                  <div className="pr-field">
-                    <div className="pr-field-label">Bio</div>
-                    <textarea className="pr-textarea" value={draftInfo.bio_client} onChange={e => setDraftInfo(p => ({...p, bio_client: e.target.value}))} placeholder="Parlez de vous…" maxLength={300} />
-                    <div style={{ fontSize:10,color:"#94a3b8",textAlign:"right",marginTop:3 }}>{(draftInfo.bio_client||"").length} / 300</div>
-                  </div>
-                </>
-              )}
-              {saveError && <div style={{ fontSize:12,color:"#ef4444",padding:"8px 12px",background:"#fff0f0",borderRadius:8,marginTop:8,border:"1px solid #fecaca" }}>{saveError}</div>}
+              <div className="pr-field">
+                <div className="pr-field-label">Bio</div>
+                <textarea className="pr-textarea" rows={3} value={draftInfo.bio_client} onChange={e => setDraftInfo(p => ({...p, bio_client: e.target.value}))} placeholder="Parlez de vous en quelques mots…" maxLength={300}/>
+                <div style={{ fontSize:10, color:"#94a3b8", textAlign:"right", marginTop:3 }}>{(draftInfo.bio_client||"").length}/300</div>
+              </div>
+              {saveError && <div style={{ fontSize:12, color:"#ef4444", padding:"8px 12px", background:"#fef2f2", borderRadius:8, marginTop:10, border:"1px solid #fecaca" }}>{saveError}</div>}
               <div className="pr-btn-row">
-                <button className="pr-cancel-btn" onClick={() => setEditingInfo(false)}><X size={11} />Annuler</button>
-                <button className="pr-save-btn" onClick={saveInfo} disabled={saving}><Check size={11} />{saving ? "Enregistrement…" : "Enregistrer"}</button>
+                <button className="pr-cancel-btn" onClick={() => setEditingInfo(false)}><X size={11}/>Annuler</button>
+                <button className="pr-save-btn" onClick={saveInfo} disabled={saving}><Check size={11}/>{saving ? "Enregistrement…" : "Enregistrer"}</button>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="pr-field-grid">
-              <div className="pr-field"><div className="pr-field-label">Email</div><div className="pr-field-value">{profile.email}</div></div>
-              <div className="pr-field"><div className="pr-field-label">Téléphone</div><div className={`pr-field-value ${profile.phone ? "" : "muted"}`}>{profile.phone || "Non renseigné"}</div></div>
-              <div className="pr-field">
-                <div className="pr-field-label">Genre</div>
-                <div className={`pr-field-value ${profile.gender ? "" : "muted"}`}>
-                  {profile.gender === "male" ? "Homme" : profile.gender === "female" ? "Femme" : profile.gender === "other" ? "Autre" : "Non renseigné"}
+            <div>
+              {/* Bio — always first */}
+              {role === "client" && cp.bio && (
+                <div style={{ padding:"16px 20px", borderBottom:"1px solid #f1f5f9" }}>
+                  <p style={{ margin:0, fontSize:13, color:"#475569", lineHeight:1.8 }}>{cp.bio}</p>
                 </div>
+              )}
+
+              {/* 2-column grid */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderBottom:"1px solid #f1f5f9" }}>
+                {[
+                  { Icon: Mail,     label:"Email",            value: profile.email },
+                  { Icon: Phone,    label:"Téléphone",        value: profile.phone || null },
+                  ...(role === "client" ? [
+                    { Icon: MapPin, label:"Localisation",     value: [cp.city, cp.address].filter(Boolean).join(", ") || null },
+                  ] : []),
+                  { Icon: User,     label:"Genre",
+                    value: profile.gender === "male" ? "Homme" : profile.gender === "female" ? "Femme" : profile.gender === "other" ? "Autre" : null },
+                  { Icon: Calendar, label:"Naissance",
+                    value: profile.birthDate ? new Date(profile.birthDate).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}) : null },
+                ].map(({ Icon, label, value }, i, arr) => (
+                  <div key={label} style={{
+                    padding:"14px 20px",
+                    borderRight: i % 2 === 0 ? "1px solid #f1f5f9" : "none",
+                    borderBottom: i < arr.length - 2 ? "1px solid #f1f5f9" : "none",
+                  }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <Icon size={12} color="#94a3b8" strokeWidth={1.75}/>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>{label}</span>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:500, color: value ? "#0f172e" : "#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {value || "—"}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="pr-field">
-                <div className="pr-field-label">Date de naissance</div>
-                <div className={`pr-field-value ${profile.birthDate ? "" : "muted"}`}>
-                  {profile.birthDate ? new Date(profile.birthDate).toLocaleDateString("fr-FR", { day:"numeric",month:"long",year:"numeric" }) : "Non renseignée"}
+
+              {/* Settings nudge */}
+              {isOwner && (
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 20px", gap:10 }}>
+                  <span style={{ fontSize:11, color:"#94a3b8" }}>Nom, téléphone et genre → Paramètres</span>
+                  <button className="pr-edit-btn" onClick={() => onNavigate?.("settings")} style={{ gap:5, flexShrink:0 }}>
+                    <Settings size={10}/> Paramètres
+                  </button>
                 </div>
-              </div>
-              {role === "client" && (
-                <>
-                  <div className="pr-field"><div className="pr-field-label">Ville</div><div className={`pr-field-value ${cp.city ? "" : "muted"}`}>{cp.city || "Non renseignée"}</div></div>
-                  <div className="pr-field"><div className="pr-field-label">Adresse</div><div className={`pr-field-value ${cp.address ? "" : "muted"}`}>{cp.address || "Non renseignée"}</div></div>
-                  {cp.bio && <div className="pr-field" style={{ gridColumn:"1/-1" }}><div className="pr-field-label">Bio</div><div className="pr-field-value" style={{ fontWeight:400,lineHeight:1.7 }}>{cp.bio}</div></div>}
-                </>
               )}
             </div>
           )}
         </div>
 
+        {/* ── Profil prestataire ── */}
         {role === "worker" && (
-          <div className="pr-card">
-            <div className="pr-card-title">
-              <span className="pr-card-title-icon"><Briefcase size={12} />Profil prestataire</span>
+          <div className="pr-card" style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1.5px solid #f1f5f9" }}>
+              <span style={{ fontSize:12, fontWeight:700, color:"#0f172e" }}>Profil prestataire</span>
               {isOwner && !editingWorker && (
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   {saveSuccess && !editingInfo && <span style={{ fontSize:11, color:"#10b981", fontWeight:700 }}>{saveSuccess}</span>}
-                  <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditWorker(); }}><Edit3 size={11} />Modifier</button>
+                  <button className="pr-edit-btn" onClick={() => { setSaveSuccess(""); startEditWorker(); }}><Edit3 size={11}/>Modifier</button>
                 </div>
               )}
             </div>
+
             {editingWorker ? (
-              <>
-                <div className="pr-field-grid" style={{ marginBottom:16 }}>
+              <div style={{ padding:"18px 20px" }}>
+                <div className="pr-field-grid" style={{ marginBottom:14 }}>
                   <div className="pr-field">
                     <div className="pr-field-label">Gouvernorat</div>
                     <select className="pr-select" value={draftGovernorate}
-                      onChange={e => { setDraftGovernorate(e.target.value); setDraftWorker(p => ({...p, city: ""})); }}>
+                      onChange={e => { setDraftGovernorate(e.target.value); setDraftWorker(p => ({...p, city:""})); }}>
                       <option value="">Sélectionnez un gouvernorat</option>
                       {GOUVERNORATS.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
@@ -751,110 +739,168 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                       {(DELEGATIONS[draftGovernorate] || []).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-                  <div className="pr-field"><div className="pr-field-label">Expérience</div><input className="pr-input" value={draftWorker.experience} onChange={e => setDraftWorker(p => ({...p, experience: e.target.value}))} placeholder="Ex: 5 ans" /></div>
-                  <div className="pr-field"><div className="pr-field-label">Tarif horaire (TND/h)</div><input className="pr-input" type="number" min="0" value={draftWorker.hourlyRate} onChange={e => setDraftWorker(p => ({...p, hourlyRate: Number(e.target.value)}))} /></div>
+                  <div className="pr-field">
+                    <div className="pr-field-label">Tarif horaire (TND/h)</div>
+                    <input className="pr-input" type="number" min="0" value={draftWorker.hourlyRate}
+                      onChange={e => setDraftWorker(p => ({...p, hourlyRate: Number(e.target.value)}))} placeholder="0 = Sur devis"/>
+                  </div>
                 </div>
-                <div className="pr-field" style={{ marginBottom:16 }}>
-                  <div className="pr-field-label">Bio</div>
-                  <textarea className="pr-textarea" value={draftWorker.bio} onChange={e => setDraftWorker(p => ({...p, bio: e.target.value}))} placeholder="Décrivez votre expertise…" maxLength={500} />
-                  <div style={{ fontSize:10,color:"#94a3b8",textAlign:"right",marginTop:3 }}>{(draftWorker.bio||"").length} / 500</div>
+                <div className="pr-field" style={{ marginBottom:14 }}>
+                  <div className="pr-field-label">Bio professionnelle</div>
+                  <textarea className="pr-textarea" rows={3} value={draftWorker.bio}
+                    onChange={e => setDraftWorker(p => ({...p, bio: e.target.value}))}
+                    placeholder="Décrivez votre expertise, vos méthodes…" maxLength={500}/>
+                  <div style={{ fontSize:10, color:"#94a3b8", textAlign:"right", marginTop:3 }}>{(draftWorker.bio||"").length}/500</div>
                 </div>
-                <div className="pr-field" style={{ marginBottom:16 }}>
-                  <div className="pr-field-label">Métiers</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginTop:6 }}>
+                <div className="pr-field" style={{ marginBottom:14 }}>
+                  <div className="pr-field-label" style={{ marginBottom:8 }}>
+                    Métiers
+                    {draftWorker.professions.length > 0 && <span style={{ color:"#06b6d4", marginLeft:6 }}>{draftWorker.professions.length} sélectionné{draftWorker.professions.length>1?"s":""}</span>}
+                  </div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                     {["Électricien","Plombier","Maçon","Vitrier","Menuisier","Peintre","Climatisation","Serrurier","Jardinier","Carreleur","Déménagement","Mécanicien"].map(svc => {
                       const sel = draftWorker.professions.includes(svc);
                       return (
                         <button key={svc} type="button"
-                          onClick={() => setDraftWorker(p => ({
-                            ...p,
-                            professions: sel ? p.professions.filter(x => x !== svc) : [...p.professions, svc]
-                          }))}
-                          style={{
-                            padding:"9px 4px", borderRadius:8,
-                            border: sel ? "1.5px solid #06b6d4" : "1.5px solid #e2e8f0",
-                            background: sel ? "rgba(6,182,212,0.08)" : "#f8fafc",
-                            color: sel ? "#0284c7" : "#64748b",
-                            fontSize:11, fontWeight: sel ? 700 : 600, cursor:"pointer",
-                            transition:"all .15s", fontFamily:"'Sora',sans-serif",
-                          }}>
+                          onClick={() => setDraftWorker(p => ({ ...p, professions: sel ? p.professions.filter(x=>x!==svc) : [...p.professions,svc] }))}
+                          style={{ padding:"5px 12px", borderRadius:6, border: sel?"1.5px solid #06b6d4":"1.5px solid #e2e8f0",
+                            background: sel?"rgba(6,182,212,0.08)":"#f8fafc", color: sel?"#0284c7":"#64748b",
+                            fontSize:12, fontWeight:sel?700:500, cursor:"pointer", transition:"all .15s", fontFamily:"'Sora',sans-serif" }}>
                           {svc}
                         </button>
                       );
                     })}
                   </div>
-                  <div style={{ fontSize:10, color:"#94a3b8", marginTop:5 }}>
-                    {draftWorker.professions.length} sélectionné{draftWorker.professions.length > 1 ? "s" : ""}
+                </div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", background:"#f8fafc", border:"1.5px solid #f1f5f9", borderRadius:10, marginBottom:14 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#0f172e" }}>Disponible actuellement</div>
+                    <div style={{ fontSize:11, color:"#94a3b8", marginTop:2 }}>Visible par les clients sur votre profil</div>
+                  </div>
+                  <button className={`pr-toggle ${draftWorker.isAvailable ? "on" : "off"}`}
+                    onClick={() => setDraftWorker(p => ({...p, isAvailable: !p.isAvailable}))}/>
+                </div>
+                {saveError && <div style={{ fontSize:12, color:"#ef4444", padding:"8px 12px", background:"#fef2f2", borderRadius:8, marginBottom:12, border:"1px solid #fecaca" }}>{saveError}</div>}
+                <div className="pr-btn-row">
+                  <button className="pr-cancel-btn" onClick={() => setEditingWorker(false)}><X size={11}/>Annuler</button>
+                  <button className="pr-save-btn" onClick={saveWorker} disabled={saving}><Check size={11}/>{saving ? "Enregistrement…" : "Enregistrer"}</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* 1 — Bio first */}
+                {wp.bio && (
+                  <div style={{ padding:"16px 20px", borderBottom:"1px solid #f1f5f9" }}>
+                    <p style={{ margin:0, fontSize:13, color:"#475569", lineHeight:1.8 }}>{wp.bio}</p>
+                  </div>
+                )}
+
+                {/* 2 — 2-column grid: availability + localisation + tarif */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderBottom:"1px solid #f1f5f9" }}>
+                  {/* Disponibilité */}
+                  <div style={{ padding:"14px 20px", borderRight:"1px solid #f1f5f9" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <CircleDot size={12} color="#94a3b8" strokeWidth={1.75}/>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>Disponibilité</span>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:600, color: avail ? "#059669" : "#64748b" }}>
+                      {avail ? "Disponible" : "Indisponible"}
+                    </div>
+                  </div>
+                  {/* Localisation */}
+                  <div style={{ padding:"14px 20px", borderBottom:"1px solid #f1f5f9" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <MapPin size={12} color="#94a3b8" strokeWidth={1.75}/>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>Localisation</span>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:500, color: wp.city ? "#0f172e" : "#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {wp.city || "—"}
+                    </div>
+                  </div>
+                  {/* Tarif — spans only left column */}
+                  <div style={{ padding:"14px 20px", borderRight:"1px solid #f1f5f9" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <Banknote size={12} color="#94a3b8" strokeWidth={1.75}/>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>Tarif</span>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:500, color:"#0f172e" }}>
+                      {wp.hourlyRate > 0 ? `${wp.hourlyRate} TND / h` : "Sur devis"}
+                    </div>
                   </div>
                 </div>
-                <div className="pr-avail-toggle-row" style={{ marginBottom:16 }}>
-                  <span style={{ fontSize:13,fontWeight:600,color:"#0f172e" }}>Disponible actuellement</span>
-                  <button className={`pr-toggle ${draftWorker.isAvailable ? "on" : "off"}`} onClick={() => setDraftWorker(p => ({...p, isAvailable: !p.isAvailable}))} />
-                </div>
-                {saveError && <div style={{ fontSize:12,color:"#ef4444",padding:"8px 12px",background:"#fff0f0",borderRadius:8,marginBottom:12,border:"1px solid #fecaca" }}>{saveError}</div>}
-                <div className="pr-btn-row">
-                  <button className="pr-cancel-btn" onClick={() => setEditingWorker(false)}><X size={11} />Annuler</button>
-                  <button className="pr-save-btn" onClick={saveWorker} disabled={saving}><Check size={11} />{saving ? "Enregistrement…" : "Enregistrer"}</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="pr-field-grid" style={{ marginBottom:16 }}>
-                  <div className="pr-field"><div className="pr-field-label">Ville</div><div className={`pr-field-value ${wp.city ? "" : "muted"}`}>{wp.city || "Non renseignée"}</div></div>
-                  <div className="pr-field"><div className="pr-field-label">Expérience</div><div className={`pr-field-value ${wp.experience ? "" : "muted"}`}>{wp.experience || "Non renseignée"}</div></div>
-                  <div className="pr-field"><div className="pr-field-label">Tarif horaire</div><div className="pr-field-value">{wp.hourlyRate > 0 ? `${wp.hourlyRate} TND/h` : "Sur devis"}</div></div>
-                  <div className="pr-field"><div className="pr-field-label">Disponibilité</div><div style={{ marginTop:4 }}><span className={avail ? "pr-pill-verified" : "pr-pill-unverified"}>{avail ? "Disponible" : "Indisponible"}</span></div></div>
-                </div>
-                {wp.bio && <div className="pr-field" style={{ marginBottom:16 }}><div className="pr-field-label">Bio</div><div style={{ fontSize:13,color:"#334155",lineHeight:1.75 }}>{wp.bio}</div></div>}
-                {profs.length > 0 && <div className="pr-field"><div className="pr-field-label">Métiers</div><div className="pr-tags" style={{ marginTop:4 }}>{profs.map(p => <span key={p} className="pr-tag">{p}</span>)}</div></div>}
-              </>
+
+                {/* 3 — Métiers */}
+                {profs.length > 0 && (
+                  <div style={{ padding:"14px 20px" }}>
+                    <div style={{ fontSize:10, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", marginBottom:8 }}>Métiers</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {profs.map(p => (
+                        <span key={p} style={{ padding:"4px 11px", borderRadius:5, background:"#f8fafc", color:"#334155", fontSize:12, fontWeight:500, border:"1px solid #e2e8f0" }}>{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
       </div>
 
       <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+        {/* ── Stats (worker) ── */}
         {role === "worker" && (
-          <div className="pr-card">
-            <div className="pr-card-title"><span className="pr-card-title-icon"><Award size={12} />Statistiques</span></div>
-            <div className="pr-stats">
-              <div className="pr-stat">
-                <div className="pr-stat-value" style={{ color:"#f59e0b",display:"flex",alignItems:"center",justifyContent:"center",gap:4 }}>
-                  <Star size={14} fill="#f59e0b" />{rating > 0 ? rating.toFixed(1) : "—"}
+          <div className="pr-card" style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ padding:"14px 18px", borderBottom:"1.5px solid #f1f5f9" }}>
+              <span style={{ fontSize:12, fontWeight:700, color:"#0f172e" }}>Statistiques</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)" }}>
+              {[
+                {
+                  value: <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:3, color:"#f59e0b", fontWeight:800, fontSize:18 }}>
+                    <Star size={13} fill="#f59e0b" strokeWidth={0}/>{rating > 0 ? rating.toFixed(1) : "—"}
+                  </div>,
+                  label: "Note",
+                },
+                {
+                  value: <div style={{ fontSize:20, fontWeight:800, color:"#0f172e", textAlign:"center" }}>{reviews}</div>,
+                  label: "Avis",
+                },
+                {
+                  value: <div style={{ fontSize:18, fontWeight:800, color:"#06b6d4", textAlign:"center" }}>{wp.hourlyRate > 0 ? wp.hourlyRate : "—"}</div>,
+                  label: "TND/h",
+                },
+              ].map(({ value, label }, i) => (
+                <div key={i} style={{ padding:"16px 8px", textAlign:"center", borderRight: i < 2 ? "1.5px solid #f1f5f9" : "none" }}>
+                  {value}
+                  <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".08em", marginTop:4 }}>{label}</div>
                 </div>
-                <div style={{ display:"flex",justifyContent:"center",gap:1,margin:"3px 0 2px" }}>
-                  {[1,2,3,4,5].map(s => (
-                    <span key={s} style={{ fontSize:10,color:s<=Math.round(rating)?"#f59e0b":"#e2e8f0" }}>★</span>
-                  ))}
-                </div>
-                <div className="pr-stat-label">Moyenne</div>
-              </div>
-              <div className="pr-stat"><div className="pr-stat-value">{reviews}</div><div className="pr-stat-label">Avis</div></div>
-              <div className="pr-stat"><div className="pr-stat-value">{wp.hourlyRate > 0 ? wp.hourlyRate : "—"}</div><div className="pr-stat-label">TND/h</div></div>
+              ))}
             </div>
           </div>
         )}
-        <div className="pr-card">
-          <div className="pr-card-title"><span className="pr-card-title-icon"><ShieldCheck size={12} />Compte</span></div>
-          <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+
+        {/* ── Compte ── */}
+        <div className="pr-card" style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ padding:"14px 18px", borderBottom:"1.5px solid #f1f5f9" }}>
+            <span style={{ fontSize:12, fontWeight:700, color:"#0f172e" }}>Compte</span>
+          </div>
+          <div>
             {[
-              ["Email vérifié", profile.isVerified ? <span className="pr-pill-verified">✓ Vérifié</span> : <span className="pr-pill-unverified">✗ Non vérifié</span>],
-              ...(role === "worker" ? [[
-                "Validation artisan",
-                workerVerificationStatus === "approved"
-                  ? <span className="pr-pill-verified">✓ Approuvé</span>
-                  : workerVerificationStatus === "pending"
-                    ? <span className="pr-pill-pending">En attente</span>
-                    : workerVerificationStatus === "rejected"
-                      ? <span className="pr-pill-unverified">Refusé</span>
-                      : <span className="pr-pill-pending">Non soumis</span>
+              ["Email vérifié", profile.isVerified
+                ? <span className="pr-pill-verified">Vérifié</span>
+                : <span className="pr-pill-unverified">Non vérifié</span>],
+              ...(role === "worker" ? [["Validation artisan",
+                workerVerificationStatus === "approved" ? <span className="pr-pill-verified">Approuvé</span>
+                : workerVerificationStatus === "pending"  ? <span className="pr-pill-pending">En attente</span>
+                : workerVerificationStatus === "rejected" ? <span className="pr-pill-unverified">Refusé</span>
+                : <span className="pr-pill-pending">Non soumis</span>
               ]] : []),
-              ["Statut",        profile.isActive  ? <span className="pr-pill-verified">Actif</span>    : <span className="pr-pill-unverified">Inactif</span>],
+              ["Statut",        profile.isActive ? <span className="pr-pill-verified">Actif</span> : <span className="pr-pill-unverified">Inactif</span>],
               ["Rôle",          <span className={`pr-role-badge pr-role-${role}`}>{role}</span>],
-              ["Membre depuis", <span style={{ fontSize:12,fontWeight:600,color:"#0f172e" }}>{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("fr-FR",{month:"short",year:"numeric"}) : "—"}</span>],
+              ["Membre depuis", <span style={{ fontSize:12, fontWeight:600, color:"#0f172e" }}>{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString("fr-FR",{month:"short",year:"numeric"}) : "—"}</span>],
             ].map(([label, val]) => (
-              <div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                <span style={{ fontSize:12,color:"#64748b",fontWeight:600 }}>{label}</span>
+              <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 18px", borderBottom:"1px solid #f8fafc" }}>
+                <span style={{ fontSize:12, color:"#64748b", fontWeight:500 }}>{label}</span>
                 {val}
               </div>
             ))}
@@ -1065,7 +1111,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
     const itemCmts   = openItem?.comments || [];
     const iLiked     = itemLikes.some((l) => String(l.userId) === myUserId);
     const myComment  = itemCmts.find((c) => String(c.userId) === myUserId);
-    const canComment = !!currentUser && !myComment;
+    const canComment = !!currentUser && (!myComment || isOwner);
 
     return (
       <>
@@ -1186,9 +1232,12 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                   <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }}>
                     {itemLikes.map((l) => (
                       <div key={String(l.userId)} style={{ display:"flex",alignItems:"center",gap:10 }}>
-                        <div style={{ width:36,height:36,borderRadius:"50%",background:"#0f172e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#06b6d4",flexShrink:0 }}>
-                          {(l.firstName?.[0]||"?").toUpperCase()}
-                        </div>
+                        {avatarUrl(l.avatar)
+                          ? <img src={avatarUrl(l.avatar)} alt="" style={{ width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0 }} />
+                          : <div style={{ width:36,height:36,borderRadius:"50%",background:"#0f172e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#06b6d4",flexShrink:0 }}>
+                              {(l.firstName?.[0]||"?").toUpperCase()}
+                            </div>
+                        }
                         <span style={{ fontSize:13,fontWeight:600,color:"#0f172e" }}>{`${l.firstName} ${l.lastName}`.trim()||"Utilisateur"}</span>
                       </div>
                     ))}
@@ -1265,7 +1314,7 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                 <div style={{ flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10 }} onClick={() => setOpenMenuCommentId(null)}>
                   {itemCmts.length === 0 && (
                     <div style={{ fontSize:12,color:"#94a3b8",fontStyle:"italic",textAlign:"center",padding:"12px 0" }}>
-                      Aucun commentaire.{currentUser && !isOwner && " Soyez le premier !"}
+                      Aucun commentaire.{currentUser && " Soyez le premier !"}
                     </div>
                   )}
                   {itemCmts.map((cmt) => {
@@ -1287,8 +1336,8 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                             </div>
                           </div>
                           <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                            {/* Worker can like comments */}
-                            {isOwner && (
+                            {/* Any logged-in user can like comments */}
+                            {currentUser && (
                               <button onClick={(e) => { e.stopPropagation(); toggleCommentLike(portfolioOpenId, cId); }}
                                 style={{ background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:3,color:cmtLiked?"#ef4444":"#94a3b8",fontSize:11,fontWeight:700,padding:"2px 4px" }}>
                                 <Heart size={12} fill={cmtLiked?"#ef4444":"none"} color={cmtLiked?"#ef4444":"#94a3b8"} />
@@ -1338,10 +1387,10 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                 </div>
 
                 {/* Comment input */}
-                {canComment && !isOwner && (
+                {canComment && (
                   <div style={{ padding:"12px 16px",borderTop:"1.5px solid #f1f5f9",flexShrink:0,display:"flex",gap:8,alignItems:"flex-end" }}>
                     <textarea value={commentText} onChange={e=>setCommentText(e.target.value)}
-                      placeholder="Ajouter un commentaire…" maxLength={500} rows={2}
+                      placeholder={isOwner ? "Répondre aux commentaires…" : "Ajouter un commentaire…"} maxLength={500} rows={2}
                       style={{ flex:1,border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 10px",fontSize:12,color:"#0f172e",outline:"none",resize:"none",fontFamily:"'Sora',sans-serif",background:"#f8fafc" }}
                       onFocus={e=>e.currentTarget.style.borderColor="#06b6d4"}
                       onBlur={e=>e.currentTarget.style.borderColor="#e2e8f0"} />
@@ -1349,6 +1398,11 @@ export default function Profile({ profileUser: initialProfile, currentUser, init
                       style={{ width:36,height:36,borderRadius:9,border:"none",background:commentText.trim()?"#06b6d4":"#e2e8f0",color:commentText.trim()?"#fff":"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",cursor:commentText.trim()?"pointer":"not-allowed",flexShrink:0,transition:"background .18s" }}>
                       <Send size={14} />
                     </button>
+                  </div>
+                )}
+                {!currentUser && (
+                  <div style={{ padding:"10px 16px",borderTop:"1.5px solid #f1f5f9",flexShrink:0,textAlign:"center",fontSize:12,color:"#94a3b8" }}>
+                    Connectez-vous pour laisser un commentaire.
                   </div>
                 )}
                 {portfolioMsg && (

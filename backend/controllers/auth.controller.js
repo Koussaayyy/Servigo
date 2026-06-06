@@ -343,3 +343,76 @@ exports.resendVerificationCode = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
+const htmlPage = (title, color, icon, heading, body) => `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${title} — Servigo</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#f1f5f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border-radius:16px;padding:40px 32px;max-width:440px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.08)}
+    .icon{font-size:48px;margin-bottom:16px}
+    h1{font-size:20px;font-weight:700;color:#0f172e;margin-bottom:10px}
+    p{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:20px}
+    a{display:inline-block;background:${color};color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px}
+    a:hover{opacity:.9}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${icon}</div>
+    <h1>${heading}</h1>
+    <p>${body}</p>
+    <a href="${FRONTEND_URL}">Retour à Servigo</a>
+  </div>
+</body>
+</html>`;
+
+// ── @GET /api/auth/cancel-email-change?token=xxx ──────────
+exports.cancelEmailChange = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).send(htmlPage(
+        "Lien invalide", "#ef4444", "❌",
+        "Lien invalide",
+        "Ce lien ne contient pas de token valide."
+      ));
+    }
+
+    const user = await User.findOne({ cancelEmailChangeToken: token });
+
+    if (!user) {
+      return res.status(400).send(htmlPage(
+        "Lien expiré", "#f59e0b", "⏱️",
+        "Lien expiré ou déjà utilisé",
+        "Ce lien d'annulation est invalide ou a déjà été utilisé. Si vous pensez que votre compte est compromis, connectez-vous et changez votre mot de passe immédiatement."
+      ));
+    }
+
+    user.pendingEmail           = undefined;
+    user.emailChangeCode        = undefined;
+    user.emailChangeCodeExpiry  = undefined;
+    user.cancelEmailChangeToken = undefined;
+    await user.save();
+
+    return res.send(htmlPage(
+      "Changement annulé", "#22c55e", "✅",
+      "Changement d'email annulé",
+      "Le changement d'adresse email a été bloqué avec succès. Votre compte est sécurisé. Si vous n'êtes pas à l'origine de cette demande, changez votre mot de passe dès maintenant."
+    ));
+  } catch (err) {
+    return res.status(500).send(htmlPage(
+      "Erreur", "#ef4444", "⚠️",
+      "Une erreur est survenue",
+      "Impossible de traiter votre demande. Réessayez ou contactez le support."
+    ));
+  }
+};

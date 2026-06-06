@@ -54,6 +54,16 @@ const UserSchema = new mongoose.Schema(
     verificationCode:    { type: String },
     verificationCodeExpire: { type: Date },
 
+    // ── Account deletion verification ─────────────────────
+    deleteAccountCode:       { type: String },
+    deleteAccountCodeExpiry: { type: Date },
+
+    // ── Email change verification ──────────────────────────
+    pendingEmail:              { type: String },
+    emailChangeCode:           { type: String },
+    emailChangeCodeExpiry:     { type: Date },
+    cancelEmailChangeToken:    { type: String },
+
     // ── Client profile ─────────────────────────────────────
     clientProfile: {
       address:  { type: String, default: "" },
@@ -127,7 +137,7 @@ const UserSchema = new mongoose.Schema(
             images:        { type: [String], default: [] },
             featured:      { type: Boolean, default: false },
             likes: {
-              type: [{ userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, firstName: { type: String, default: "" }, lastName: { type: String, default: "" } }],
+              type: [{ userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, firstName: { type: String, default: "" }, lastName: { type: String, default: "" }, avatar: { type: String, default: "" } }],
               default: [],
             },
             comments: {

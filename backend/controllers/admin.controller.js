@@ -2,6 +2,7 @@ const User = require("../models/User.model");
 const Reclamation = require("../models/Reclamation.model");
 const Reservation = require("../models/Reservation.model");
 const Signal = require("../models/Signal.model");
+const Service = require("../models/Service.model");
 
 // ── @GET /api/admin/users ──────────────────────────────────
 exports.getAllUsers = async (req, res) => {
@@ -80,8 +81,30 @@ exports.getStats = async (req, res) => {
       { $group: { _id: null, avgTime: { $avg: "$resolutionTime" } } }
     ]);
 
+    // Reservation statistics
+    const totalReservations     = await Reservation.countDocuments();
+    const pendingReservations   = await Reservation.countDocuments({ status: "pending" });
+    const acceptedReservations  = await Reservation.countDocuments({ status: "accepted" });
+    const completedReservations = await Reservation.countDocuments({ status: "completed" });
+    const cancelledReservations = await Reservation.countDocuments({ status: { $in: ["cancelled", "rejected"] } });
+
+    // Pending worker verifications
+    const pendingVerifications  = await User.countDocuments({ role: "worker", "workerVerification.status": "pending" });
+    const approvedWorkers       = await User.countDocuments({ role: "worker", "workerVerification.status": "approved" });
+
     res.json({
       users: { totalUsers, totalClients, totalWorkers, totalAdmins },
+      reservations: {
+        total: totalReservations,
+        pending: pendingReservations,
+        accepted: acceptedReservations,
+        completed: completedReservations,
+        cancelled: cancelledReservations,
+      },
+      workers: {
+        pendingVerifications,
+        approved: approvedWorkers,
+      },
       reclamations: {
         total: totalReclamations,
         new: newReclamations,
@@ -427,6 +450,44 @@ exports.getWorkerReports = async (req, res) => {
       verifiedReportsLast7Days: recentReports.filter((r) => r.verified).length,
       reportHistory: worker.reportHistory.slice(-20),
     });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @GET /api/admin/services ───────────────────────────────
+exports.getAllServices = async (req, res) => {
+  try {
+    const services = await Service.find().sort({ createdAt: 1 });
+    res.json(services);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @POST /api/admin/services ──────────────────────────────
+exports.createService = async (req, res) => {
+  try {
+    const { name, icon, color } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ message: "Le nom est requis" });
+    const existing = await Service.findOne({ name: name.trim() });
+    if (existing) return res.status(400).json({ message: "Ce service existe déjà" });
+    const service = await Service.create({
+      name: name.trim(),
+      icon: icon || "Briefcase",
+      color: color || "#06b6d4",
+    });
+    res.status(201).json(service);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ── @DELETE /api/admin/services/:id ───────────────────────
+exports.deleteService = async (req, res) => {
+  try {
+    await Service.findByIdAndDelete(req.params.id);
+    res.json({ message: "Service supprimé" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

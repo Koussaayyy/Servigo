@@ -11,8 +11,11 @@ router.get("/all", workerController.getAllWorkers);
 // Protected — worker only
 router.get("/profile",      protect, authorize("worker"), workerController.getProfile);
 router.put("/profile",      protect, authorize("worker"), workerController.updateProfile);
-router.put("/password",     protect, authorize("worker"), workerController.changePassword);
-router.delete("/account",  protect, authorize("worker"), workerController.deleteAccount);
+router.put("/password",              protect, authorize("worker"), workerController.changePassword);
+router.post("/send-delete-code",     protect, authorize("worker"), workerController.sendDeleteCode);
+router.delete("/account",            protect, authorize("worker"), workerController.deleteAccount);
+router.post("/send-email-change-code", protect, authorize("worker"), workerController.sendEmailChangeCode);
+router.put("/email",                 protect, authorize("worker"), workerController.changeEmail);
 router.put("/avatar",       protect, authorize("worker"), uploadAvatar, workerController.updateAvatar);
 router.delete("/avatar",    protect, authorize("worker"), workerController.deleteAvatar);
 router.post("/portfolio/image",                            protect, authorize("worker"), uploadPortfolioImage, workerController.uploadPortfolioImage);

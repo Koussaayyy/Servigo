@@ -18,6 +18,7 @@ import ReservationDialog    from "./components/ReservationDialog";
 import ChatBot              from "./components/ChatBot";
 import SavedWorkersPage     from "./pages/SavedWorkersPage";
 import WorkerDashboard      from "./pages/WorkerDashboard";
+import Settings             from "./pages/Settings";
 
 export default function App() {
   const [mode, setMode]             = useState("home");
@@ -69,55 +70,66 @@ export default function App() {
     switch (path) {
       case "explore":
         setMode("explore");
+        window.history.replaceState({ mode:"explore" }, "", "/explore");
         break;
 
-      // ── FIX: each page URL restores activePage correctly on refresh ──────
       case "profile":
         setMode("app");
         setActivePage("profile");
         setProfileTarget(null);
+        window.history.replaceState({ mode:"app", activePage:"profile" }, "", "/profile");
         break;
 
       case "reservations":
         setMode("app");
         setActivePage("reservations");
+        window.history.replaceState({ mode:"app", activePage:"reservations" }, "", "/reservations");
         break;
 
       case "dashboard":
         setMode("app");
         setActivePage("dashboard");
+        window.history.replaceState({ mode:"app", activePage:"dashboard" }, "", "/dashboard");
         break;
 
       case "saved":
         setMode("app");
         setActivePage("saved");
+        window.history.replaceState({ mode:"app", activePage:"saved" }, "", "/saved");
         break;
 
-      // legacy /app — redirect to explore
+      case "settings":
+        setMode("app");
+        setActivePage("settings");
+        window.history.replaceState({ mode:"app", activePage:"settings" }, "", "/settings");
+        break;
+
       case "app":
         setMode("explore");
-        window.history.replaceState({ mode: "explore" }, "", "/explore");
+        window.history.replaceState({ mode:"explore" }, "", "/explore");
         break;
 
       case "":
       case "home":
         setMode("home");
+        window.history.replaceState({ mode:"home" }, "", "/");
         break;
 
       default:
-        // Handle /profile/:workerId
         if (path.startsWith("profile/")) {
           const wId = path.replace("profile/", "");
           setMode("app");
           setActivePage("profile");
           setProfileTarget(null);
+          window.history.replaceState({ mode:"app", activePage:"profile" }, "", `/${path}`);
           setProfileLoading(true);
           workerApi.getById(wId)
             .then((w) => setProfileTarget(w))
             .catch(() => setProfileTarget(null))
             .finally(() => setProfileLoading(false));
         } else {
-          setMode(path);
+          setMode("home");
+          window.history.replaceState({ mode:"home" }, "", "/");
         }
         break;
     }
@@ -129,13 +141,23 @@ export default function App() {
       const state = event.state;
       if (state?.mode) {
         setMode(state.mode);
-        if (state?.activePage)    setActivePage(state.activePage);
+        if (state?.activePage) setActivePage(state.activePage);
         if (state?.profileTarget) setProfileTarget(state.profileTarget);
-        else                      setProfileTarget(null);
+        else setProfileTarget(null);
         setProfileTab(state?.profileTab || "overview");
       } else {
+        // No state — reconstruct from URL (e.g. initial page load entry)
         const path = window.location.pathname.replace(/^\//, "");
-        setMode(path || "home");
+        const APP_PAGES = ["reservations","dashboard","saved","profile","settings"];
+        if (path === "explore") {
+          setMode("explore");
+        } else if (APP_PAGES.includes(path) || path.startsWith("profile/")) {
+          setMode("app");
+          setActivePage(path.startsWith("profile/") ? "profile" : path);
+          setProfileTarget(null);
+        } else {
+          setMode("home");
+        }
       }
     };
     window.addEventListener("popstate", handlePopState);
@@ -181,6 +203,7 @@ export default function App() {
       reservations: "/reservations",
       dashboard:    "/dashboard",
       saved:        "/saved",
+      settings:     "/settings",
     };
 
     setMode("app");
@@ -465,6 +488,24 @@ export default function App() {
             onHome={() => switchTo("home")}
             onNavigate={handleNavigate}
             onLogout={onLogout}
+          />
+          {chatBotNode}
+        </>
+      );
+    }
+
+    // ── Settings ───────────────────────────────────────────────────────────
+    if (mode === "app" && activePage === "settings") {
+      return (
+        <>
+          <Settings
+            user={loggedUser}
+            onNavigate={handleNavigate}
+            onLogout={onLogout}
+            onUpdateUser={(updated) => {
+              setLoggedUser(updated);
+              localStorage.setItem("user", JSON.stringify(updated));
+            }}
           />
           {chatBotNode}
         </>

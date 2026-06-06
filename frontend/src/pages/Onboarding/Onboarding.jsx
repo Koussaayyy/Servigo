@@ -2,26 +2,35 @@ import { useState, useRef, useEffect } from "react";
 import {
   Zap, Droplets, HardHat, AppWindow, Axe, Palette,
   Snowflake, Lock, Sprout, LayoutGrid, PackageOpen, Cog,
-  CheckCircle, XCircle, Upload,
+  Hammer, Wrench, Paintbrush, Scissors, Truck, Home, Flame,
+  Briefcase, CheckCircle, XCircle, Upload,
 } from "lucide-react";
 import { GOUVERNORATS, DELEGATIONS } from "../../constants/tunisia";
+import { servicesApi } from "../../api";
 import "./Onboarding.css";
 
 const SS_KEY = "ob_progress";
 
-const SERVICES = [
-  { label: "Électricien",   Icon: Zap },
-  { label: "Plombier",      Icon: Droplets },
-  { label: "Maçon",         Icon: HardHat },
-  { label: "Vitrier",       Icon: AppWindow },
-  { label: "Menuisier",     Icon: Axe },
-  { label: "Peintre",       Icon: Palette },
-  { label: "Climatisation", Icon: Snowflake },
-  { label: "Serrurier",     Icon: Lock },
-  { label: "Jardinier",     Icon: Sprout },
-  { label: "Carreleur",     Icon: LayoutGrid },
-  { label: "Déménagement",  Icon: PackageOpen },
-  { label: "Mécanicien",    Icon: Cog },
+const ICON_MAP = {
+  Zap, Droplets, HardHat, AppWindow, Axe, Palette,
+  Snowflake, Lock, Sprout, LayoutGrid, PackageOpen, Cog,
+  Hammer, Wrench, Paintbrush, Scissors, Truck, Home, Flame,
+  Briefcase,
+};
+
+const FALLBACK_SERVICES = [
+  { _id:"el", name:"Électricien",   icon:"Zap",        color:"#f59e0b" },
+  { _id:"pl", name:"Plombier",      icon:"Droplets",   color:"#06b6d4" },
+  { _id:"ma", name:"Maçon",         icon:"HardHat",    color:"#8b5cf6" },
+  { _id:"vi", name:"Vitrier",       icon:"AppWindow",  color:"#3b82f6" },
+  { _id:"me", name:"Menuisier",     icon:"Axe",        color:"#f97316" },
+  { _id:"pe", name:"Peintre",       icon:"Palette",    color:"#ec4899" },
+  { _id:"cl", name:"Climatisation", icon:"Snowflake",  color:"#06b6d4" },
+  { _id:"se", name:"Serrurier",     icon:"Lock",       color:"#64748b" },
+  { _id:"ja", name:"Jardinier",     icon:"Sprout",     color:"#10b981" },
+  { _id:"ca", name:"Carreleur",     icon:"LayoutGrid", color:"#8b5cf6" },
+  { _id:"de", name:"Déménagement",  icon:"Truck",      color:"#f59e0b" },
+  { _id:"mc", name:"Mécanicien",    icon:"Cog",        color:"#64748b" },
 ];
 
 function AlertOverlay({ type, message, onClose, isWorker }) {
@@ -107,11 +116,18 @@ export default function Onboarding({ user, onComplete }) {
     return { gender: "", birthDate: "", governorate: "", city: "", address: "", services: [], bio: "" };
   });
 
-  const [error,      setError]      = useState("");
-  const [loading,    setLoading]    = useState(false);
-  const [preview,    setPreview]    = useState(null);
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [cinFile,    setCinFile]    = useState(null);
+  const [error,           setError]          = useState("");
+  const [loading,         setLoading]        = useState(false);
+  const [preview,         setPreview]        = useState(null);
+  const [avatarFile,      setAvatarFile]     = useState(null);
+  const [cinFile,         setCinFile]        = useState(null);
+  const [dynamicServices, setDynamicServices] = useState([]);
+
+  useEffect(() => {
+    servicesApi.getAll()
+      .then(data => setDynamicServices(Array.isArray(data) && data.length > 0 ? data : FALLBACK_SERVICES))
+      .catch(() => setDynamicServices(FALLBACK_SERVICES));
+  }, []);
   const [certificationFile, setCertificationFile] = useState(null);
   const [alert,    setAlert]    = useState(null);
   const [alertMsg, setAlertMsg] = useState("");
@@ -327,14 +343,16 @@ export default function Onboarding({ user, onComplete }) {
                 <p className="form-sub">Sélectionnez tout ce qui s'applique. Modifiable à tout moment.</p>
               </div>
               <div className="ob-services-grid">
-                {SERVICES.map(({ label, Icon }) => {
-                  const selected = form.services.includes(label);
+                {dynamicServices.map((svc) => {
+                  const SvcIcon = ICON_MAP[svc.icon] || Briefcase;
+                  const selected = form.services.includes(svc.name);
                   return (
-                    <button key={label}
+                    <button key={svc._id || svc.name}
                       className={`ob-svc-btn ${selected ? "selected" : ""}`}
-                      onClick={() => toggleService(label)}>
-                      <Icon size={20} className="ob-svc-icon" />
-                      <span>{label}</span>
+                      onClick={() => toggleService(svc.name)}
+                      style={selected ? { borderColor: svc.color, background: `${svc.color}18` } : {}}>
+                      <SvcIcon size={20} className="ob-svc-icon" style={selected ? { color: svc.color } : {}} />
+                      <span>{svc.name}</span>
                     </button>
                   );
                 })}

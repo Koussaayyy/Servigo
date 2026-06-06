@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { reservationApi, clientApi } from "../api";
+import { reservationApi, clientApi, avatarUrl } from "../api";
 import { Bookmark, BookmarkCheck, Star, AlertTriangle, CheckCircle, Calendar, MapPin, Phone, Wrench, Clock, Eye, Check, X, ChevronRight } from "lucide-react";
 import Navbar from "../components/Navbar";
 
@@ -212,14 +212,16 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
   };
 
   const startService = async (reservationId) => {
-    if (!serviceCodeInput || serviceCodeInput.length !== 4) {
-      setServiceCodeError("Le code doit contenir 4 chiffres");
+    const workerDigits = selectedWorkerReservation?.serviceCode?.slice(2, 4) || "";
+    const fullCode = serviceCodeInput + workerDigits;
+    if (serviceCodeInput.length !== 2) {
+      setServiceCodeError("Entrez les 2 chiffres du client");
       return;
     }
     setActionLoading(true);
     setServiceCodeError("");
     try {
-      await reservationApi.startService(reservationId, serviceCodeInput);
+      await reservationApi.startService(reservationId, fullCode);
       setServiceCodeInput("");
       setMessage("Service démarré avec succès!");
       await loadData();
@@ -538,9 +540,12 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
     <div className={`rv-card ${status}`}>
       <div style={{ display:"flex",alignItems:"flex-start",gap:14 }}>
         {/* Avatar */}
-        <div style={{ width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#0f172e,#1e293b)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
-          {initials}
-        </div>
+        {avatarUrl(person.avatar)
+          ? <img src={avatarUrl(person.avatar)} alt="" style={{ width:44,height:44,borderRadius:12,objectFit:"cover",flexShrink:0,border:"1.5px solid #e2e8f0" }}/>
+          : <div style={{ width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#0f172e,#1e293b)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
+              {initials}
+            </div>
+        }
 
         {/* Info */}
         <div style={{ flex:1,minWidth:0 }}>
@@ -566,8 +571,13 @@ function ReservationRow({ reservation, rightAction, children, isSaved, onToggleS
               <span className="rv-timer"><Clock size={10}/>{countdown} avant annulation</span>
             )}
             {reservation.serviceCode && (
-              <span style={{ fontSize:11,fontWeight:700,color:"#06b6d4",background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:6,padding:"4px 8px" }}>
-                Code: {isWorkerCard ? getWorkerCodeDisplay(reservation.serviceCode) : getClientCodeDisplay(reservation.serviceCode)}
+              <span style={{ display:"flex",flexDirection:"column",gap:2,fontSize:11,fontWeight:700,color:"#06b6d4",background:"rgba(6,182,212,0.08)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:6,padding:"5px 10px" }}>
+                <span>Code : {isWorkerCard ? getWorkerCodeDisplay(reservation.serviceCode) : getClientCodeDisplay(reservation.serviceCode)}</span>
+                <span style={{ fontSize:10,fontWeight:500,color:"#64748b" }}>
+                  {isWorkerCard
+                    ? "Demandez les 2 premiers chiffres au client pour compléter le code."
+                    : "Communiquez ces 2 chiffres au prestataire le jour du service."}
+                </span>
               </span>
             )}
           </div>
@@ -601,9 +611,12 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
 
         {/* Header */}
         <div className="rv-modal-header">
-          <div style={{ width:46,height:46,borderRadius:12,background:"rgba(6,182,212,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
-            {initials}
-          </div>
+          {avatarUrl(client.avatar)
+            ? <img src={avatarUrl(client.avatar)} alt="" style={{ width:46,height:46,borderRadius:12,objectFit:"cover",flexShrink:0,border:"1.5px solid rgba(255,255,255,0.15)" }}/>
+            : <div style={{ width:46,height:46,borderRadius:12,background:"rgba(6,182,212,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#06b6d4",flexShrink:0 }}>
+                {initials}
+              </div>
+          }
           <div style={{ flex:1 }}>
             <div style={{ fontSize:16,fontWeight:700,color:"#fff" }}>{client.firstName||""} {client.lastName||""}</div>
             <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>Demande de réservation</div>
@@ -650,30 +663,39 @@ function WorkerReservationDetailsModal({ reservation, actionLoading, onClose, on
             <div>
               <div className="rv-section-title">Code de service</div>
               <div style={{ background:"rgba(6,182,212,0.05)",border:"1.5px solid rgba(6,182,212,0.2)",borderRadius:10,padding:14 }}>
-                <div style={{ fontSize:12,color:"#64748b",marginBottom:8 }}>Entrez le code à votre arrivée pour prouver votre présence.</div>
+                <div style={{ fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.6 }}>
+                  Demandez les 2 premiers chiffres au client et saisissez-les ci-dessous.
+                </div>
                 {!reservation?.serviceStartedAt ? (
                   <>
-                    <div style={{ display:"flex",gap:8,marginBottom:10 }}>
+                    <div style={{ display:"flex",gap:6,marginBottom:10,alignItems:"center" }}>
                       <input
                         type="text"
-                        maxLength="4"
+                        maxLength="2"
                         value={serviceCodeInput}
                         onChange={(e) => {
                           const val = e.target.value.replace(/\D/g, "");
-                          if (val.length <= 4) setServiceCodeInput(val);
+                          if (val.length <= 2) setServiceCodeInput(val);
                           setServiceCodeError("");
                         }}
-                        placeholder="0000"
-                        style={{ flex:1,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:16,fontWeight:700,textAlign:"center",letterSpacing:"3px",fontFamily:"monospace",outline:"none" }}
+                        placeholder="??"
+                        style={{ flex:1,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:22,fontWeight:700,textAlign:"center",letterSpacing:"4px",fontFamily:"monospace",outline:"none" }}
                       />
+                      <span style={{ fontSize:18,fontWeight:700,color:"#cbd5e1" }}>+</span>
+                      <div style={{ flex:1,background:"#f0f9ff",border:"1.5px solid rgba(6,182,212,0.3)",borderRadius:8,padding:"10px 12px",fontSize:22,fontWeight:700,textAlign:"center",letterSpacing:"4px",fontFamily:"monospace",color:"#06b6d4" }}>
+                        {reservation.serviceCode?.slice(2, 4)}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11,color:"#94a3b8",textAlign:"center",marginBottom:10 }}>
+                      <span style={{ color:"#64748b",fontWeight:600 }}>Chiffres du client</span> + <span style={{ color:"#06b6d4",fontWeight:600 }}>Vos chiffres (pré-remplis)</span>
                     </div>
                     {serviceCodeError && (
                       <div style={{ fontSize:12,color:"#ef4444",marginBottom:10,fontWeight:600 }}>⚠ {serviceCodeError}</div>
                     )}
                     <button
                       onClick={() => startService(reservation._id)}
-                      disabled={actionLoading || serviceCodeInput.length !== 4}
-                      style={{ width:"100%",background:serviceCodeInput.length === 4 ? "#06b6d4" : "#cbd5e1",color:"#fff",border:"none",borderRadius:8,padding:"11px 16px",fontSize:12,fontWeight:700,cursor:serviceCodeInput.length === 4 ? "pointer" : "not-allowed",transition:"all .2s" }}
+                      disabled={actionLoading || serviceCodeInput.length !== 2}
+                      style={{ width:"100%",background:serviceCodeInput.length === 2 ? "#06b6d4" : "#cbd5e1",color:"#fff",border:"none",borderRadius:8,padding:"11px 16px",fontSize:12,fontWeight:700,cursor:serviceCodeInput.length === 2 ? "pointer" : "not-allowed",transition:"all .2s" }}
                     >
                       ▶ Démarrer le service
                     </button>
