@@ -18,15 +18,15 @@ export default function SignupPicker({ onSelect, onGoogleSuccess, onGoogleComple
         onGoogleSuccess(res.user);
       }
     } catch (err) {
-      setError("Google signup failed. Try again.");
+      setError("Échec de l'inscription avec Google. Réessayez.");
     }
   };
 
   return (
     <div className="anim">
       <div className="form-head">
-        <h2 className="form-title">Create an account.</h2>
-        <p className="form-sub">Who are you joining as?</p>
+        <h2 className="form-title">Créer un compte.</h2>
+        <p className="form-sub">En tant que qui vous inscrivez-vous ?</p>
       </div>
       {error && <div className="error-msg">{error}</div>}
       <div className="type-picker">
@@ -38,7 +38,7 @@ export default function SignupPicker({ onSelect, onGoogleSuccess, onGoogleComple
             <UserRound size={28} strokeWidth={1.5} />
           </div>
           <span className="type-label">Client</span>
-          <span className="type-desc">I need a professional to get a job done.</span>
+          <span className="type-desc">J'ai besoin d'un professionnel pour réaliser un travail.</span>
         </button>
         <button
           className={`type-card ${chosen === "worker" ? "selected" : ""}`}
@@ -47,25 +47,25 @@ export default function SignupPicker({ onSelect, onGoogleSuccess, onGoogleComple
           <div className="type-icon">
             <Wrench size={28} strokeWidth={1.5} />
           </div>
-          <span className="type-label">Professional</span>
-          <span className="type-desc">I'm a tradesperson offering my services.</span>
+          <span className="type-label">Prestataire</span>
+          <span className="type-desc">Je suis un artisan qui propose ses services.</span>
         </button>
       </div>
       <button className="submit-btn" disabled={!chosen}
         onClick={() => chosen && onSelect(chosen)}>
-        Continue →
+        Continuer →
       </button>
-      <div className="divider">or</div>
+      <div className="divider">ou</div>
       <GoogleLogin
         onSuccess={handleGoogle}
-        onError={() => setError("Google signup failed. Try again.")}
+        onError={() => setError("Échec de l'inscription avec Google. Réessayez.")}
         width="100%"
         text="signup_with"
         shape="rectangular"
         theme="outline"
       />
       <p className="terms">
-        By signing up you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.
+        En vous inscrivant, vous acceptez nos <a href="#">Conditions d'utilisation</a> &amp; notre <a href="#">Politique de confidentialité</a>.
       </p>
     </div>
   );

@@ -70,7 +70,7 @@ export default function AdminLogin({ onSuccess }) {
         </div>
         <div>
           <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 12, lineHeight: 1.2 }}>
-            Admin Access
+            Accès administrateur
           </h1>
           <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.8 }}>
             Connexion sécurisée réservée aux administrateurs de Servigo

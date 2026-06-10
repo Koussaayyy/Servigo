@@ -153,7 +153,7 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
           : [];
         setWorkerReservations(sortedWorkerReservations);
       }
-    } catch (err) { setError(err.message || "Failed to load reservations."); }
+    } catch (err) { setError(err.message || "Échec du chargement des réservations."); }
     finally { setLoading(false); }
   }, [isWorker]);
 
@@ -165,15 +165,15 @@ export default function ReservationsPage({ user, onHome, onNavigate, onLogout })
       const accepted = r?.status === "accepted";
       if (!window.confirm(accepted ? "Cette réservation est déjà confirmée. Confirmer l'annulation ?" : "Confirmer l'annulation ?")) { setActionLoading(false); return; }
       await reservationApi.cancelAsClient(r._id, { reason: "Cancelled by client", ...(accepted ? { confirmation: "CLIENT_CONFIRMED" } : {}) });
-      setMessage("Reservation cancelled"); await loadData();
-    } catch (err) { setError(err.message || "Cancel failed"); }
+      setMessage("Réservation annulée"); await loadData();
+    } catch (err) { setError(err.message || "Échec de l'annulation"); }
     finally { setActionLoading(false); }
   };
 
   const setWorkerStatus = async (id, status) => {
     setActionLoading(true); setError(""); setMessage("");
-    try { await reservationApi.setWorkerStatus(id, status); setMessage(`Reservation ${status}`); await loadData(); }
-    catch (err) { setError(err.message || "Update failed"); }
+    try { await reservationApi.setWorkerStatus(id, status); setMessage(`Réservation ${status}`); await loadData(); }
+    catch (err) { setError(err.message || "Échec de la mise à jour"); }
     finally { setActionLoading(false); }
   };
 

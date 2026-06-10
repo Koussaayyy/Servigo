@@ -7,17 +7,17 @@ export default function SidePanel() {
       </div>
       <div className="side-body">
         <h2 className="side-title">
-          Your <em>expert</em><br />
-          is one tap<br />
-          away.
+          Votre <em>expert</em><br />
+          est à portée<br />
+          de main.
         </h2>
         <p className="side-desc">
-          Connect with verified local tradespeople —
-          electricians, plumbers, carpenters and more.
+          Connectez-vous avec des artisans locaux vérifiés —
+          électriciens, plombiers, menuisiers et bien plus.
         </p>
       </div>
       <div className="side-pills">
-        {["Verified professionals only", "Transparent pricing", "Rated & reviewed", "Instant booking"].map((text) => (
+        {["Professionnels vérifiés uniquement", "Tarifs transparents", "Notés et évalués", "Réservation instantanée"].map((text) => (
           <div className="side-pill" key={text}>
             <span className="pill-dot" />
             <span>{text}</span>

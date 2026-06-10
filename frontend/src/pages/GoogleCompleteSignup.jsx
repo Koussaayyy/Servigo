@@ -26,9 +26,9 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
 
   const submit = async () => {
     setError("");
-    if (!phone) return setError("Please enter your phone number.");
+    if (!phone) return setError("Veuillez saisir votre numéro de téléphone.");
     if (role === "worker" && selected.length === 0)
-      return setError("Please select at least one profession.");
+      return setError("Veuillez sélectionner au moins un métier.");
     setLoading(true);
     try {
       const res = await authApi.googleLogin(googleCredential, {
@@ -40,7 +40,7 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
       localStorage.setItem("user", JSON.stringify(res.user));
       onSuccess(res.user);
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
     return (
       <div className="anim">
         <div className="form-head">
-          <h2 className="form-title">One more step.</h2>
-          <p className="form-sub">How are you joining Servigo?</p>
+          <h2 className="form-title">Une dernière étape.</h2>
+          <p className="form-sub">Comment rejoignez-vous Servigo ?</p>
         </div>
         {error && <div className="error-msg">{error}</div>}
         <div className="type-picker">
@@ -62,20 +62,20 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
           >
             <div className="type-icon">🙋</div>
             <span className="type-label">Client</span>
-            <span className="type-desc">I need a professional to get a job done.</span>
+            <span className="type-desc">J'ai besoin d'un professionnel pour réaliser un travail.</span>
           </button>
           <button
             className={`type-card ${role === "worker" ? "selected" : ""}`}
             onClick={() => setRole("worker")}
           >
             <div className="type-icon">🧰</div>
-            <span className="type-label">Professional</span>
-            <span className="type-desc">I'm a tradesperson offering my services.</span>
+            <span className="type-label">Prestataire</span>
+            <span className="type-desc">Je suis un artisan qui propose ses services.</span>
           </button>
         </div>
         <button className="submit-btn" disabled={!role}
           onClick={() => role && setStep(2)}>
-          Continue →
+          Continuer →
         </button>
       </div>
     );
@@ -84,15 +84,15 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
   // ── Step 2: Fill details ───────────────────────────────
   return (
     <div className="anim">
-      <button className="step-back" onClick={() => setStep(1)}>← Back</button>
+      <button className="step-back" onClick={() => setStep(1)}>← Retour</button>
       <div className="form-head">
-        <h2 className="form-title">Complete your profile.</h2>
-        <p className="form-sub">Just a few more details.</p>
+        <h2 className="form-title">Complétez votre profil.</h2>
+        <p className="form-sub">Quelques détails supplémentaires.</p>
       </div>
       {error && <div className="error-msg">{error}</div>}
 
       <div className="field">
-        <label>Phone Number</label>
+        <label>Numéro de téléphone</label>
         <div style={{ display:"flex",alignItems:"center",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#f1f5f9",overflow:"hidden",transition:"border-color .18s" }}
           onFocusCapture={e=>e.currentTarget.style.borderColor="#06b6d4"}
           onBlurCapture={e=>e.currentTarget.style.borderColor="#e2e8f0"}>
@@ -107,26 +107,26 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
         <>
           <div className="field-row">
             <div className="field">
-              <label>City / Region</label>
+              <label>Ville / Région</label>
               <select value={city} onChange={(e) => setCity(e.target.value)}>
-                <option value="">Select city…</option>
+                <option value="">Sélectionner une ville…</option>
                 {CITIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Years of Experience</label>
+              <label>Années d'expérience</label>
               <select value={experience} onChange={(e) => setExp(e.target.value)}>
-                <option value="">Select…</option>
-                <option>Less than 1 year</option>
-                <option>1–3 years</option>
-                <option>3–5 years</option>
-                <option>5–10 years</option>
-                <option>10+ years</option>
+                <option value="">Sélectionner…</option>
+                <option>Moins d'un an</option>
+                <option>1–3 ans</option>
+                <option>3–5 ans</option>
+                <option>5–10 ans</option>
+                <option>10+ ans</option>
               </select>
             </div>
           </div>
           <div className="field">
-            <label>Your Profession(s)</label>
+            <label>Votre / Vos métier(s)</label>
             <div className="prof-grid">
               {professions.map((p) => (
                 <button key={p} type="button"
@@ -136,18 +136,18 @@ export default function GoogleCompleteSignup({ googleCredential, onSuccess }) {
                 </button>
               ))}
             </div>
-            <p className="field-note">Select all that apply.</p>
+            <p className="field-note">Sélectionnez tout ce qui s'applique.</p>
           </div>
           <div className="field">
-            <label>Short Bio</label>
-            <textarea placeholder="Tell clients about your experience…"
+            <label>Courte biographie</label>
+            <textarea placeholder="Parlez aux clients de votre expérience…"
               value={bio} onChange={(e) => setBio(e.target.value)} />
           </div>
         </>
       )}
 
       <button className="submit-btn" onClick={submit} disabled={loading}>
-        {loading ? "Creating account…" : "Complete Signup"}
+        {loading ? "Création du compte…" : "Finaliser l'inscription"}
       </button>
     </div>
   );

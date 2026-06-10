@@ -243,7 +243,7 @@ export default function Navbar({
 
   const links = [
     { label: "Explorer",     page: "explore",      authRequired: false, workerOnly: false },
-    { label: "Dashboard",    page: "dashboard",    authRequired: true,  workerOnly: true  },
+    { label: "Tableau de bord",    page: "dashboard",    authRequired: true,  workerOnly: true  },
     { label: "Réservations", page: "reservations", authRequired: true,  workerOnly: false },
     { label: "Profil",       page: "profile",      authRequired: true,  workerOnly: false },
   ].filter((l) => (!l.authRequired || !!user) && (!l.workerOnly || user?.role === "worker"));

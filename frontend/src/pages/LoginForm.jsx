@@ -13,7 +13,7 @@ export default function LoginForm({ onSuccess }) {
 
   const submit = async () => {
     setError("");
-    if (!form.email || !form.password) return setError("Please fill in all fields.");
+    if (!form.email || !form.password) return setError("Veuillez remplir tous les champs.");
     setLoading(true);
     try {
       const res = await authApi.login(form.email, form.password);
@@ -21,7 +21,7 @@ export default function LoginForm({ onSuccess }) {
       localStorage.setItem("user", JSON.stringify(res.user));
       onSuccess(res.user);
     } catch (err) {
-      setError(err.message || "Login failed. Try again.");
+      setError(err.message || "Échec de la connexion. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ export default function LoginForm({ onSuccess }) {
       localStorage.setItem("user", JSON.stringify(res.user));
       onSuccess(res.user);
     } catch (err) {
-      setError("Google login failed. Try again.");
+      setError("Échec de la connexion avec Google. Réessayez.");
     }
   };
 
@@ -45,34 +45,34 @@ export default function LoginForm({ onSuccess }) {
   return (
     <div className="anim">
       <div className="form-head">
-        <h2 className="form-title">Welcome back.</h2>
-        <p className="form-sub">Sign in to your account to continue.</p>
+        <h2 className="form-title">Bon retour.</h2>
+        <p className="form-sub">Connectez-vous à votre compte pour continuer.</p>
       </div>
 
       {error && <div className="error-msg">{error}</div>}
 
       <div className="field">
-        <label>Email Address</label>
+        <label>Adresse e-mail</label>
         <input name="email" type="email" placeholder="you@example.com"
           value={form.email} onChange={handle} />
       </div>
       <div className="field">
-        <label>Password</label>
+        <label>Mot de passe</label>
         <input name="password" type="password" placeholder="••••••••"
           value={form.password} onChange={handle} />
       </div>
 
       <div className="forgot">
         <a href="#" onClick={(e) => { e.preventDefault(); setShowForgot(true); }}>
-          Forgot password?
+          Mot de passe oublié ?
         </a>
       </div>
 
       <button className="submit-btn" onClick={submit} disabled={loading}>
-        {loading ? "Signing in…" : "Sign In"}
+        {loading ? "Connexion en cours…" : "Se connecter"}
       </button>
 
-      <div className="divider">or</div>
+      <div className="divider">ou</div>
 
       <GoogleLogin
         onSuccess={handleGoogle}

@@ -384,7 +384,7 @@ export default function AdminDashboard({ admin, onLogout }) {
   ];
 
   const sidebarNav = [
-    { id:"dashboard",    label:"Dashboard",      icon:LayoutDashboard },
+    { id:"dashboard",    label:"Tableau de bord",      icon:LayoutDashboard },
     { id:"reclamations", label:"Réclamations",   icon:MessageSquare,  badge: reclamations.filter(r=>r.status==="new").length },
     { id:"signals",      label:"Signalements",   icon:Flag,           badge: signals.filter(s=>s.status==="new").length },
     { id:"users",        label:"Clients",        icon:Users,          badge: users.filter(u=>u.role==="client").length },

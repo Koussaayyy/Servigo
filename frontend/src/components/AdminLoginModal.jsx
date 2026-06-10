@@ -12,7 +12,7 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
     e.preventDefault();
     setError("");
     if (!form.email || !form.password) {
-      return setError("Please fill in all fields.");
+      return setError("Veuillez remplir tous les champs.");
     }
     setLoading(true);
     try {
@@ -22,7 +22,7 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
       onSuccess(res.admin);
       onClose();
     } catch (err) {
-      setError(err.message || "Admin login failed. Try again.");
+      setError(err.message || "Échec de la connexion administrateur. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,8 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
           </button>
 
           <div style={{ marginTop: 20 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0f172e", marginBottom: 8 }}>Welcome back.</h2>
-            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24 }}>Sign in to your account to continue.</p>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0f172e", marginBottom: 8 }}>Bon retour.</h2>
+            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24 }}>Connectez-vous à votre compte pour continuer.</p>
 
             {error && (
               <div style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 13, color: "#dc2626" }}>
@@ -75,12 +75,12 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
             )}
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#0f172e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#0f172e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Adresse e-mail</label>
               <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" style={{ width: "100%", padding: "12px 16px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "Sora, sans-serif", outline: "none", transition: "all 0.2s", boxSizing: "border-box" }} onFocus={(e) => { e.target.style.borderColor = "#06b6d4"; e.target.style.boxShadow = "0 0 0 3px rgba(6,182,212,0.1)"; }} onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }} />
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#0f172e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Password</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#0f172e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Mot de passe</label>
               <div style={{ position: "relative" }}>
                 <input type={showPassword ? "text" : "password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" style={{ width: "100%", padding: "12px 16px", paddingRight: 40, border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "Sora, sans-serif", outline: "none", transition: "all 0.2s", boxSizing: "border-box" }} onFocus={(e) => { e.target.style.borderColor = "#06b6d4"; e.target.style.boxShadow = "0 0 0 3px rgba(6,182,212,0.1)"; }} onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 4 }}>
@@ -90,7 +90,7 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
             </div>
 
             <button type="button" onClick={handleSubmit} disabled={loading} style={{ width: "100%", padding: "12px 24px", background: loading ? "#cbd5e1" : "#06b6d4", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", transition: "all 0.3s", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? "Connexion en cours…" : "Se connecter"}
             </button>
           </div>
         </div>

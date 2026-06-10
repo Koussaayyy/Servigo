@@ -14,17 +14,17 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
     setSuccess("");
 
     if (!code || code.length !== 6) {
-      setError("Code must be 6 digits");
+      setError("Le code doit comporter 6 chiffres");
       return;
     }
 
     setLoading(true);
     try {
       const result = await authApi.verifyEmail(email, code);
-      setSuccess("✓ Email verified successfully!");
+      setSuccess("✓ Adresse e-mail vérifiée avec succès !");
       setTimeout(() => onSuccess(result), 1500);
     } catch (err) {
-      setError(err.message || "Invalid verification code");
+      setError(err.message || "Code de vérification invalide");
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
 
     try {
       await onResendCode?.(email);
-      setSuccess("Code sent to your email!");
+      setSuccess("Code envoyé à votre adresse e-mail !");
       setResendCountdown(30);
       const interval = setInterval(() => {
         setResendCountdown((p) => {
@@ -49,7 +49,7 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
         });
       }, 1000);
     } catch (err) {
-      setError("Failed to resend code");
+      setError("Échec du renvoi du code");
     }
   };
 
@@ -67,16 +67,16 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
           <div style={{ width: 60, height: 60, background: "rgba(6,182,212,0.1)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>
             <Mail size={30} color="#06b6d4" />
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0f172e", marginBottom: 8 }}>Verify your email</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0f172e", marginBottom: 8 }}>Vérifiez votre adresse e-mail</h2>
           <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.6 }}>
-            We've sent a 6-digit code to<br /><strong>{email}</strong>
+            Nous avons envoyé un code à 6 chiffres à<br /><strong>{email}</strong>
           </p>
         </div>
 
         {/* Code Input */}
         <div style={{ marginBottom: 24 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, display: "block" }}>
-            Verification code
+            Code de vérification
           </label>
           <input
             type="text"
@@ -106,7 +106,7 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
         {/* Time info */}
         <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: 12, marginBottom: 24, display: "flex", gap: 10, alignItems: "center", fontSize: 12, color: "#92400e" }}>
           <Clock size={16} />
-          <span>This code expires in <strong>30 minutes</strong></span>
+          <span>Ce code expire dans <strong>30 minutes</strong></span>
         </div>
 
         {/* Submit Button */}
@@ -131,12 +131,12 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
             letterSpacing: "0.06em",
           }}
         >
-          {loading ? "Verifying..." : <>Verify <ArrowRight size={14} /></>}
+          {loading ? "Vérification…" : <>Vérifier <ArrowRight size={14} /></>}
         </button>
 
         {/* Resend Code */}
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Didn't receive the code?</p>
+          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Vous n'avez pas reçu le code ?</p>
           <button
             onClick={handleResend}
             disabled={resendCountdown > 0 || loading}
@@ -151,7 +151,7 @@ export default function EmailVerification({ email, onSuccess, onResendCode }) {
               transition: "color 0.2s",
             }}
           >
-            {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend code"}
+            {resendCountdown > 0 ? `Renvoyer dans ${resendCountdown}s` : "Renvoyer le code"}
           </button>
         </div>
       </div>

@@ -10,16 +10,16 @@ export default function ResetPassword({ token, onSuccess }) {
 
   const submit = async () => {
     setError(""); setSuccess("");
-    if (!password || !confirm) return setError("Please fill in all fields.");
-    if (password.length < 8) return setError("Password must be at least 8 characters.");
-    if (password !== confirm) return setError("Passwords do not match.");
+    if (!password || !confirm) return setError("Veuillez remplir tous les champs.");
+    if (password.length < 8) return setError("Le mot de passe doit contenir au moins 8 caractères.");
+    if (password !== confirm) return setError("Les mots de passe ne correspondent pas.");
     setLoading(true);
     try {
       const res = await authApi.resetPassword(token, password);
       setSuccess(res.message);
       setTimeout(() => onSuccess(), 2000);
     } catch (err) {
-      setError(err.message || "Invalid or expired link.");
+      setError(err.message || "Lien invalide ou expiré.");
     } finally {
       setLoading(false);
     }
@@ -28,26 +28,26 @@ export default function ResetPassword({ token, onSuccess }) {
   return (
     <div className="anim">
       <div className="form-head">
-        <h2 className="form-title">Reset password.</h2>
-        <p className="form-sub">Enter your new password below.</p>
+        <h2 className="form-title">Réinitialiser le mot de passe.</h2>
+        <p className="form-sub">Saisissez votre nouveau mot de passe ci-dessous.</p>
       </div>
 
       {error   && <div className="error-msg">{error}</div>}
-      {success && <div className="success-msg">{success} Redirecting to login…</div>}
+      {success && <div className="success-msg">{success} Redirection vers la connexion…</div>}
 
       <div className="field">
-        <label>New Password</label>
-        <input type="password" placeholder="Min. 8 characters"
+        <label>Nouveau mot de passe</label>
+        <input type="password" placeholder="Min. 8 caractères"
           value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <div className="field">
-        <label>Confirm Password</label>
-        <input type="password" placeholder="Repeat password"
+        <label>Confirmer le mot de passe</label>
+        <input type="password" placeholder="Répéter le mot de passe"
           value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       </div>
 
       <button className="submit-btn" onClick={submit} disabled={loading || !!success}>
-        {loading ? "Resetting…" : "Reset Password"}
+        {loading ? "Réinitialisation…" : "Réinitialiser le mot de passe"}
       </button>
     </div>
   );
