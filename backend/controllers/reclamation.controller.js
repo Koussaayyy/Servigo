@@ -1,11 +1,23 @@
 const Reclamation = require("../models/Reclamation.model");
 
+const VALID_CATEGORIES = ["technique", "support", "plainte", "suggestion", "facturation"];
+const VALID_PRIORITIES = ["low", "medium", "high", "urgent"];
+
 exports.createReclamation = async (req, res) => {
   try {
-    const { name, email, subject = "", message } = req.body || {};
+    const { name, email, subject = "", message, category, priority } = req.body || {};
 
     if (!name || !email || !message) {
       return res.status(400).json({ message: "name, email and message are required" });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+    if (category && !VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: `category must be one of: ${VALID_CATEGORIES.join(", ")}` });
+    }
+    if (priority && !VALID_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ message: `priority must be one of: ${VALID_PRIORITIES.join(", ")}` });
     }
 
     const reclamation = await Reclamation.create({
@@ -13,6 +25,8 @@ exports.createReclamation = async (req, res) => {
       email: String(email).trim().toLowerCase(),
       subject: String(subject || "").trim(),
       message: String(message).trim(),
+      category: category || "support",
+      priority: priority || "medium",
     });
 
     return res.status(201).json({

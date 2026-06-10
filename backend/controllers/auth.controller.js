@@ -94,6 +94,16 @@ exports.register = async (req, res) => {
     console.log("📩 Register called with:", req.body);
     const { firstName, lastName, email, phone, password, role, workerProfile } = req.body;
 
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "firstName, lastName, email and password are required" });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
+
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verificationCodeExpire = new Date(Date.now() + 30 * 60 * 1000);
 
@@ -138,6 +148,10 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid email or password" });
@@ -209,6 +223,10 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Valid email is required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "No account found with this email" });
 
@@ -252,6 +270,10 @@ exports.resetPassword = async (req, res) => {
   try {
     const { token }    = req.params;
     const { password } = req.body;
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
 
     const user = await User.findOne({
       resetPasswordToken:  token,

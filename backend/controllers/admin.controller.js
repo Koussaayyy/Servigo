@@ -196,6 +196,9 @@ exports.reviewWorkerVerification = async (req, res) => {
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Status must be approved or rejected" });
     }
+    if (status === "rejected" && !String(rejectionReason || "").trim()) {
+      return res.status(400).json({ message: "Motif de rejet obligatoire" });
+    }
 
     const worker = await User.findById(req.params.id);
     if (!worker || worker.role !== "worker") {

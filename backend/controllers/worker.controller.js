@@ -503,7 +503,9 @@ exports.submitPortfolioReview = async (req, res) => {
 exports.createPortfolioItem = async (req, res) => {
   try {
     const { title, description, city, governorate, exactLocation } = req.body;
+    if (!title || !String(title).trim()) return res.status(400).json({ message: "Le titre de la réalisation est requis" });
     const newImages = (req.files || []).map(f => `/uploads/portfolio/${f.filename}`);
+    if (newImages.length === 0) return res.status(400).json({ message: "Au moins une photo est requise" });
     const imageUrl  = newImages[0] || "";
     const user = await User.findByIdAndUpdate(
       req.user.id,
@@ -745,7 +747,9 @@ exports.updateSchedule = async (req, res) => {
 exports.addService = async (req, res) => {
   try {
     const { name, description, price, duration } = req.body;
-    if (!name || price === undefined) return res.status(400).json({ message: "Nom et prix requis" });
+    if (!name || !String(name).trim()) return res.status(400).json({ message: "Le nom du service est requis" });
+    if (price === undefined || price === null) return res.status(400).json({ message: "Le prix est requis" });
+    if (Number(price) <= 0) return res.status(400).json({ message: "Le prix doit être supérieur à 0" });
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $push: { "workerProfile.services": { name, description: description || "", price: Number(price), duration: Number(duration) || 0 } } },
@@ -760,6 +764,8 @@ exports.addService = async (req, res) => {
 exports.updateService = async (req, res) => {
   try {
     const { name, description, price, duration } = req.body;
+    if (name !== undefined && !String(name).trim()) return res.status(400).json({ message: "Le nom du service ne peut pas être vide" });
+    if (price !== undefined && Number(price) <= 0) return res.status(400).json({ message: "Le prix doit être supérieur à 0" });
     const user = await User.findOneAndUpdate(
       { _id: req.user.id, "workerProfile.services._id": req.params.serviceId },
       {
