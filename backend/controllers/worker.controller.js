@@ -49,7 +49,7 @@ exports.updateProfile = async (req, res) => {
 
     // Use dot-notation to avoid wiping portfolio/schedule/etc.
     if (parsed) {
-      const allowed = ["city","experience","bio","hourlyRate","professions","isAvailable","availabilitySchedule","availabilityCalendar"];
+      const allowed = ["city","experience","bio","hourlyRate","professions","isAvailable","availabilitySchedule","availabilityCalendar","portfolio"];
       for (const [key, val] of Object.entries(parsed)) {
         if (allowed.includes(key)) data[`workerProfile.${key}`] = val;
       }
