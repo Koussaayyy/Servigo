@@ -37,8 +37,17 @@ exports.toggleUserStatus = async (req, res) => {
 // ── @DELETE /api/admin/users/:id ──────────────────────────
 exports.deleteUser = async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted successfully" });
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    res.json({ 
+      message: "User deactivated successfully",
+      user: { id: user._id, isActive: user.isActive }
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

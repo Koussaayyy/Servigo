@@ -1,0 +1,163 @@
+@startuml Servigo_Global_UseCase
+left to right direction
+
+' ===== CORE SYSTEM (CENTER-RIGHT) =====
+usecase "S'Authentifier" as UC_AUTH
+
+' ===== VISITEUR (TOP-LEFT) =====
+actor Visiteur
+
+usecase "S'inscrire" as UC_V_signup
+usecase "Consulter le Site" as UC_V_browse
+usecase "Envoyer Réclamation" as UC_V_reclamation
+
+Visiteur --> UC_V_signup
+Visiteur --> UC_V_browse
+Visiteur --> UC_V_reclamation
+
+UC_V_signup ..> UC_AUTH : <<include>>
+UC_V_browse ..> UC_AUTH : <<include>>
+UC_V_reclamation ..> UC_AUTH : <<include>>
+
+' ===== CLIENT (BELOW VISITEUR) =====
+actor Client
+
+usecase "Explorer Prestataires" as UC_C_explore
+usecase "Gérer Réservations" as UC_C_reservations
+usecase "Réserver Service" as UC_C_reserve
+usecase "Annuler Réservation" as UC_C_cancel
+usecase "Signaler Prestataire" as UC_C_report
+usecase "Ajouter Avis" as UC_C_review
+
+usecase "Gérer Favoris" as UC_C_favorites
+usecase "Ajouter Prestataire" as UC_C_add_fav
+usecase "Supprimer Prestataire" as UC_C_remove_fav
+
+usecase "Consulter Notifications" as UC_C_notif
+usecase "Gérer Profil" as UC_C_profile
+usecase "Discuter via Chatbot" as UC_C_chatbot
+
+Client --> UC_C_explore
+Client --> UC_C_reservations
+Client --> UC_C_favorites
+Client --> UC_C_notif
+Client --> UC_C_profile
+Client --> UC_C_chatbot
+
+UC_C_reservations ..> UC_C_reserve : <<include>>
+UC_C_reservations ..> UC_C_cancel : <<include>>
+UC_C_reservations ..> UC_C_report : <<include>>
+UC_C_reservations ..> UC_C_review : <<include>>
+
+UC_C_favorites ..> UC_C_add_fav : <<include>>
+UC_C_favorites ..> UC_C_remove_fav : <<include>>
+
+UC_C_explore ..> UC_V_browse : <<include>>
+
+UC_C_explore ..> UC_AUTH : <<include>>
+UC_C_reservations ..> UC_AUTH : <<include>>
+UC_C_favorites ..> UC_AUTH : <<include>>
+UC_C_notif ..> UC_AUTH : <<include>>
+UC_C_profile ..> UC_AUTH : <<include>>
+UC_C_chatbot ..> UC_AUTH : <<include>>
+
+' ===== PRESTATAIRE (BELOW CLIENT) =====
+actor Prestataire
+
+usecase "Consulter Dashboard" as UC_P_dashboard
+usecase "Gérer Réservations Profil" as UC_P_reservations
+usecase "Réservations Reçues" as UC_P_received
+usecase "Réservations Envoyées" as UC_P_sent
+usecase "Historique Réservations" as UC_P_history
+
+usecase "Gérer Profil Professionnel" as UC_P_prof_profile
+usecase "Gérer Services" as UC_P_services
+usecase "Lister Services" as UC_P_list_services
+usecase "Modifier Service" as UC_P_edit_service
+usecase "Supprimer Service" as UC_P_delete_service
+usecase "Ajouter Service" as UC_P_add_service
+
+usecase "Consulter Profil" as UC_P_view_profile
+usecase "Gérer Portfolio" as UC_P_portfolio
+usecase "Lister Travaux" as UC_P_list_works
+usecase "Modifier Travail" as UC_P_edit_work
+usecase "Supprimer Travail" as UC_P_delete_work
+usecase "Ajouter Travail" as UC_P_add_work
+
+usecase "Gérer Disponibilité" as UC_P_availability
+usecase "Ajouter Créneaux" as UC_P_add_slots
+usecase "Modifier Créneaux" as UC_P_edit_slots
+
+Prestataire --> UC_P_dashboard
+Prestataire --> UC_P_reservations
+Prestataire --> UC_P_prof_profile
+
+UC_P_reservations ..> UC_P_received : <<include>>
+UC_P_reservations ..> UC_P_sent : <<include>>
+UC_P_reservations ..> UC_P_history : <<include>>
+
+UC_P_prof_profile ..> UC_P_services : <<include>>
+UC_P_services ..> UC_P_list_services : <<include>>
+UC_P_list_services ..> UC_P_edit_service : <<include>>
+UC_P_list_services ..> UC_P_delete_service : <<include>>
+UC_P_services ..> UC_P_add_service : <<include>>
+
+UC_P_prof_profile ..> UC_P_view_profile : <<include>>
+
+UC_P_prof_profile ..> UC_P_portfolio : <<include>>
+UC_P_portfolio ..> UC_P_list_works : <<include>>
+UC_P_list_works ..> UC_P_edit_work : <<include>>
+UC_P_list_works ..> UC_P_delete_work : <<include>>
+UC_P_portfolio ..> UC_P_add_work : <<include>>
+
+UC_P_prof_profile ..> UC_P_availability : <<include>>
+UC_P_availability ..> UC_P_add_slots : <<include>>
+UC_P_availability ..> UC_P_edit_slots : <<include>>
+
+UC_P_dashboard ..> UC_AUTH : <<include>>
+UC_P_reservations ..> UC_AUTH : <<include>>
+UC_P_prof_profile ..> UC_AUTH : <<include>>
+
+' ===== ADMIN (BOTTOM-LEFT) =====
+actor Admin
+
+usecase "Consulter Dashboard" as UC_A_dashboard
+usecase "Gérer Réclamations" as UC_A_reclamations
+usecase "Gérer Signalements" as UC_A_signals
+usecase "Gérer Clients" as UC_A_clients
+usecase "Gérer Prestataires" as UC_A_providers
+
+usecase "Gérer Utilisateurs Bloqués" as UC_A_blocked
+usecase "Lister Utilisateurs Bloqués" as UC_A_list_blocked
+usecase "Rechercher Prestataire" as UC_A_search_provider
+usecase "Filtrer" as UC_A_filter
+
+usecase "Gérer Services" as UC_A_services
+usecase "Consulter Réservations" as UC_A_reservations
+usecase "Consulter Activité" as UC_A_activity
+
+Admin --> UC_A_dashboard
+Admin --> UC_A_reclamations
+Admin --> UC_A_signals
+Admin --> UC_A_clients
+Admin --> UC_A_providers
+Admin --> UC_A_blocked
+Admin --> UC_A_services
+Admin --> UC_A_reservations
+Admin --> UC_A_activity
+
+UC_A_blocked ..> UC_A_list_blocked : <<include>>
+UC_A_blocked ..> UC_A_search_provider : <<include>>
+UC_A_blocked ..> UC_A_filter : <<include>>
+
+UC_A_dashboard ..> UC_AUTH : <<include>>
+UC_A_reclamations ..> UC_AUTH : <<include>>
+UC_A_signals ..> UC_AUTH : <<include>>
+UC_A_clients ..> UC_AUTH : <<include>>
+UC_A_providers ..> UC_AUTH : <<include>>
+UC_A_blocked ..> UC_AUTH : <<include>>
+UC_A_services ..> UC_AUTH : <<include>>
+UC_A_reservations ..> UC_AUTH : <<include>>
+UC_A_activity ..> UC_AUTH : <<include>>
+
+@enduml

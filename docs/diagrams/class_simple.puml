@@ -1,0 +1,19 @@
+@startuml
+class User
+class Client
+class Worker
+class Admin
+
+Client --|> User
+Worker --|> User
+Admin --|> User
+
+class Service
+class Reservation
+class Portfolio
+
+User -- Reservation
+Worker -- Service
+Worker -- Portfolio
+
+@enduml

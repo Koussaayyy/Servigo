@@ -1,0 +1,281 @@
+@startuml Servigo_Global_ClassDiagram
+left to right direction
+
+class Service {
+  -id: String
+  -name: String
+  -description: String
+  -price: Number
+  -duration: Number
+  --
+  +createService()
+  +updateService()
+  +deleteService()
+}
+
+class PortfolioItem {
+  -id: String
+  -title: String
+  -city: String
+  -description: String
+  -imageUrl: String
+  -featured: Boolean
+  --
+  +addPortfolioItem()
+  +updatePortfolioItem()
+  +deletePortfolioItem()
+}
+
+class Attachment {
+  -id: String
+  -url: String
+  -originalName: String
+  -mimeType: String
+  -size: Number
+  --
+  +upload()
+  +download()
+}
+
+Service "1" -- "0..*" PortfolioItem
+PortfolioItem "1" -- "0..*" Attachment
+
+class Reclamation {
+  -id: String
+  -name: String
+  -email: String
+  -subject: String
+  -message: String
+  -category: String
+  -priority: String
+  -status: String
+  --
+  +submitReclamation()
+  +updateStatus()
+}
+
+class Schedule {
+  -id: String
+  -monday: Number[]
+  -tuesday: Number[]
+  -wednesday: Number[]
+  -thursday: Number[]
+  -friday: Number[]
+  -saturday: Number[]
+  -sunday: Number[]
+  --
+  +setAvailability()
+}
+
+class CalendarDate {
+  -date: String
+  -hours: Number[]
+  --
+  +addDate()
+  +removeDate()
+}
+
+Schedule "1" -- "0..*" CalendarDate
+
+class Reservation {
+  -id: String
+  -client: User
+  -worker: User
+  -bookingDate: Date
+  -bookingHour: Number
+  -duration: Number
+  -status: String
+  -serviceType: String
+  -address: String
+  -notes: String
+  -cancellationReason: String
+  -serviceCode: String
+  -serviceStartedAt: Date
+  -codeVerifiedAt: Date
+  -autoExpireAt: Date
+  --
+  +createReservation()
+  +acceptReservation()
+  +startService()
+}
+
+class Admin {
+  -id: String
+  --
+  +manageClaims()
+  +manageReports()
+  +manageUsers()
+  +blockUser()
+}
+
+class Review {
+  -id: String
+  -rating: Number (1-5)
+  -comment: String
+  -reviewedAt: Date
+  --
+  +submitReview()
+}
+
+class Signal {
+  -reported: Boolean
+  -reportedAt: Date
+  --
+  +reportWorker()
+}
+
+Reservation "1" -- "0..1" Review
+Reservation "1" -- "1" Signal
+Reservation "1" -- "0..*" Attachment
+
+class User {
+  -id: String
+  -firstName: String
+  -lastName: String
+  -email: String
+  -password: String
+  -phone: String
+  -avatar: String
+  -role: String
+  -gender: String
+  -birthDate: String
+  -isVerified: Boolean
+  -isActive: Boolean
+  -onboardingComplete: Boolean
+  -savedWorkers: User[]
+  -warningCount: Number
+  -workerStatus: String
+  -bannedAt: Date
+  -resetPasswordToken: String
+  -verificationCode: String
+  --
+  +register()
+  +login()
+  +updateProfile()
+  +verifyEmail()
+  +matchPassword()
+}
+
+class Client {
+  -clientProfile: ClientProfile
+  --
+  +browseWorkers()
+  +createReservation()
+  +manageFavorites()
+  +submitReview()
+}
+
+class ClientProfile {
+  -address: String
+  -city: String
+  -bio: String
+}
+
+class Prestataire {
+  -workerProfile: WorkerProfile
+  -workerVerification: WorkerVerification
+  -workerStatus: String
+  -reportHistory: Report[]
+  --
+  +acceptReservation()
+  +updateAvailability()
+  +manageServices()
+}
+
+class WorkerProfile {
+  -professions: String[]
+  -city: String
+  -experience: String
+  -bio: String
+  -rating: Number
+  -totalReviews: Number
+  -isAvailable: Boolean
+  -hourlyRate: Number
+  -availabilitySchedule: Schedule
+  -availabilityCalendar: CalendarDate[]
+  -services: Service[]
+  -portfolio: PortfolioItem[]
+}
+
+class WorkerVerification {
+  -status: String
+  -cinDocumentUrl: String
+  -certificationDocumentUrl: String
+  -submittedAt: Date
+  -reviewedAt: Date
+  -reviewedBy: String
+  -rejectionReason: String
+  --
+  +submitVerification()
+  +approveVerification()
+  +rejectVerification()
+}
+
+class Report {
+  -signalId: String
+  -reason: String
+  -verified: Boolean
+  -createdAt: Date
+}
+
+Client --|> User
+Prestataire --|> User
+Admin --|> User
+
+Client "1" -- "1" ClientProfile
+Prestataire "1" -- "1" WorkerProfile
+Prestataire "1" -- "1" WorkerVerification
+Prestataire "1" -- "0..*" Report
+
+class Notification {
+  -id: String
+  -type: String
+  -title: String
+  -message: String
+  -read: Boolean
+  -createdAt: Date
+  --
+  +markAsRead()
+}
+
+class Warning {
+  -signalId: String
+  -reason: String
+  -note: String
+  -createdAt: Date
+}
+
+User "1" -- "0..*" Warning : workerWarnings
+
+class Like {
+  -userId: String
+  -firstName: String
+  -avatar: String
+  --
+  +addLike()
+  +removeLike()
+}
+
+class Comment {
+  -userId: String
+  -firstName: String
+  -text: String
+  --
+  +addComment()
+  +deleteComment()
+}
+
+User "1" -- "0..*" Notification
+User "1" -- "0..*" Reclamation : submits
+User "1" -- "0..*" User : savedWorkers
+Prestataire "1" -- "0..*" Reservation : worker
+Client "1" -- "0..*" Reservation : client
+
+WorkerProfile "1" -- "0..*" Service
+WorkerProfile "1" -- "1" Schedule
+WorkerProfile "1" -- "0..*" PortfolioItem
+
+PortfolioItem "1" -- "0..*" Like
+PortfolioItem "1" -- "0..*" Comment
+
+@enduml
